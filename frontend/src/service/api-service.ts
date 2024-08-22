@@ -1,5 +1,6 @@
 import type { AxiosInstance } from 'axios'
 import axios from 'axios'
+import { AUTH_TOKEN } from './user-service'
 
 class APIService {
   private readonly client: AxiosInstance
@@ -9,6 +10,7 @@ class APIService {
       baseURL: '/api',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem(AUTH_TOKEN)}`
       },
     })
     this.client.interceptors.response.use(

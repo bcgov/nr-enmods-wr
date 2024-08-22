@@ -1,12 +1,9 @@
 import Box from '@mui/material/Box'
+import Header from '@/components/Header'
+// import Footer from '@/components/Footer'
 import AppRoutes from '@/routes'
 import { BrowserRouter } from 'react-router-dom'
-import {
-  Footer,
-  Header,
-} from "@bcgov/design-system-react-components";
-import { IconButton } from '~/@mui/material'
-import { HomeRounded } from '~/@mui/icons-material'
+import Sidebar from './components/Sidebar'
 
 const styles = {
   container: {
@@ -14,32 +11,54 @@ const styles = {
     flexDirection: 'column',
     minHeight: '100vh',
   },
-  content: {
-    flexGrow: 1,
-    marginTop: '5em',
-    marginRight: '1em',
-    marginLeft: '1em',
-    marginBottom: '5em',
-    height: '100%',
+  contentWrapper: {
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'flex-start',
+    // bgcolor: '#efefff',
+    width: '100%',
+  },
+  content: {
+    display: 'flex',
+    width: '1200px',
+    bgcolor: '#ffffff',
+  },
+  sidebar: {
+    paddingTop: '8em',
+    paddingLeft: '2em',
+    // width: '28%',
+    width: '20%',
+    // bgcolor: '#efefff',
+  },
+  mainContent: {
+    marginTop: '8em',
+    width: '70%',
+  },
+  separator: {
+    width: '1px',
+    bgcolor: 'rgb(217, 217, 217)',
+    minHeight: '100vh',
   },
 }
+
 export default function App() {
   return (
-    <Box sx={styles.container}>
-      <Header title={'QuickStart OpenShift'}> <a href={'/'} target={'_self'}>
-        <IconButton color="secondary">
-          <HomeRounded color="secondary"></HomeRounded>
-        </IconButton>
-      </a></Header>
-      <Box sx={styles.content}>
-        <BrowserRouter>
-          <AppRoutes />
-        </BrowserRouter>
+    <BrowserRouter>
+      <Box sx={styles.container}>
+        <Header />
+        <Box sx={styles.contentWrapper}>
+          <Box sx={styles.content}>
+            <Box sx={styles.sidebar}>
+              <Sidebar />
+            </Box>
+            <Box sx={styles.separator} />
+            <Box sx={styles.mainContent}>
+              <AppRoutes />
+            </Box>
+          </Box>
+        </Box>
+        {/* <Footer /> */}
       </Box>
-      <Footer />
-    </Box>
+    </BrowserRouter>
   )
 }

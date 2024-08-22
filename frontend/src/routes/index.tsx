@@ -1,12 +1,21 @@
-import { Routes, Route } from 'react-router-dom'
-import NotFound from '@/components/NotFound'
-import Dashboard from '@/components/Dashboard'
+import NotFound from "@/pages/NotFound";
+import Dashboard from "@/pages/Dashboard";
+import AdminPage from "@/pages/AdminPage";
 
 export default function AppRoutes() {
   return (
-    <Routes>
-      <Route path="/" element={<Dashboard />} />
-      <Route path="*" element={<NotFound />} />
-    </Routes>
-  )
+    <>
+      <Routes>
+        <Route element={<ProtectedRoutes roles={[Roles.ENMODS_ADMIN]} />}>
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/admin" element={<AdminPage />} />
+        </Route>
+
+        <Route element={<ProtectedRoutes roles={[Roles.ENMODS_USER]} />}>
+          <Route path="/dashboard" element={<Dashboard />} />
+        </Route>
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </>
+  );
 }

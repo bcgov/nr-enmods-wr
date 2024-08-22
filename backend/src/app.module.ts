@@ -9,6 +9,7 @@ import { AppController } from "./app.controller";
 import { MetricsController } from "./metrics.controller";
 import { TerminusModule } from '@nestjs/terminus';
 import { HealthController } from "./health.controller";
+import { JWTAuthModule } from "./auth/jwtauth.module";
 
 const DB_HOST = process.env.POSTGRES_HOST || "localhost";
 const DB_USER = process.env.POSTGRES_USER || "postgres";
@@ -46,6 +47,7 @@ function getMiddlewares() {
       },
     }),
     UsersModule
+    JWTAuthModule,
   ],
   controllers: [AppController,MetricsController, HealthController],
   providers: [AppService]

@@ -1,16 +1,32 @@
-import "@bcgov/bc-sans/css/BC_Sans.css";
-import * as React from 'react'
-import * as ReactDOM from 'react-dom/client'
-import { ThemeProvider } from '@emotion/react'
-import { CssBaseline } from '@mui/material'
-import theme from './theme'
-import App from './App'
+import { useEffect, useState } from "react";
+import ReactDOM from "react-dom/client";
+import { ThemeProvider, CssBaseline } from "@mui/material";
+import theme from "./theme";
+import App from "./App";
+import UserService from "./service/user-service";
 
-ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
-  <React.StrictMode>
+const Main = () => {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const currentRoute = window.location.pathname;
+
+  useEffect(() => {
+    UserService.initKeycloak(currentRoute, (authenticated) => {
+      setIsAuthenticated(authenticated);
+    });
+  }, [currentRoute]);
+
+  if (isAuthenticated === null) {
+    return <div>Loading...</div>;
+  }
+
+  return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <App />
     </ThemeProvider>
-  </React.StrictMode>,
-)
+  );
+};
+
+ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
+  <Main />,
+);

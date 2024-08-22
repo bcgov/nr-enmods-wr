@@ -20,10 +20,8 @@ const columns = [
     filterable: true,
     flex: 1,
     renderHeader: (params: any) => (
-      <div id={`${params.field}`}>
-        Employee ID
-      </div>
-    )
+      <div id={`${params.field}`}>Employee ID</div>
+    ),
   },
   {
     field: "name",
@@ -32,10 +30,8 @@ const columns = [
     filterable: true,
     flex: 1,
     renderHeader: (params: any) => (
-      <div id={`${params.field}`}>
-        Employee Name
-      </div>
-    )
+      <div id={`${params.field}`}>Employee Name</div>
+    ),
   },
   {
     field: "email",
@@ -44,11 +40,9 @@ const columns = [
     filterable: true,
     flex: 1,
     renderHeader: (params: any) => (
-      <div id={`${params.field}`}>
-        Employee Email
-      </div>
-    )
-  }
+      <div id={`${params.field}`}>Employee Email</div>
+    ),
+  },
 ];
 export default function Dashboard() {
   const [data, setData] = useState<any>([]);
@@ -63,7 +57,7 @@ export default function Dashboard() {
           const userDto = {
             id: user.id,
             name: user.name,
-            email: user.email
+            email: user.email,
           };
           users.push(userDto);
         }
@@ -84,16 +78,15 @@ export default function Dashboard() {
         minHeight: "45em",
         maxHeight: "45em",
         width: "100%",
-        marginLeft: "4em"
+        marginLeft: "4em",
       }}
     >
       <DataGrid
-
         slots={{ toolbar: GridToolbar }}
         slotProps={{
           toolbar: {
-            showQuickFilter: true
-          }
+            showQuickFilter: true,
+          },
         }}
         experimentalFeatures={{ ariaV7: true }}
         checkboxSelection={false}

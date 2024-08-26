@@ -46,7 +46,7 @@ function getMiddlewares() {
         middlewares: getMiddlewares(),
       },
     }),
-    UsersModule
+    UsersModule,
     JWTAuthModule,
   ],
   controllers: [AppController,MetricsController, HealthController],

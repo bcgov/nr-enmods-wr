@@ -1,6 +1,7 @@
 import BCGovLogo from "@/assets/BCID_H_rgb_pos.png";
 import { AppBar, IconButton, Toolbar, Box } from "@mui/material";
 import { HomeRounded } from "@mui/icons-material";
+import Navbar from "./Navbar";
 
 const styles = {
   appBar: {
@@ -60,7 +61,9 @@ export default function Header() {
       </Box>
       <Box sx={styles.separator} />
       <Box sx={styles.innerContent}>
-        <Toolbar sx={styles.navToolbar}></Toolbar>
+        <Toolbar sx={styles.navToolbar}>
+          <Navbar />
+        </Toolbar>
       </Box>
     </AppBar>
   );

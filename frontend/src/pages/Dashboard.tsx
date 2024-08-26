@@ -11,6 +11,7 @@ import TableRow from "@mui/material/TableRow";
 import { DataGrid, GridToolbar } from "@mui/x-data-grid";
 import { useEffect, useState } from "react";
 import type { AxiosResponse } from "~/axios";
+import { Box, Typography } from "@mui/material";
 
 const columns = [
   {
@@ -81,6 +82,12 @@ export default function Dashboard() {
         marginLeft: "4em",
       }}
     >
+      <Box>
+        <Typography id="pageTitle" variant="h4">
+          Electronic Data Transfer - Dashboard
+        </Typography>
+      </Box>
+
       <DataGrid
         slots={{ toolbar: GridToolbar }}
         slotProps={{

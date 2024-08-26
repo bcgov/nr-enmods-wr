@@ -29,6 +29,7 @@ export class UsersController {
 
   @Get()
   @Roles(Role.ENMODS_ADMIN)
+  findAll(): Promise<UserDto[]> {
     return this.usersService.findAll();
   }
 

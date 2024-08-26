@@ -1,3 +1,6 @@
+import { Routes, Route } from "react-router-dom";
+import { ProtectedRoutes } from "./protected-routes";
+import Roles from "../roles";
 import NotFound from "@/pages/NotFound";
 import Dashboard from "@/pages/Dashboard";
 import AdminPage from "@/pages/AdminPage";

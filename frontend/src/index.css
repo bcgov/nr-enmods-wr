@@ -26,3 +26,42 @@
 .MuiDrawer-paperAnchorLeft {
   margin-top: 4.2em !important;
 }
+
+.search-point-location {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+}
+
+.flex-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.padding-1 {
+  padding: 1rem;
+}
+
+.padding-y-1 {
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+}
+
+.padding-x-1 {
+  padding-right: 1rem;
+  padding-left: 1rem;
+}
+
+.margin-top-1 {
+  margin-top: 1rem;
+}
+
+.gap-1 {
+  gap: 1rem;
+}
+
+.gap-half {
+  gap: .5rem;
+}

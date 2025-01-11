@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 import React from "react";
 import { List, ListItemButton, ListItemText } from "@mui/material";
 import { NavLink } from "react-router-dom";
@@ -9,6 +10,7 @@ const items = [
   { name: "Dashboard", link: "/dashboard" },
   { name: "EMS", link: "/ems" },
   { name: "Admin", link: "/admin" },
+  { name: "Search", link: "/search"}
 ];
 const link_g = "www.google.com";
 const sidebar = () => {

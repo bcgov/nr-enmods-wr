@@ -4,6 +4,7 @@ import Header from '@/components/Header'
 import AppRoutes from '@/routes'
 import { BrowserRouter } from 'react-router-dom'
 import Sidebar from './components/Sidebar'
+import "./index.css"
 
 const styles = {
   container: {

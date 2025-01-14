@@ -3,7 +3,7 @@ x-var:
   - &POSTGRES_USER
     postgres
   - &POSTGRES_PASSWORD
-    root
+    default
   - &POSTGRES_DATABASE
     postgres
   - &POSTGRES_SCHEMA

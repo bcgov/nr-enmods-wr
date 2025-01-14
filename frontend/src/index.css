@@ -1,3 +1,7 @@
+*{
+  font-size: small;
+}
+
 @font-face {
   font-family: "BCSans";
   font-style: normal;

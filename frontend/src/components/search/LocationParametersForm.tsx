@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 import React from "react"
 import { Grid, TextField } from "@mui/material"
 import TooltipInfo from "../TooltipInfo"
@@ -6,6 +7,9 @@ import Btn from "../Btn"
 import { fontSize } from "~/@mui/system"
 
 export default function LocationParametersForm(props) {
+  const { formData, handleOnChange } = props
+
+  console.log(formData)
   return (
     <>
       <p>
@@ -20,21 +24,39 @@ export default function LocationParametersForm(props) {
           <TooltipInfo title="Location Type" />
         </div>
         <div>
-          <TextField variant="outlined" size="small" />
+          <TextField
+            variant="outlined"
+            size="small"
+            name="locationType"
+            value={formData.locationType}
+            onChange={handleOnChange}
+          />
         </div>
         <div className="flex-row">
           <TitleText variant="subtitle1" text="Location Name" />
           <TooltipInfo title="Location Name" />
         </div>
         <div>
-          <TextField variant="outlined" size="small" />
+          <TextField
+            variant="outlined"
+            size="small"
+            name="locationName"
+            value={formData.locationName}
+            onChange={handleOnChange}
+          />
         </div>
         <div className="flex-row">
           <TitleText variant="subtitle1" text="Permit Number" />
           <TooltipInfo title="Permit Number" />
         </div>
         <div>
-          <TextField variant="outlined" size="small" />
+          <TextField
+            variant="outlined"
+            size="small"
+            name="permitNumber"
+            value={formData.permitNumber}
+            onChange={handleOnChange}
+          />
         </div>
 
         <div className="flex-row">
@@ -46,30 +68,64 @@ export default function LocationParametersForm(props) {
           <Grid item>
             <div className="search-point-location">
               <div>
-                <TitleText variant="body2" text="Within" sx={{fontSize: '9pt'}}/>
+                <TitleText
+                  variant="body2"
+                  text="Within"
+                  sx={{ fontSize: "9pt" }}
+                />
               </div>
               <div>
                 <div>
-                  <TitleText variant="body2" text="Miles of"  sx={{fontSize: '8pt'}}/>
+                  <TitleText
+                    variant="body2"
+                    text="Miles of"
+                    sx={{ fontSize: "8pt" }}
+                  />
                 </div>
                 <div>
-                  <TextField variant="outlined" size="small" />
+                  <TextField
+                    variant="outlined"
+                    size="small"
+                    name="milesOf"
+                    value={formData.milesOf}
+                    onChange={handleOnChange}
+                  />
                 </div>
               </div>
               <div>
                 <div>
-                  <TitleText variant="body2" text="Lat" sx={{fontSize: '8pt'}}/>
+                  <TitleText
+                    variant="body2"
+                    text="Lat"
+                    sx={{ fontSize: "8pt" }}
+                  />
                 </div>
                 <div>
-                  <TextField variant="outlined" size="small" />
+                  <TextField
+                    variant="outlined"
+                    size="small"
+                    name="lat"
+                    value={formData.lat}
+                    onChange={handleOnChange}
+                  />
                 </div>
               </div>
               <div>
                 <div>
-                  <TitleText variant="body2" text="Long" sx={{fontSize: '8pt'}} />
+                  <TitleText
+                    variant="body2"
+                    text="Long"
+                    sx={{ fontSize: "8pt" }}
+                  />
                 </div>
                 <div>
-                  <TextField variant="outlined" size="small" />
+                  <TextField
+                    variant="outlined"
+                    size="small"
+                    name="long"
+                    value={formData.long}
+                    onChange={handleOnChange}
+                  />
                 </div>
               </div>
               <div className="margin-top-1">

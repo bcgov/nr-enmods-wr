@@ -6,16 +6,109 @@ import { useMultiStepForm } from "@/hook/useMultiFormStep"
 import LocationParametersForm from "@/components/search/LocationParametersForm"
 import FilterResultsForm from "@/components/search/FilterResultsForm"
 import DownloadForm from "@/components/search/DownloadForm"
+import { useState } from "react"
+import apiService from "@/service/api-service"
 
 const SearchPage = () => {
-  const { next, back, step, steps, activeStep, isFirstStep, isLastStep, goToPage } =
-    useMultiStepForm([
-      <LocationParametersForm />,
-      <FilterResultsForm />,
-      <DownloadForm />,
-    ])
+  const [formData, setFormData] = useState({
+    locationType: "",
+    locationName: "",
+    permitNumber: "",
+    milesOf: "",
+    lat: "",
+    long: "",
 
+    dateFrom: "",
+    dateTo: "",
+    sampleMedia: "",
+    sampleMediaDetail: "",
+    observedPropertyGrp: "",
 
+    dataProfiles: "",
+    fileFormat: "",
+  })
+
+  const {
+    next,
+    back,
+    step,
+    steps,
+    activeStep,
+    isFirstStep,
+    isLastStep,
+    goToPage,
+  } = useMultiStepForm([
+    <LocationParametersForm
+      formData={formData}
+      handleOnChange={(e) => handleOnChange(e)}
+    />,
+    <FilterResultsForm
+      formData={formData}
+      handleOnChange={(e) => handleOnChange(e)}
+    />,
+    <DownloadForm
+      formData={formData}
+      handleOnChange={(e) => handleOnChange(e)}
+    />,
+  ])
+
+  const handleOnChange = (e) => {
+    const { name, value } = e.target
+    setFormData({ ...formData, [name]: value })
+  }
+
+  const onSubmit = (e) => {
+    e.preventDefault()
+    console.log(formData)
+    basicSearch()
+  }
+
+  const basicSearch = async () => {
+    try {
+      const response = await apiService
+        .getAxiosInstance()
+        .get("/v1/basicSearch")
+      if (response.status === 200) {
+        console.log(response)
+      }
+    } catch (err) {
+      console.log(err)
+    }
+  }
+
+  const clearForm = () => {
+    console.log(activeStep)
+    if (!isLastStep) {
+      switch (activeStep) {
+        case 0:
+          setFormData({
+            ...formData,
+            locationType: "",
+            locationName: "",
+            permitNumber: "",
+            milesOf: "",
+            lat: "",
+            long: "",
+          })
+          break
+        case 1:
+          setFormData({
+            ...formData,
+            dateFrom: "",
+            dateTo: "",
+            sampleMedia: "",
+            sampleMediaDetail: "",
+            observedPropertyGrp: "",
+          })
+          break
+        default:
+          break
+      }
+    } else {
+      setFormData({});
+      goToPage()
+    }
+  }
 
   return (
     <div className="padding-1">
@@ -45,7 +138,7 @@ const SearchPage = () => {
         </div>
       </div>
 
-      <form>
+      <form noValidate onSubmit={onSubmit}>
         <div className="flex-row gap-half">
           <div className="flex-row gap-1">
             <Badge badgeContent={activeStep + 1} color="primary"></Badge>
@@ -77,7 +170,7 @@ const SearchPage = () => {
                 text={isLastStep ? "Start Over" : "Clear Search"}
                 size="small"
                 type="button"
-                handleClick={goToPage}
+                handleClick={clearForm}
                 sx={{ background: "#fff", color: "#0B5394", fontSize: "8pt" }}
               />
               {!isFirstStep && (
@@ -93,7 +186,7 @@ const SearchPage = () => {
               <Btn
                 text={isLastStep ? "Download" : "Next"}
                 size="small"
-                type="button"
+                type={isLastStep ? "submit" : "button"}
                 handleClick={next}
                 sx={{ fontSize: "8pt" }}
               />

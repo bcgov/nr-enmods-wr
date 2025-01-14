@@ -10,6 +10,9 @@ import TitleText from "../TitleText"
 import TooltipInfo from "../TooltipInfo"
 
 export default function DownloadForm(props) {
+
+  const {formData, handleOnChange} = props;
+
   return (
     <>
       <p>
@@ -24,8 +27,10 @@ export default function DownloadForm(props) {
         </div>
         <FormControl>
           <RadioGroup
-            aria-labelledby="demo-radio-buttons-group-label"
-            name="radio-buttons-group"
+            aria-labelledby="data-profiles"
+            name="dataProfiles"
+            value={formData.dataProfiles}
+            onChange={handleOnChange}
           >
             <FormControlLabel
               value="Organization Data"
@@ -71,8 +76,11 @@ export default function DownloadForm(props) {
         </div>
         <FormControl>
           <RadioGroup
-            aria-labelledby="demo-radio-buttons-group-label"
-            name="radio-buttons-group"
+            aria-labelledby="file-format"
+            name="fileFormat"
+            value={formData.fileFormat}
+            onChange={handleOnChange}
+
           >
             <FormControlLabel
               value="Comma-Separated"

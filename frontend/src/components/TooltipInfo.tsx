@@ -1,19 +1,16 @@
-import React from 'react'
-import { Info } from '@mui/icons-material'
-import { IconButton, Tooltip } from '@mui/material'
+import { Info } from "@mui/icons-material"
+import { IconButton, Tooltip } from "@mui/material"
 
-export default function TooltipInfo(props) {
+export default function TooltipInfo(props: any) {
+  const { title } = props
 
-    const {title} = props;
-    
-
-    return (
-        <>
-            <Tooltip title={title}>
-                <IconButton>
-                    <Info/>
-                </IconButton>
-            </Tooltip>
-        </>
-    )
+  return (
+    <>
+      <Tooltip title={title}>
+        <IconButton>
+          <Info />
+        </IconButton>
+      </Tooltip>
+    </>
+  )
 }

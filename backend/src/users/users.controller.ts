@@ -14,8 +14,10 @@ import {UpdateUserDto} from "./dto/update-user.dto";
 import { UserDto } from "./dto/user.dto";
 import { Role } from "../enum/role.enum";
 import { Roles } from "../auth/decorators/roles.decorators";
+import { Public } from "src/auth/decorators/public.decorator";
 
 @ApiTags("users")
+@Public()
 @Controller({path: "users", version: "1"})
 export class UsersController {
   constructor(private readonly usersService: UsersService) {
@@ -28,8 +30,10 @@ export class UsersController {
   }
 
   @Get()
+  @Public()
   @Roles(Role.ENMODS_ADMIN)
   findAll(): Promise<UserDto[]> {
+    console.log("user GET")
     return this.usersService.findAll();
   }
 

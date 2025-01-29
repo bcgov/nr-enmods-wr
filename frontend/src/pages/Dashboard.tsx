@@ -53,6 +53,7 @@ export default function Dashboard() {
       .getAxiosInstance()
       .get("/v1/users")
       .then((response: AxiosResponse) => {
+        console.log(response.data)
         const users = [];
         for (const user of response.data) {
           const userDto = {

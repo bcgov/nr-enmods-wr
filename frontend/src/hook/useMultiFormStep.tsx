@@ -1,5 +1,5 @@
-/* eslint-disable prettier/prettier */
-import { ReactElement, useState } from "react"
+import type { ReactElement } from "react"
+import { useState } from "react"
 
 export function useMultiStepForm(steps: ReactElement[]) {
   const [activeStep, setActiveStep] = useState(0)
@@ -19,9 +19,8 @@ export function useMultiStepForm(steps: ReactElement[]) {
   }
 
   function goToPage() {
-    setActiveStep(0);
-    return steps[activeStep];
-
+    setActiveStep(0)
+    return steps[activeStep]
   }
 
   return {
@@ -32,7 +31,6 @@ export function useMultiStepForm(steps: ReactElement[]) {
     steps,
     isLastStep: activeStep === steps.length - 1,
     isFirstStep: activeStep === 0,
-    goToPage
-    
+    goToPage,
   }
 }

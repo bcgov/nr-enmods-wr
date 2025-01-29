@@ -1,7 +1,5 @@
-/* eslint-disable prettier/prettier */
-import React from "react";
-import { List, ListItemButton, ListItemText } from "@mui/material";
-import { NavLink } from "react-router-dom";
+import { List, ListItemButton, ListItemText } from "@mui/material"
+import { NavLink } from "react-router-dom"
 
 const items = [
   { name: "BC Home", link: "/" },
@@ -10,9 +8,9 @@ const items = [
   { name: "Dashboard", link: "/dashboard" },
   { name: "EMS", link: "/ems" },
   { name: "Admin", link: "/admin" },
-  { name: "Search", link: "/search"}
-];
-const link_g = "www.google.com";
+  { name: "Search", link: "/search" },
+]
+
 const sidebar = () => {
   return (
     <div>
@@ -24,7 +22,7 @@ const sidebar = () => {
         ))}
       </List>
     </div>
-  );
-};
+  )
+}
 
-export default sidebar;
+export default sidebar

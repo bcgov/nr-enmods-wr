@@ -46,7 +46,7 @@ services:
     image: schemaspy/schemaspy:6.2.4
     profiles: ["schemaspy"]
     container_name: schemaspy
-    command: -t pgsql11 -db postgres -host database -port 5432 -u postgres -p default -schemas users
+    command: -t pgsql11 -db postgres -host database -port 5432 -u postgres -p default -schemas enmodwr
     depends_on:
       migrations:
         condition: service_completed_successfully

@@ -1,8 +1,6 @@
-/* eslint-disable prettier/prettier */
-import React from "react"
 import Button from "@mui/material/Button"
 
-export default function Btn(props) {
+export default function Btn(props: any) {
   const { text, size, type, sx, fullWidth, handleClick, disabled } = props
 
   return (

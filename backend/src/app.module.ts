@@ -10,6 +10,9 @@ import { MetricsController } from "./metrics.controller";
 import { TerminusModule } from '@nestjs/terminus';
 import { HealthController } from "./health.controller";
 import { JWTAuthModule } from "./auth/jwtauth.module";
+import { SearchController } from './search/search.controller';
+import { SearchService } from "./search/search.service";
+import { SearchModule } from './search/search.module';
 
 const DB_HOST = process.env.POSTGRES_HOST || "localhost";
 const DB_USER = process.env.POSTGRES_USER || "postgres";
@@ -48,6 +51,7 @@ function getMiddlewares() {
     }),
     UsersModule,
     JWTAuthModule,
+    SearchModule,
   ],
   controllers: [AppController,MetricsController, HealthController],
   providers: [AppService]

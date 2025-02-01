@@ -6,7 +6,7 @@ export default function TooltipInfo(props: any) {
 
   return (
     <>
-      <Tooltip title={title}>
+      <Tooltip title={title} sx={{ color: "#0B5394" }}>
         <IconButton>
           <Info />
         </IconButton>

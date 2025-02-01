@@ -1,10 +1,13 @@
-import { FormControl, FormControlLabel, Radio, RadioGroup } from "@mui/material"
-import TitleText from "../TitleText"
+import {
+  FormControl,
+  FormControlLabel,
+  FormLabel,
+  Radio,
+  RadioGroup,
+} from "@mui/material"
 import TooltipInfo from "../TooltipInfo"
 
 export default function DownloadForm(props: any) {
-  const { formData, handleOnChange } = props
-
   return (
     <>
       <p>
@@ -14,26 +17,20 @@ export default function DownloadForm(props: any) {
       </p>
 
       <div>
-        <div className="flex-row">
-          <TitleText variant="subtitle1" text="File Format" />
-          <TooltipInfo title="File Format" />
-        </div>
         <FormControl>
+          <FormLabel id="file-format-label">
+            File Format <TooltipInfo title="File Format" />
+          </FormLabel>
+
           <RadioGroup
-            aria-labelledby="file-format"
+            aria-labelledby="file-format-label"
             name="fileFormat"
-            value={formData.fileFormat}
-            onChange={handleOnChange}
+            defaultValue="commaSeparated"
           >
             <FormControlLabel
-              value="Comma-Separated"
+              value="commaSeparated"
               control={<Radio />}
               label="Comma-Separated"
-            />
-            <FormControlLabel
-              value="MS Excel 2007+"
-              control={<Radio />}
-              label="MS Excel 2007+"
             />
           </RadioGroup>
         </FormControl>

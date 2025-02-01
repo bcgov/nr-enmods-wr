@@ -1,10 +1,10 @@
 export default interface BasicSearchFormType {
-  locationType: string
-  locationName: string
-  permitNumber: string
-  dateFrom: string
-  dateTo: string
-  media: string
-  observedPropertyGrp: string
+  locationType: any | null
+  locationName: any
+  permitNumber: any
+  fromDate: Date | null
+  toDate: Date | null
+  media: any
+  observedPropertyGrp: any
   fileFormat: string
 }

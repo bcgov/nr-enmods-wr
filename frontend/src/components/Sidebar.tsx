@@ -3,11 +3,6 @@ import { NavLink } from "react-router-dom"
 
 const items = [
   { name: "BC Home", link: "/" },
-  { name: "Ministry of Environment", link: "/" },
-  { name: "WR", link: "/wr" },
-  { name: "Dashboard", link: "/dashboard" },
-  { name: "EMS", link: "/ems" },
-  { name: "Admin", link: "/admin" },
   { name: "Search", link: "/search" },
 ]
 

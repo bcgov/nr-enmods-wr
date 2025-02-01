@@ -1,9 +1,16 @@
-import { TextField } from "@mui/material"
+import { Autocomplete, TextField } from "@mui/material"
 import TooltipInfo from "../TooltipInfo"
-import TitleText from "../TitleText"
+import { BasicSearchAttributes } from "@/util/basicSearchEnum"
 
 export default function LocationParametersForm(props: any) {
-  const { formData, handleOnChange } = props
+  const {
+    formData,
+    locationTypes,
+    locationNames,
+    permitNumbers,
+    handleInputChange,
+    handleOnChange,
+  } = props
 
   return (
     <>
@@ -14,56 +21,65 @@ export default function LocationParametersForm(props: any) {
       </p>
 
       <div>
-        <div className="flex-row">
-          <TitleText
-            variant="subtitle1"
-            text="Location Type"
-            sx={{ fontWeight: 600 }}
+        <div className="flex-row padding-y-1">
+          <Autocomplete
+            value={formData.locationType}
+            options={locationTypes}
+            isOptionEqualToValue={(option, value) =>
+              option.customId === value.customId
+            }
+            getOptionLabel={(option) => option.customId || ""}
+            onChange={(e, val) =>
+              handleOnChange(e, val, BasicSearchAttributes.LocationType)
+            }
+            sx={{ width: 300 }}
+            renderInput={(params) => (
+              <TextField {...params} label="Location Types" />
+            )}
           />
           <TooltipInfo title="Location Type" />
         </div>
-        <div>
-          <TextField
-            variant="outlined"
-            size="small"
-            name="locationType"
-            value={formData.locationType}
-            onChange={handleOnChange}
-          />
-        </div>
         <div className="flex-row">
-          <TitleText
-            variant="subtitle1"
-            text="Location Name"
-            sx={{ fontWeight: 600 }}
+          <Autocomplete
+            multiple
+            value={formData.locationName}
+            getOptionKey={(option) => option.id}
+            options={locationNames}
+            isOptionEqualToValue={(option, value) => option.id === value.id}
+            getOptionLabel={(option) => option.name || ""}
+            onInputChange={(e, val) =>
+              handleInputChange(e, val, BasicSearchAttributes.LocationName)
+            }
+            onChange={(e, val) =>
+              handleOnChange(e, val, BasicSearchAttributes.LocationName)
+            }
+            sx={{ width: 300 }}
+            renderInput={(params) => (
+              <TextField {...params} label="Location Name" />
+            )}
           />
           <TooltipInfo title="Location Name" />
         </div>
-        <div>
-          <TextField
-            variant="outlined"
-            size="small"
-            name="locationName"
-            value={formData.locationName}
-            onChange={handleOnChange}
-          />
-        </div>
-        <div className="flex-row">
-          <TitleText
-            variant="subtitle1"
-            text="Permit Number"
-            sx={{ fontWeight: 600 }}
+        <div className="flex-row padding-y-1">
+          <Autocomplete
+            multiple
+            value={formData.permitNumber}
+            getOptionKey={(option) => option.id}
+            options={permitNumbers}
+            isOptionEqualToValue={(option, value) => option.id === value.id}
+            getOptionLabel={(option) => option.name || ""}
+            onInputChange={(e, val) =>
+              handleInputChange(e, val, BasicSearchAttributes.PermitNo)
+            }
+            onChange={(e, val) =>
+              handleOnChange(e, val, BasicSearchAttributes.PermitNo)
+            }
+            sx={{ width: 300 }}
+            renderInput={(params) => (
+              <TextField {...params} label="Permit Number" />
+            )}
           />
           <TooltipInfo title="Permit Number" />
-        </div>
-        <div>
-          <TextField
-            variant="outlined"
-            size="small"
-            name="permitNumber"
-            value={formData.permitNumber}
-            onChange={handleOnChange}
-          />
         </div>
       </div>
     </>

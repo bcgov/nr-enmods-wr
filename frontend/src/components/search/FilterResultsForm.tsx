@@ -1,9 +1,32 @@
+import DatePicker from "react-datepicker/dist"
 import TitleText from "../TitleText"
 import TooltipInfo from "../TooltipInfo"
-import { TextField } from "@mui/material"
+import { Autocomplete, TextField } from "@mui/material"
+import "react-datepicker/dist/react-datepicker.css"
+import { forwardRef } from "react"
+import { BasicSearchAttributes } from "@/util/basicSearchEnum"
 
 export default function FilterResultsForm(props: any) {
-  const { formData, handleOnChange } = props
+  const {
+    formData,
+    setDateRange,
+    dateRange,
+    observedProperties,
+    mediums,
+    handleInputChange,
+    handleOnChange,
+  } = props
+  const [fromDate, toDate] = dateRange
+
+  const CustomDatePickerInput = forwardRef(({ value, onClick }, ref) => (
+    <TextField
+      label="Date Range"
+      sx={{ minWidth: 300 }}
+      onClick={onClick}
+      ref={ref}
+      value={value}
+    />
+  ))
 
   return (
     <>
@@ -14,78 +37,75 @@ export default function FilterResultsForm(props: any) {
       </p>
 
       <div>
-        <div className="flex-row">
-          <TitleText
-            variant="subtitle1"
-            text="Date Range"
-            sx={{ fontWeight: 600 }}
-          />
-          <TooltipInfo title="Date Range" />
-        </div>
-        <div>
+        <div className="padding-y-1">
           <TitleText
             variant="body2"
             sx={{ fontSize: "8pt" }}
-            text="Dates should be entered as mm-dd-yyyy, mm-yyyy, or yyyy"
+            text="Date Format: mm-dd-yyyy"
           />
-        </div>
-        <div>
-          <TitleText variant="body2" text="from:" sx={{ fontSize: "9pt" }} />
-        </div>
-        <div>
-          <TextField
-            variant="outlined"
-            size="small"
-            name="dateFrom"
-            value={formData.dateFrom}
-            onChange={handleOnChange}
+          <DatePicker
+            customInput={<CustomDatePickerInput />}
+            onChange={(update) => setDateRange(update)}
+            selectsRange={true}
+            startDate={fromDate}
+            endDate={toDate}
+            dateFormat={"MM-dd-yyyy"}
+            isClearable={true}
           />
+          <TooltipInfo title="Date Range" />
         </div>
-        <div>
-          <TitleText variant="body2" text="to:" sx={{ fontSize: "9pt" }} />
-        </div>
-        <div>
-          <TextField
-            variant="outlined"
-            size="small"
-            name="dateTo"
-            value={formData.dateTo}
-            onChange={handleOnChange}
-          />
-        </div>
+
         <div className="flex-row">
-          <TitleText
-            variant="subtitle1"
-            text="Media"
-            sx={{ fontWeight: 600 }}
+          <Autocomplete
+            multiple
+            value={formData.media}
+            getOptionKey={(option) => option.id}
+            options={mediums}
+            isOptionEqualToValue={(option, value) => option.id === value.id}
+            getOptionLabel={(option) => option.customId || ""}
+            onInputChange={(e, val) =>
+              handleInputChange(e, val, BasicSearchAttributes.Media)
+            }
+            onChange={(e, val) =>
+              handleOnChange(e, val, BasicSearchAttributes.Media)
+            }
+            sx={{ width: 300 }}
+            renderInput={(params) => <TextField {...params} label="Media" />}
           />
           <TooltipInfo title="Media" />
-        </div>
-        <div>
-          <TextField
+
+          {/* <TextField
             variant="outlined"
             size="small"
             name="media"
             value={formData.media}
-            onChange={handleOnChange}
-          />
+          /> */}
         </div>
-        <div className="flex-row">
-          <TitleText
-            variant="subtitle1"
-            text="Observed Property Group"
-            sx={{ fontWeight: 600 }}
+
+        <div className="flex-row padding-y-1">
+          <Autocomplete
+            multiple
+            value={formData.observedPropertyGrp}
+            getOptionKey={(option) => option.id}
+            options={observedProperties}
+            isOptionEqualToValue={(option, value) => option.id === value.id}
+            getOptionLabel={(option) => option.customId || ""}
+            onInputChange={(e, val) =>
+              handleInputChange(
+                e,
+                val,
+                BasicSearchAttributes.ObservedPropertyGrp,
+              )
+            }
+            onChange={(e, val) =>
+              handleOnChange(e, val, BasicSearchAttributes.ObservedPropertyGrp)
+            }
+            sx={{ width: 300 }}
+            renderInput={(params) => (
+              <TextField {...params} label="Observed Property Group" />
+            )}
           />
           <TooltipInfo title="Observed Property Group" />
-        </div>
-        <div>
-          <TextField
-            variant="outlined"
-            size="small"
-            name="observedPropertyGrp"
-            value={formData.observedPropertyGrp}
-            onChange={handleOnChange}
-          />
         </div>
       </div>
     </>

@@ -1,33 +1,160 @@
 import Btn from "@/components/Btn"
 import TitleText from "@/components/TitleText"
 import { Badge, Grid } from "@mui/material"
-import { useMultiStepForm } from "@/hook/useMultiFormStep"
+import { useMultiStepForm } from "@/customHook/useMultiFormStep"
 import LocationParametersForm from "@/components/search/LocationParametersForm"
 import FilterResultsForm from "@/components/search/FilterResultsForm"
 import DownloadForm from "@/components/search/DownloadForm"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import apiService from "@/service/api-service"
-import type ChangeEventHandlerType from "@/interfaces/ChangeEventHandlerType"
 import type BasicSearchFormType from "@/interfaces/BasicSearchFormType"
 import HorizontalStepper from "@/components/stepper/HorizontalStepper"
-import { Link, useNavigate } from "react-router-dom"
+import { Link } from "react-router-dom"
+import debounce from "lodash/debounce"
 
 const BasicSearch = () => {
-  const navigate = useNavigate()
+  const [dateRange, setDateRange] = useState<[Date | null, Date | null]>([
+    null,
+    null,
+  ])
+  const [locationTypes, setLocationTypes] = useState([])
+  const [locationNames, setLocationNames] = useState([])
+  const [permitNumbers, setPermitNumbers] = useState([])
+  const [mediums, setMediums] = useState([])
+  const [observedProperties, setObservedProperties] = useState([])
+  const noOfSteps = [1, 2, 3]
   const [formData, setFormData] = useState<BasicSearchFormType>({
-    locationType: "ee355707-5dec-4389-b5a0-3c4b5e48eb1b",
-    locationName: "",
-    permitNumber: "",
-    dateFrom: "",
-    dateTo: "",
-    media: "",
-    observedPropertyGrp: "",
+    locationType: null,
+    locationName: [],
+    permitNumber: [],
+    fromDate: null,
+    toDate: null,
+    media: [],
+    observedPropertyGrp: [],
     fileFormat: "",
   })
-  const noOfSteps = [1, 2, 3]
-  const handleOnChange = (e: ChangeEventHandlerType) => {
-    const { name, value } = e.target
-    setFormData({ ...formData, [name]: value })
+
+  const getLocationTypes = async (): Promise<void> => {
+    try {
+      const apiData = await apiService
+        .getAxiosInstance()
+        .get("/v1/search/getLocationTypes")
+      if (apiData.status === 200) {
+        //  console.log(apiData.data)
+        setLocationTypes(apiData.data.domainObjects)
+      }
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  const getLocationNames = async (query: string): Promise<void> => {
+    try {
+      const apiData = await apiService
+        .getAxiosInstance()
+        .get("v1/search/getLocationNames", {
+          params: {
+            search: query,
+          },
+        })
+      if (apiData.status === 200) {
+        // console.log(apiData.data)
+        setLocationNames(apiData.data.domainObjects)
+      }
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  const getPermitNumbers = async (query: string): Promise<void> => {
+    try {
+      const apiData = await apiService
+        .getAxiosInstance()
+        .get("v1/search/getPermitNumbers", {
+          params: {
+            search: query,
+          },
+        })
+      if (apiData.status === 200) {
+        // console.log(apiData)
+        setPermitNumbers(apiData.data.domainObjects)
+      }
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  const getMediums = async (query: string): Promise<void> => {
+    //console.log(query);
+    try {
+      const apiData = await apiService
+        .getAxiosInstance()
+        .get("v1/search/getMediums", {
+          params: {
+            search: query,
+          },
+        })
+      if (apiData.status === 200) {
+        console.log(apiData.data)
+        setMediums(apiData.data.domainObjects)
+      }
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  const getObservedProperties = async (query: string): Promise<void> => {
+    try {
+      const apiData = await apiService
+        .getAxiosInstance()
+        .get("v1/search/getObservedProperties", {
+          params: {
+            search: query,
+          },
+        })
+      if (apiData.status === 200) {
+        console.log(apiData)
+        setObservedProperties(apiData.data.domainObjects)
+      }
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  useEffect(() => {
+    getLocationTypes()
+    getLocationNames("")
+    getPermitNumbers("")
+    getMediums("")
+    getObservedProperties("")
+  }, [])
+
+  useEffect(() => {
+    if (dateRange) {
+      setFormData({ ...formData, fromDate: dateRange[0], toDate: dateRange[1] })
+    }
+  }, [dateRange])
+
+  const handleOnChange = (
+    e: React.SyntheticEvent,
+    val: any,
+    attrName: string,
+  ) => {
+    setFormData({ ...formData, [attrName]: val })
+  }
+
+  const debounceSearch = debounce(async (query, attrName) => {
+    console.log(attrName)
+    if (attrName === "locationName") getLocationNames(query)
+    if (attrName === "permitNumber") getPermitNumbers(query)
+  }, 500)
+
+  const handleInputChange = (
+    e: React.SyntheticEvent,
+    newVal: any,
+    attrName: string,
+  ) => {
+    debounceSearch(newVal, attrName)
   }
 
   const {
@@ -43,18 +170,23 @@ const BasicSearch = () => {
     <LocationParametersForm
       key="0"
       formData={formData}
-      handleOnChange={(e: ChangeEventHandlerType) => handleOnChange(e)}
+      locationTypes={locationTypes}
+      locationNames={locationNames}
+      handleInputChange={handleInputChange}
+      permitNumbers={permitNumbers}
+      handleOnChange={handleOnChange}
     />,
     <FilterResultsForm
       key="1"
       formData={formData}
-      handleOnChange={(e: ChangeEventHandlerType) => handleOnChange(e)}
+      setDateRange={setDateRange}
+      dateRange={dateRange}
+      mediums={mediums}
+      observedProperties={observedProperties}
+      handleInputChange={handleInputChange}
+      handleOnChange={handleOnChange}
     />,
-    <DownloadForm
-      key="2"
-      formData={formData}
-      handleOnChange={(e: ChangeEventHandlerType) => handleOnChange(e)}
-    />,
+    <DownloadForm key="2" formData={formData} />,
   ])
 
   const extractFileName = (contentDisposition: string): string => {
@@ -65,7 +197,6 @@ const BasicSearch = () => {
 
   const basicSearch = async (): Promise<void> => {
     try {
-      console.log(formData)
       const response = await apiService
         .getAxiosInstance()
         .get("/v1/search/basicSearch", { params: formData })
@@ -85,27 +216,29 @@ const BasicSearch = () => {
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    basicSearch()
+    console.log(formData)
+    //basicSearch()
   }
 
   const clearForm = () => {
+    console.log(formData)
     if (!isLastStep) {
       switch (activeStep) {
         case 0:
           setFormData({
             ...formData,
-            locationType: "",
-            locationName: "",
-            permitNumber: "",
+            locationType: null,
+            locationName: [],
+            permitNumber: [],
           })
           break
         case 1:
           setFormData({
             ...formData,
-            dateFrom: "",
-            dateTo: "",
-            media: "",
-            observedPropertyGrp: "",
+            fromDate: null,
+            toDate: null,
+            media: [],
+            observedPropertyGrp: [],
           })
           break
         default:
@@ -114,13 +247,13 @@ const BasicSearch = () => {
     } else {
       setFormData({
         ...formData,
-        locationType: "",
-        locationName: "",
-        permitNumber: "",
-        dateFrom: "",
-        dateTo: "",
-        media: "",
-        observedPropertyGrp: "",
+        locationType: null,
+        locationName: [],
+        permitNumber: [],
+        fromDate: null,
+        toDate: null,
+        media: [],
+        observedPropertyGrp: [],
         fileFormat: "",
       })
       goToPage()
@@ -179,7 +312,6 @@ const BasicSearch = () => {
             <div className="flex-row">
               <Btn
                 text={isLastStep ? "Start Over" : "Clear Search"}
-                size="small"
                 type="button"
                 handleClick={clearForm}
                 sx={{ background: "#fff", color: "#0B5394", fontSize: "8pt" }}
@@ -187,7 +319,6 @@ const BasicSearch = () => {
               {!isFirstStep && (
                 <Btn
                   text={"Previous"}
-                  size="small"
                   type="button"
                   handleClick={back}
                   sx={{ fontSize: "8pt" }}
@@ -197,7 +328,6 @@ const BasicSearch = () => {
               {!isLastStep && (
                 <Btn
                   text="Next"
-                  size="small"
                   type="button"
                   handleClick={next}
                   sx={{ fontSize: "8pt" }}
@@ -207,7 +337,6 @@ const BasicSearch = () => {
               {isLastStep && (
                 <Btn
                   text={isLastStep ? "Download" : "Next"}
-                  size="small"
                   type={isLastStep ? "submit" : "button"}
                   handleClick={next}
                   sx={{ fontSize: "8pt" }}

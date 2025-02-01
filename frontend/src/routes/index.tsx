@@ -6,7 +6,6 @@ import Dashboard from "@/pages/Dashboard"
 import AdminPage from "@/pages/AdminPage"
 import BasicSearch from "@/pages/BasicSearch"
 import AdvanceSearch from "@/pages/AdvanceSearch"
-import Search from "@/pages/Search"
 
 export default function AppRoutes() {
   return (

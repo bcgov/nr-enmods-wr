@@ -1,5 +1,7 @@
+import type { ChangeEvent } from "react"
+
 export default interface ChangeEventHandlerType
-  extends React.ChangeEvent<HTMLInputElement> {
-  value: string | number | boolean
+  extends ChangeEvent<HTMLInputElement> {
+  value: any
   name: string
 }

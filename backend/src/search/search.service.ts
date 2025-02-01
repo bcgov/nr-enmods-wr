@@ -13,7 +13,7 @@ export class SearchService {
       const res = await firstValueFrom(
         this.httpService.get(url, {
           params: {
-            ids: request.query.locationType,
+            ids: "2cbfe534-e0a3-448d-ba8f-1d1919d66f9a", //TODO remove hardcoded
           },
         })
       );
@@ -47,7 +47,7 @@ export class SearchService {
           params: {
             limit: 100,
             search: query,
-            sort: 'asc'
+            sort: "asc",
           },
         })
       );
@@ -61,12 +61,14 @@ export class SearchService {
     try {
       const url =
         process.env.BASE_URL_BC_API + process.env.PERMIT_NUMBER_CODE_TABLE_API;
-      const res = await firstValueFrom(this.httpService.get(url, {
-        params: {
-          limit: 100,
-          search: query
-        }
-      }));
+      const res = await firstValueFrom(
+        this.httpService.get(url, {
+          params: {
+            limit: 100,
+            search: query,
+          },
+        })
+      );
       if (res.status === 200) {
         const data = JSON.parse(res.data);
         sortArr(data.domainObjects, "customId");
@@ -77,17 +79,18 @@ export class SearchService {
     }
   }
 
-  
   async getMediums(query: string): Promise<AxiosResponse<any>> {
     try {
       const url =
         process.env.BASE_URL_BC_API + process.env.MEDIA_CODE_TABLE_API;
-      const res = await firstValueFrom(this.httpService.get(url, {
-        params: {
-          limit: 100,
-          search: query
-        }
-      }));
+      const res = await firstValueFrom(
+        this.httpService.get(url, {
+          params: {
+            limit: 100,
+            search: query,
+          },
+        })
+      );
       if (res.status === 200) {
         const data = JSON.parse(res.data);
         sortArr(data.domainObjects, "customId");
@@ -101,13 +104,16 @@ export class SearchService {
   async getObservedProperties(query: string): Promise<AxiosResponse<any>> {
     try {
       const url =
-        process.env.BASE_URL_BC_API + process.env.OBSERVED_PROPERTIES_CODE_TABLE_API;
-      const res = await firstValueFrom(this.httpService.get(url, {
-        params: {
-          limit: 100,
-          search: query
-        }
-      }));
+        process.env.BASE_URL_BC_API +
+        process.env.OBSERVED_PROPERTIES_CODE_TABLE_API;
+      const res = await firstValueFrom(
+        this.httpService.get(url, {
+          params: {
+            limit: 100,
+            search: query,
+          },
+        })
+      );
       if (res.status === 200) {
         const data = JSON.parse(res.data);
         sortArr(data.domainObjects, "customId");
@@ -117,17 +123,9 @@ export class SearchService {
       console.error(err);
     }
   }
-
-
-
-
 }
 
-
-
-
-
-//TODO: move to utility 
+//TODO: move to utility
 function sortArr(arr: any, sortName: string) {
   arr.sort((a: any, b: any) => {
     if (a[sortName] < b[sortName]) return -1;

@@ -11,6 +11,8 @@ import type BasicSearchFormType from "@/interfaces/BasicSearchFormType"
 import HorizontalStepper from "@/components/stepper/HorizontalStepper"
 import { Link } from "react-router-dom"
 import debounce from "lodash/debounce"
+import { BasicSearchAttributes } from "@/util/basicSearchEnum"
+import { Axios, AxiosResponse } from "~/axios"
 
 const BasicSearch = () => {
   const [dateRange, setDateRange] = useState<[Date | null, Date | null]>([
@@ -95,7 +97,7 @@ const BasicSearch = () => {
           },
         })
       if (apiData.status === 200) {
-        console.log(apiData.data)
+        //console.log(apiData.data)
         setMediums(apiData.data.domainObjects)
       }
     } catch (err) {
@@ -113,12 +115,45 @@ const BasicSearch = () => {
           },
         })
       if (apiData.status === 200) {
-        console.log(apiData)
+        // console.log(apiData)
         setObservedProperties(apiData.data.domainObjects)
       }
     } catch (err) {
       console.error(err)
     }
+  }
+
+  const getDropdownOptions = async (
+    query: string,
+    fieldName: string,
+  ): Promise<void> => {
+    try {
+      const url = setUrl(fieldName, query)
+      const apiData = await apiService.getAxiosInstance().get(url)
+      if (apiData.status === 200) {
+        const response = apiData.data.domainObjects
+        if (fieldName === "observedProperties") setObservedProperties(response)
+        if (fieldName === "media") setMediums(response)
+        if (fieldName === "permitNo") setPermitNumbers(response)
+        if (fieldName === "locationName") setLocationNames(response)
+        if (fieldName === "locationType") setLocationTypes(response)
+      }
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  const setUrl = (fieldName: string, query: string) => {
+    if (fieldName === "observedProperties")
+      return `v1/search/getObservedProperties?search=${query}`
+    if (fieldName === "media") return `v1/search/getMediums?search=${query}`
+    if (fieldName === "permitNo")
+      return `v1/search/getPermitNumbers?search=${query}`
+    if (fieldName === "locationName")
+      return `v1/search/getLocationNames?search=${query}`
+    if (fieldName === "locationType") return `/v1/search/getLocationTypes`
+
+    return
   }
 
   useEffect(() => {
@@ -145,8 +180,11 @@ const BasicSearch = () => {
 
   const debounceSearch = debounce(async (query, attrName) => {
     console.log(attrName)
-    if (attrName === "locationName") getLocationNames(query)
-    if (attrName === "permitNumber") getPermitNumbers(query)
+    if (attrName === BasicSearchAttributes.LocationName) getLocationNames(query)
+    if (attrName === BasicSearchAttributes.PermitNo) getPermitNumbers(query)
+    if (attrName === BasicSearchAttributes.Media) getMediums(query)
+    if (attrName === BasicSearchAttributes.ObservedPropertyGrp)
+      getObservedProperties(query)
   }, 500)
 
   const handleInputChange = (
@@ -217,46 +255,46 @@ const BasicSearch = () => {
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     console.log(formData)
-    //basicSearch()
+    basicSearch()
   }
 
   const clearForm = () => {
-    console.log(formData)
-    if (!isLastStep) {
-      switch (activeStep) {
-        case 0:
-          setFormData({
-            ...formData,
-            locationType: null,
-            locationName: [],
-            permitNumber: [],
-          })
-          break
-        case 1:
-          setFormData({
-            ...formData,
-            fromDate: null,
-            toDate: null,
-            media: [],
-            observedPropertyGrp: [],
-          })
-          break
-        default:
-          break
-      }
-    } else {
-      setFormData({
-        ...formData,
-        locationType: null,
-        locationName: [],
-        permitNumber: [],
-        fromDate: null,
-        toDate: null,
-        media: [],
-        observedPropertyGrp: [],
-        fileFormat: "",
-      })
-      goToPage()
+    switch (activeStep) {
+      case 0:
+        setFormData({
+          ...formData,
+          locationType: null,
+          locationName: [],
+          permitNumber: [],
+        })
+        break
+      case 1:
+        setDateRange([null, null])
+        setFormData({
+          ...formData,
+          fromDate: null,
+          toDate: null,
+          media: [],
+          observedPropertyGrp: [],
+        })
+        break
+      case 2:
+        setDateRange([null, null])
+        setFormData({
+          ...formData,
+          locationType: null,
+          locationName: [],
+          permitNumber: [],
+          fromDate: null,
+          toDate: null,
+          media: [],
+          observedPropertyGrp: [],
+          fileFormat: "",
+        })
+        goToPage()
+        break
+      default:
+        break
     }
   }
 

@@ -85,11 +85,8 @@
   color: #fff;
 }
 
-/* .example-custom-input {
-  border: 1px solid #bdbbbb;
-  background: #fff;;
-  width: 14rem;
-  height: 2.5rem;
-  border-radius: .3rem;
-} */
+.react-datepicker-popper{
+  z-index: 10;
+}
+
 

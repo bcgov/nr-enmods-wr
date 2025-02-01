@@ -37,12 +37,12 @@ export default function FilterResultsForm(props: any) {
       </p>
 
       <div>
-        <div className="padding-y-1">
-          <TitleText
-            variant="body2"
-            sx={{ fontSize: "8pt" }}
-            text="Date Format: mm-dd-yyyy"
-          />
+        <TitleText
+          variant="body2"
+          sx={{ fontSize: "8pt" }}
+          text="Date Format: mm-dd-yyyy"
+        />
+        <div className="flex-row padding-y-1 ">
           <DatePicker
             customInput={<CustomDatePickerInput />}
             onChange={(update) => setDateRange(update)}

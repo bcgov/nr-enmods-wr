@@ -51,9 +51,6 @@ export class SearchController {
     const query: any = req.query.search;
     return this.searchService.getObservedProperties(query);
   }
-
-  
-
 }
 
 const extractFileName = (contentDisposition: string): string => {

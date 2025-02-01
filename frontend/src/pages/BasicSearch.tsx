@@ -12,7 +12,6 @@ import HorizontalStepper from "@/components/stepper/HorizontalStepper"
 import { Link } from "react-router-dom"
 import debounce from "lodash/debounce"
 import { BasicSearchAttributes } from "@/util/basicSearchEnum"
-import { Axios, AxiosResponse } from "~/axios"
 
 const BasicSearch = () => {
   const [dateRange, setDateRange] = useState<[Date | null, Date | null]>([
@@ -36,113 +35,6 @@ const BasicSearch = () => {
     fileFormat: "",
   })
 
-  const getLocationTypes = async (): Promise<void> => {
-    try {
-      const apiData = await apiService
-        .getAxiosInstance()
-        .get("/v1/search/getLocationTypes")
-      if (apiData.status === 200) {
-        //  console.log(apiData.data)
-        setLocationTypes(apiData.data.domainObjects)
-      }
-    } catch (err) {
-      console.error(err)
-    }
-  }
-
-  const getLocationNames = async (query: string): Promise<void> => {
-    try {
-      const apiData = await apiService
-        .getAxiosInstance()
-        .get("v1/search/getLocationNames", {
-          params: {
-            search: query,
-          },
-        })
-      if (apiData.status === 200) {
-        // console.log(apiData.data)
-        setLocationNames(apiData.data.domainObjects)
-      }
-    } catch (err) {
-      console.error(err)
-    }
-  }
-
-  const getPermitNumbers = async (query: string): Promise<void> => {
-    try {
-      const apiData = await apiService
-        .getAxiosInstance()
-        .get("v1/search/getPermitNumbers", {
-          params: {
-            search: query,
-          },
-        })
-      if (apiData.status === 200) {
-        // console.log(apiData)
-        setPermitNumbers(apiData.data.domainObjects)
-      }
-    } catch (err) {
-      console.error(err)
-    }
-  }
-
-  const getMediums = async (query: string): Promise<void> => {
-    //console.log(query);
-    try {
-      const apiData = await apiService
-        .getAxiosInstance()
-        .get("v1/search/getMediums", {
-          params: {
-            search: query,
-          },
-        })
-      if (apiData.status === 200) {
-        //console.log(apiData.data)
-        setMediums(apiData.data.domainObjects)
-      }
-    } catch (err) {
-      console.error(err)
-    }
-  }
-
-  const getObservedProperties = async (query: string): Promise<void> => {
-    try {
-      const apiData = await apiService
-        .getAxiosInstance()
-        .get("v1/search/getObservedProperties", {
-          params: {
-            search: query,
-          },
-        })
-      if (apiData.status === 200) {
-        // console.log(apiData)
-        setObservedProperties(apiData.data.domainObjects)
-      }
-    } catch (err) {
-      console.error(err)
-    }
-  }
-
-  const getDropdownOptions = async (
-    query: string,
-    fieldName: string,
-  ): Promise<void> => {
-    try {
-      const url = setUrl(fieldName, query)
-      const apiData = await apiService.getAxiosInstance().get(url)
-      if (apiData.status === 200) {
-        const response = apiData.data.domainObjects
-        if (fieldName === "observedProperties") setObservedProperties(response)
-        if (fieldName === "media") setMediums(response)
-        if (fieldName === "permitNo") setPermitNumbers(response)
-        if (fieldName === "locationName") setLocationNames(response)
-        if (fieldName === "locationType") setLocationTypes(response)
-      }
-    } catch (err) {
-      console.error(err)
-    }
-  }
-
   const setUrl = (fieldName: string, query: string) => {
     if (fieldName === "observedProperties")
       return `v1/search/getObservedProperties?search=${query}`
@@ -155,13 +47,35 @@ const BasicSearch = () => {
 
     return
   }
+  const getDropdownOptions = async (
+    fieldName: string,
+    query: string,
+  ): Promise<void> => {
+    try {
+      const url = setUrl(fieldName, query)
+      if (url) {
+        const apiData = await apiService.getAxiosInstance().get(url)
+        if (apiData.status === 200) {
+          const response = apiData.data.domainObjects
+          if (fieldName === "observedProperties")
+            setObservedProperties(response)
+          if (fieldName === "media") setMediums(response)
+          if (fieldName === "permitNo") setPermitNumbers(response)
+          if (fieldName === "locationName") setLocationNames(response)
+          if (fieldName === "locationType") setLocationTypes(response)
+        }
+      }
+    } catch (err) {
+      console.error(err)
+    }
+  }
 
   useEffect(() => {
-    getLocationTypes()
-    getLocationNames("")
-    getPermitNumbers("")
-    getMediums("")
-    getObservedProperties("")
+    getDropdownOptions("observedProperties", "")
+    getDropdownOptions("media", "")
+    getDropdownOptions("permitNo", "")
+    getDropdownOptions("locationName", "")
+    getDropdownOptions("locationType", "")
   }, [])
 
   useEffect(() => {
@@ -179,12 +93,15 @@ const BasicSearch = () => {
   }
 
   const debounceSearch = debounce(async (query, attrName) => {
-    console.log(attrName)
-    if (attrName === BasicSearchAttributes.LocationName) getLocationNames(query)
-    if (attrName === BasicSearchAttributes.PermitNo) getPermitNumbers(query)
-    if (attrName === BasicSearchAttributes.Media) getMediums(query)
+   // console.log(attrName)
+    if (attrName === BasicSearchAttributes.LocationName)
+      getDropdownOptions("locationName", query)
+    if (attrName === BasicSearchAttributes.PermitNo)
+      getDropdownOptions("permitNo", query)
+    if (attrName === BasicSearchAttributes.Media)
+      getDropdownOptions("media", query)
     if (attrName === BasicSearchAttributes.ObservedPropertyGrp)
-      getObservedProperties(query)
+      getDropdownOptions("observedProperties", query)
   }, 500)
 
   const handleInputChange = (

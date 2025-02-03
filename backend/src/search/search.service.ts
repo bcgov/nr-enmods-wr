@@ -38,6 +38,17 @@ export class SearchService {
     }
   }
 
+  async apiCall(url: string): Promise<AxiosResponse<any>> {
+    try {
+      const res = await firstValueFrom(this.httpService.get(url));
+      if (res.status === 200) {
+        return JSON.parse(res.data);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
   async getLocationNames(query: string): Promise<AxiosResponse<any>> {
     try {
       const url =

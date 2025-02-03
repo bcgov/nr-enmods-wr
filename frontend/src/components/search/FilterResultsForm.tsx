@@ -4,7 +4,7 @@ import TooltipInfo from "../TooltipInfo"
 import { Autocomplete, TextField } from "@mui/material"
 import "react-datepicker/dist/react-datepicker.css"
 import { forwardRef } from "react"
-import { BasicSearchAttributes } from "@/util/basicSearchEnum"
+import { BasicSearchAttributes } from "@/enum/basicSearchEnum"
 
 export default function FilterResultsForm(props: any) {
   const {

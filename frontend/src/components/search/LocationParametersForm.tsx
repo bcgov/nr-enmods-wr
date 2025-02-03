@@ -1,6 +1,6 @@
 import { Autocomplete, TextField } from "@mui/material"
 import TooltipInfo from "../TooltipInfo"
-import { BasicSearchAttributes } from "@/util/basicSearchEnum"
+import { BasicSearchAttributes } from "@/enum/basicSearchEnum"
 
 export default function LocationParametersForm(props: any) {
   const {

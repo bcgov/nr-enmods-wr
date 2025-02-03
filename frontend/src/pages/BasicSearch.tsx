@@ -11,7 +11,8 @@ import type BasicSearchFormType from "@/interfaces/BasicSearchFormType"
 import HorizontalStepper from "@/components/stepper/HorizontalStepper"
 import { Link } from "react-router-dom"
 import debounce from "lodash/debounce"
-import { BasicSearchAttributes } from "@/util/basicSearchEnum"
+import { BasicSearchAttributes } from "@/enum/basicSearchEnum"
+import { API_VERSION, extractFileName } from "@/util/utility"
 
 const BasicSearch = () => {
   const [dateRange, setDateRange] = useState<[Date | null, Date | null]>([
@@ -35,34 +36,46 @@ const BasicSearch = () => {
     fileFormat: "",
   })
 
-  const setUrl = (fieldName: string, query: string) => {
-    if (fieldName === "observedProperties")
-      return `v1/search/getObservedProperties?search=${query}`
-    if (fieldName === "media") return `v1/search/getMediums?search=${query}`
-    if (fieldName === "permitNo")
-      return `v1/search/getPermitNumbers?search=${query}`
-    if (fieldName === "locationName")
-      return `v1/search/getLocationNames?search=${query}`
-    if (fieldName === "locationType") return `/v1/search/getLocationTypes`
-
-    return
+  const setBackendUrl = (
+    fieldName: string,
+    query: string,
+  ): string | undefined => {
+    if (fieldName) {
+      switch (fieldName) {
+        case BasicSearchAttributes.ObservedPropertyGrp:
+          return `${API_VERSION}/search/getObservedProperties?search=${query}`
+        case BasicSearchAttributes.Media:
+          return `${API_VERSION}/search/getMediums?search=${query}`
+        case BasicSearchAttributes.PermitNo:
+          return `${API_VERSION}/search/getPermitNumbers?search=${query}`
+        case BasicSearchAttributes.LocationName:
+          return `${API_VERSION}/search/getLocationNames?search=${query}`
+        case BasicSearchAttributes.LocationType:
+          return `${API_VERSION}/search/getLocationTypes`
+        default:
+          return
+      }
+    }
   }
   const getDropdownOptions = async (
     fieldName: string,
     query: string,
   ): Promise<void> => {
     try {
-      const url = setUrl(fieldName, query)
+      const url = setBackendUrl(fieldName, query)
       if (url) {
         const apiData = await apiService.getAxiosInstance().get(url)
         if (apiData.status === 200) {
           const response = apiData.data.domainObjects
-          if (fieldName === "observedProperties")
+          if (fieldName === BasicSearchAttributes.ObservedPropertyGrp)
             setObservedProperties(response)
-          if (fieldName === "media") setMediums(response)
-          if (fieldName === "permitNo") setPermitNumbers(response)
-          if (fieldName === "locationName") setLocationNames(response)
-          if (fieldName === "locationType") setLocationTypes(response)
+          if (fieldName === BasicSearchAttributes.Media) setMediums(response)
+          if (fieldName === BasicSearchAttributes.PermitNo)
+            setPermitNumbers(response)
+          if (fieldName === BasicSearchAttributes.LocationName)
+            setLocationNames(response)
+          if (fieldName === BasicSearchAttributes.LocationType)
+            setLocationTypes(response)
         }
       }
     } catch (err) {
@@ -71,11 +84,11 @@ const BasicSearch = () => {
   }
 
   useEffect(() => {
-    getDropdownOptions("observedProperties", "")
-    getDropdownOptions("media", "")
-    getDropdownOptions("permitNo", "")
-    getDropdownOptions("locationName", "")
-    getDropdownOptions("locationType", "")
+    getDropdownOptions(BasicSearchAttributes.ObservedPropertyGrp, "")
+    getDropdownOptions(BasicSearchAttributes.Media, "")
+    getDropdownOptions(BasicSearchAttributes.PermitNo, "")
+    getDropdownOptions(BasicSearchAttributes.LocationName, "")
+    getDropdownOptions(BasicSearchAttributes.LocationType, "")
   }, [])
 
   useEffect(() => {
@@ -93,15 +106,22 @@ const BasicSearch = () => {
   }
 
   const debounceSearch = debounce(async (query, attrName) => {
-   // console.log(attrName)
-    if (attrName === BasicSearchAttributes.LocationName)
-      getDropdownOptions("locationName", query)
-    if (attrName === BasicSearchAttributes.PermitNo)
-      getDropdownOptions("permitNo", query)
-    if (attrName === BasicSearchAttributes.Media)
-      getDropdownOptions("media", query)
-    if (attrName === BasicSearchAttributes.ObservedPropertyGrp)
-      getDropdownOptions("observedProperties", query)
+    switch (attrName) {
+      case BasicSearchAttributes.LocationName:
+        getDropdownOptions(BasicSearchAttributes.LocationName, query)
+        break
+      case BasicSearchAttributes.PermitNo:
+        getDropdownOptions(BasicSearchAttributes.PermitNo, query)
+        break
+      case BasicSearchAttributes.Media:
+        getDropdownOptions(BasicSearchAttributes.Media, query)
+        break
+      case BasicSearchAttributes.ObservedPropertyGrp:
+        getDropdownOptions(BasicSearchAttributes.ObservedPropertyGrp, query)
+        break
+      default:
+        break
+    }
   }, 500)
 
   const handleInputChange = (
@@ -109,7 +129,7 @@ const BasicSearch = () => {
     newVal: any,
     attrName: string,
   ) => {
-    debounceSearch(newVal, attrName)
+    if (attrName) debounceSearch(newVal, attrName)
   }
 
   const {
@@ -143,12 +163,6 @@ const BasicSearch = () => {
     />,
     <DownloadForm key="2" formData={formData} />,
   ])
-
-  const extractFileName = (contentDisposition: string): string => {
-    const regex = /filename="?([^"]+)"?/
-    const match = contentDisposition ? contentDisposition.match(regex) : null
-    return match ? match[1] : ""
-  }
 
   const basicSearch = async (): Promise<void> => {
     try {

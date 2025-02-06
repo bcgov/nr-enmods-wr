@@ -4,4 +4,7 @@ export enum BasicSearchAttributes {
   PermitNo = "permitNumber",
   Media = "media",
   ObservedPropertyGrp = "observedPropertyGrp",
+  FromDate = "fromDate",
+  ToDate = "toDate",
+  Projects = "projects",
 }

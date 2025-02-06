@@ -1,25 +1,54 @@
-import { Controller, Get, Param, Req, Res } from "@nestjs/common";
+import {
+  Body,
+  Catch,
+  Controller,
+  Get,
+  HttpException,
+  HttpStatus,
+  Logger,
+  Param,
+  Post,
+  Req,
+  Res,
+  UsePipes,
+  ValidationPipe,
+} from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import { Public } from "src/auth/decorators/public.decorator";
 import { SearchService } from "./search.service";
 import { Response, Request } from "express";
+import { BasicSearchDto } from "./dto/basicSearch.dto";
+import { validateDto } from "src/validation/validateDto";
+
+
+const logger = new Logger("SearchController");
 
 @ApiTags("search")
-@Public()
+@Public() //TODO: secure endpoints
 @Controller({ path: "search", version: "1" })
 export class SearchController {
   constructor(private searchService: SearchService) {}
 
-  @Get("basicSearch")
-  public basicSearch(@Res() response: Response, @Req() request: Request) {
+  @Post("basicSearch")
+  @UsePipes(new ValidationPipe({ transform: true }))
+  public basicSearch(
+    @Res() response: Response,
+    @Body() basicSearchDto: BasicSearchDto
+  ) {
     try {
-      this.searchService.exportData(request).then((res) => {
-        const contentDisposition = res.headers["content-disposition"];
-        response.attachment(extractFileName(contentDisposition));
-        response.send(res.data);
+      validateDto(basicSearchDto);
+      this.searchService.exportData(basicSearchDto).then((res) => {
+        if (res.status === HttpStatus.OK) {
+          const contentDisposition = res.headers["content-disposition"];
+          response
+            .attachment(extractFileName(contentDisposition))
+            .status(HttpStatus.OK)
+            .send(res.data);
+        }
       });
     } catch (error) {
-      console.error(error);
+      logger.log(error);
+      response.send({ message: error.response });
     }
   }
 
@@ -40,6 +69,12 @@ export class SearchController {
     return this.searchService.getPermitNumbers(query);
   }
 
+  @Get("getProjects")
+  public getProjects(@Req() req: Request) {
+    const query: any = req.query.search;
+    return this.searchService.getProjects(query);
+  }
+
   @Get("getMediums")
   public getMediums(@Req() req: Request) {
     const query: any = req.query.search;
@@ -53,8 +88,8 @@ export class SearchController {
   }
 }
 
-const extractFileName = (contentDisposition: string): string => {
+export const extractFileName = (contentDisposition: string): string => {
   const regex = /filename="?([^"]+)"?/;
   const match = contentDisposition ? contentDisposition.match(regex) : null;
-  return match ? match[1] : null;
+  return match ? match[1] : "";
 };

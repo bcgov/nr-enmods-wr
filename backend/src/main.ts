@@ -6,7 +6,6 @@ const logger = new Logger('NestApplication');
 bootstrap().then(async (app: NestExpressApplication) => {
   await app.listen(3000);
   logger.log(`Listening on ${await app.getUrl()}`);
-  console.log("backend")
 }).catch(err=>{
   logger.error(err);
 });

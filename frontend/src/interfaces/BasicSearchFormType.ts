@@ -6,5 +6,6 @@ export default interface BasicSearchFormType {
   toDate: Date | null
   media: any
   observedPropertyGrp: any
-  fileFormat: string
+  projects: any
+  fileFormat: null
 }

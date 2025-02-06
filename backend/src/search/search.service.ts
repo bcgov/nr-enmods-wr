@@ -1,14 +1,19 @@
 import { HttpService } from "@nestjs/axios";
-import { Injectable } from "@nestjs/common";
+import { HttpException, HttpStatus, Injectable, Logger } from "@nestjs/common";
 import { AxiosResponse } from "@nestjs/terminus/dist/health-indicator/http/axios.interfaces";
 import { firstValueFrom } from "rxjs";
+import { BasicSearchDto } from "./dto/basicSearch.dto";
+
+const logger = new Logger('BasicSearchService')
 
 @Injectable()
 export class SearchService {
   constructor(private readonly httpService: HttpService) {}
 
-  async exportData(request: any): Promise<AxiosResponse<any>> {
-    try {
+  async exportData(
+    basicSearchDto: BasicSearchDto
+  ): Promise<AxiosResponse<any>> {
+    try {      
       const url = process.env.BASE_URL_BC_API + process.env.BASIC_SEARCH_BC_API;
       const res = await firstValueFrom(
         this.httpService.get(url, {
@@ -18,11 +23,11 @@ export class SearchService {
         })
       );
       if (res.status === 200) return res;
-    } catch (err) {
-      console.error(err);
+    } catch (err) {      
+      logger.log(err)     
     }
   }
-
+  
   async getLocationTypes(): Promise<AxiosResponse<any>> {
     try {
       const url =
@@ -32,17 +37,6 @@ export class SearchService {
         const data = JSON.parse(res.data);
         sortArr(data.domainObjects, "customId");
         return data;
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  }
-
-  async apiCall(url: string): Promise<AxiosResponse<any>> {
-    try {
-      const res = await firstValueFrom(this.httpService.get(url));
-      if (res.status === 200) {
-        return JSON.parse(res.data);
       }
     } catch (err) {
       console.error(err);
@@ -127,7 +121,28 @@ export class SearchService {
       );
       if (res.status === 200) {
         const data = JSON.parse(res.data);
-        sortArr(data.domainObjects, "customId");
+        //sortArr(data.domainObjects, "name");
+        return data;
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  async getProjects(query: string): Promise<AxiosResponse<any>> {
+    try {
+      const url =
+        process.env.BASE_URL_BC_API + process.env.PROJECTS_CODE_TABLE_API;
+      const res = await firstValueFrom(
+        this.httpService.get(url, {
+          params: {
+            limit: 100,
+            search: query,
+          },
+        })
+      );
+      if (res.status === 200) {
+        const data = JSON.parse(res.data);
         return data;
       }
     } catch (err) {

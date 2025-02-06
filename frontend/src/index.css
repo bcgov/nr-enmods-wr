@@ -89,4 +89,17 @@
   z-index: 10;
 }
 
+.errorMsg{
+  color: #f70000;
+  font-size: small;
+  margin-left: 1rem;
+}
+
+.error-heading{
+  display: flex;
+  align-items: center;
+  justify-content: start;
+  gap: .2rem;
+  font-size: medium;
+}
 

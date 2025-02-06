@@ -13,16 +13,16 @@ import { Link } from "react-router-dom"
 import debounce from "lodash/debounce"
 import { BasicSearchAttributes } from "@/enum/basicSearchEnum"
 import { API_VERSION, extractFileName } from "@/util/utility"
+import { ErrorOutline } from "@mui/icons-material"
 
 const BasicSearch = () => {
-  const [dateRange, setDateRange] = useState<[Date | null, Date | null]>([
-    null,
-    null,
-  ])
+  const [isDisabled, setIsDisabled] = useState(false)
   const [locationTypes, setLocationTypes] = useState([])
   const [locationNames, setLocationNames] = useState([])
   const [permitNumbers, setPermitNumbers] = useState([])
+  const [projects, setProjects] = useState([])
   const [mediums, setMediums] = useState([])
+  const [errors, setErrors] = useState([])
   const [observedProperties, setObservedProperties] = useState([])
   const noOfSteps = [1, 2, 3]
   const [formData, setFormData] = useState<BasicSearchFormType>({
@@ -33,7 +33,8 @@ const BasicSearch = () => {
     toDate: null,
     media: [],
     observedPropertyGrp: [],
-    fileFormat: "",
+    projects: [],
+    fileFormat: null,
   })
 
   const setBackendUrl = (
@@ -52,6 +53,8 @@ const BasicSearch = () => {
           return `${API_VERSION}/search/getLocationNames?search=${query}`
         case BasicSearchAttributes.LocationType:
           return `${API_VERSION}/search/getLocationTypes`
+        case BasicSearchAttributes.Projects:
+          return `${API_VERSION}/search/getProjects?search=${query}`
         default:
           return
       }
@@ -76,6 +79,8 @@ const BasicSearch = () => {
             setLocationNames(response)
           if (fieldName === BasicSearchAttributes.LocationType)
             setLocationTypes(response)
+          if (fieldName === BasicSearchAttributes.Projects)
+            setProjects(response)
         }
       }
     } catch (err) {
@@ -89,19 +94,19 @@ const BasicSearch = () => {
     getDropdownOptions(BasicSearchAttributes.PermitNo, "")
     getDropdownOptions(BasicSearchAttributes.LocationName, "")
     getDropdownOptions(BasicSearchAttributes.LocationType, "")
+    getDropdownOptions(BasicSearchAttributes.Projects, "")
   }, [])
 
-  useEffect(() => {
-    if (dateRange) {
-      setFormData({ ...formData, fromDate: dateRange[0], toDate: dateRange[1] })
-    }
-  }, [dateRange])
-
   const handleOnChange = (
-    e: React.SyntheticEvent,
+    e: React.ChangeEventHandler,
     val: any,
     attrName: string,
   ) => {
+    setErrors([])
+    setFormData({ ...formData, [attrName]: val })
+  }
+  const handleOnChangeDatepicker = (val: any, attrName: string) => {
+    setErrors([])
     setFormData({ ...formData, [attrName]: val })
   }
 
@@ -125,7 +130,7 @@ const BasicSearch = () => {
   }, 500)
 
   const handleInputChange = (
-    e: React.SyntheticEvent,
+    e: React.ChangeEventHandler,
     newVal: any,
     attrName: string,
   ) => {
@@ -154,29 +159,36 @@ const BasicSearch = () => {
     <FilterResultsForm
       key="1"
       formData={formData}
-      setDateRange={setDateRange}
-      dateRange={dateRange}
       mediums={mediums}
       observedProperties={observedProperties}
+      projects={projects}
       handleInputChange={handleInputChange}
       handleOnChange={handleOnChange}
+      handleOnChangeDatepicker={handleOnChangeDatepicker}
     />,
     <DownloadForm key="2" formData={formData} />,
   ])
 
   const basicSearch = async (): Promise<void> => {
+    setIsDisabled(true)
     try {
-      const response = await apiService
+      const res = await apiService
         .getAxiosInstance()
-        .get("/v1/search/basicSearch", { params: formData })
+        .post("/v1/search/basicSearch", formData)
 
-      if (response.status === 200) {
-        const url = window.URL.createObjectURL(new Blob([response.data]))
+      if (res.status === 200) {
+        setIsDisabled(false)
+        const url = window.URL.createObjectURL(new Blob([res.data]))
         const link = document.createElement("a")
         link.href = url
-        link.download = extractFileName(response.headers["content-disposition"])
+        link.download = extractFileName(res.headers["content-disposition"])
         link.click()
         window.URL.revokeObjectURL(url)
+      } else {
+        console.log(res.data.message)
+        setErrors(res.data.message)
+        setIsDisabled(false)
+        //console.log(res.response.data.message)
       }
     } catch (err) {
       console.error(err)
@@ -190,6 +202,7 @@ const BasicSearch = () => {
   }
 
   const clearForm = () => {
+    setErrors([])
     switch (activeStep) {
       case 0:
         setFormData({
@@ -200,17 +213,16 @@ const BasicSearch = () => {
         })
         break
       case 1:
-        setDateRange([null, null])
         setFormData({
           ...formData,
           fromDate: null,
           toDate: null,
           media: [],
           observedPropertyGrp: [],
+          projects: [],
         })
         break
       case 2:
-        setDateRange([null, null])
         setFormData({
           ...formData,
           locationType: null,
@@ -220,7 +232,8 @@ const BasicSearch = () => {
           toDate: null,
           media: [],
           observedPropertyGrp: [],
-          fileFormat: "",
+          projects: [],
+          fileFormat: null,
         })
         goToPage()
         break
@@ -271,6 +284,24 @@ const BasicSearch = () => {
             sx={{ fontWeight: 600 }}
           />
         </div>
+
+        {errors.length > 0 && (
+          <div className="errorMsg">
+            <div className="error-heading">
+              <ErrorOutline sx={{ color: "#f70000" }} fontSize="small" />
+              <span>Error</span>
+            </div>
+
+            {errors.map((item, index) => (
+              <div key={index}>
+                <ul>
+                  <li>{item}</li>
+                </ul>
+              </div>
+            ))}
+          </div>
+        )}
+
         <div className="padding-x-1">{step}</div>
 
         <Grid container>
@@ -305,6 +336,7 @@ const BasicSearch = () => {
 
               {isLastStep && (
                 <Btn
+                  disabled={isDisabled}
                   text={isLastStep ? "Download" : "Next"}
                   type={isLastStep ? "submit" : "button"}
                   handleClick={next}

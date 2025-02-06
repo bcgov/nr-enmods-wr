@@ -9,24 +9,33 @@ import { BasicSearchAttributes } from "@/enum/basicSearchEnum"
 export default function FilterResultsForm(props: any) {
   const {
     formData,
-    setDateRange,
-    dateRange,
     observedProperties,
     mediums,
+    projects,
     handleInputChange,
     handleOnChange,
+    handleOnChangeDatepicker,
   } = props
-  const [fromDate, toDate] = dateRange
 
-  const CustomDatePickerInput = forwardRef(({ value, onClick }, ref) => (
-    <TextField
-      label="Date Range"
-      sx={{ minWidth: 300 }}
-      onClick={onClick}
-      ref={ref}
-      value={value}
-    />
-  ))
+  interface props {
+    value?: any
+    onClick?: React.MouseEventHandler
+    onChange?: React.ChangeEventHandler
+    label: string
+  }
+
+  const CustomDatePickerInput = forwardRef<HTMLInputElement, props>(
+    ({ value, onClick, onChange, label }, ref) => (
+      <TextField
+        label={label}
+        sx={{ minWidth: 300 }}
+        onClick={onClick}
+        onChange={onChange}
+        ref={ref}
+        value={value}
+      />
+    ),
+  )
 
   return (
     <>
@@ -40,17 +49,38 @@ export default function FilterResultsForm(props: any) {
         <TitleText
           variant="body2"
           sx={{ fontSize: "8pt" }}
-          text="Date Format: mm-dd-yyyy"
+          text="Date Range Format: mm-dd-yyyy"
         />
         <div className="flex-row padding-y-1 ">
           <DatePicker
-            customInput={<CustomDatePickerInput />}
-            onChange={(update) => setDateRange(update)}
-            selectsRange={true}
-            startDate={fromDate}
-            endDate={toDate}
+            customInput={<CustomDatePickerInput label={"From"} />}
+            onChange={(val) =>
+              handleOnChangeDatepicker(val, BasicSearchAttributes.FromDate)
+            }
+            startDate={formData.fromDate}
+            endDate={formData.toDate}
+            selectsStart
+            dateFormat={"MM-dd-yyyy"}
+            selected={formData.fromDate}
+            isClearable={true}
+            showYearDropdown
+            showMonthDropdown
+            useShortMonthInDropdown
+          />
+          <DatePicker
+            customInput={<CustomDatePickerInput label={"To"} />}
+            minDate={formData.fromDate}
+            onChange={(val) =>
+              handleOnChangeDatepicker(val, BasicSearchAttributes.ToDate)
+            }
+            selected={formData.toDate}
+            selectsEnd
+            endDate={formData.toDate}
             dateFormat={"MM-dd-yyyy"}
             isClearable={true}
+            showYearDropdown
+            showMonthDropdown
+            useShortMonthInDropdown
           />
           <TooltipInfo title="Date Range" />
         </div>
@@ -89,7 +119,7 @@ export default function FilterResultsForm(props: any) {
             getOptionKey={(option) => option.id}
             options={observedProperties}
             isOptionEqualToValue={(option, value) => option.id === value.id}
-            getOptionLabel={(option) => option.customId || ""}
+            getOptionLabel={(option) => option.name || ""}
             onInputChange={(e, val) =>
               handleInputChange(
                 e,
@@ -106,6 +136,25 @@ export default function FilterResultsForm(props: any) {
             )}
           />
           <TooltipInfo title="Observed Property Group" />
+        </div>
+        <div className="flex-row">
+          <Autocomplete
+            multiple
+            value={formData.projects}
+            getOptionKey={(option) => option.id}
+            options={projects}
+            isOptionEqualToValue={(option, value) => option.id === value.id}
+            getOptionLabel={(option) => option.name || ""}
+            onInputChange={(e, val) =>
+              handleInputChange(e, val, BasicSearchAttributes.Projects)
+            }
+            onChange={(e, val) =>
+              handleOnChange(e, val, BasicSearchAttributes.Projects)
+            }
+            sx={{ width: 300 }}
+            renderInput={(params) => <TextField {...params} label="Projects" />}
+          />
+          <TooltipInfo title="Projects" />
         </div>
       </div>
     </>

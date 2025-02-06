@@ -22,7 +22,8 @@ class APIService {
         return config
       },
       (error) => {
-        console.error(error)
+        console.log(error)
+        return error.response
       },
     )
   }

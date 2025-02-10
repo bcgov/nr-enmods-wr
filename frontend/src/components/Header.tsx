@@ -1,7 +1,7 @@
-import BCGovLogo from "@/assets/BCID_H_rgb_pos.png";
-import { AppBar, IconButton, Toolbar, Box } from "@mui/material";
-import { HomeRounded } from "@mui/icons-material";
-import Navbar from "./Navbar";
+import BCGovLogo from "@/assets/BCID_H_rgb_pos.png"
+import { AppBar, IconButton, Toolbar, Box } from "@mui/material"
+import { HomeRounded } from "@mui/icons-material"
+import Navbar from "./Navbar"
 
 const styles = {
   appBar: {
@@ -40,8 +40,8 @@ const styles = {
     justifyContent: "space-between",
     width: "100%",
   },
-};
-export default function Header() {
+}
+export default function Header({ setOpenNav, openNav }) {
   return (
     <AppBar
       position="fixed"
@@ -62,9 +62,9 @@ export default function Header() {
       <Box sx={styles.separator} />
       <Box sx={styles.innerContent}>
         <Toolbar sx={styles.navToolbar}>
-          <Navbar />
+          <Navbar setOpenNav={setOpenNav} openNav={openNav} />
         </Toolbar>
       </Box>
     </AppBar>
-  );
+  )
 }

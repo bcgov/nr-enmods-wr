@@ -15,7 +15,7 @@ import { HttpException, HttpStatus, Logger } from "@nestjs/common";
         break;
       }
     }
-    logger.log("Any input field empty: " + isEmpty)
+    logger.log("Any input fields empty: " + isEmpty)
     if (isEmpty) {
       let errArr: string[] = [];
       errArr.push("Please enter at least one input field.");

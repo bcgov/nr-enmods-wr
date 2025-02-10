@@ -1,12 +1,9 @@
 import {
   Body,
-  Catch,
   Controller,
   Get,
-  HttpException,
   HttpStatus,
   Logger,
-  Param,
   Post,
   Req,
   Res,
@@ -19,6 +16,7 @@ import { SearchService } from "./search.service";
 import { Response, Request } from "express";
 import { BasicSearchDto } from "./dto/basicSearch.dto";
 import { validateDto } from "src/validation/validateDto";
+import { extractFileName } from "src/util/utility";
 
 
 const logger = new Logger("SearchController");
@@ -87,9 +85,3 @@ export class SearchController {
     return this.searchService.getObservedProperties(query);
   }
 }
-
-export const extractFileName = (contentDisposition: string): string => {
-  const regex = /filename="?([^"]+)"?/;
-  const match = contentDisposition ? contentDisposition.match(regex) : null;
-  return match ? match[1] : "";
-};

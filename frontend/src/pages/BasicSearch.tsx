@@ -1,6 +1,6 @@
 import Btn from "@/components/Btn"
 import TitleText from "@/components/TitleText"
-import { Badge, Grid } from "@mui/material"
+import { Badge, Grid, Paper } from "@mui/material"
 import { useMultiStepForm } from "@/customHook/useMultiFormStep"
 import LocationParametersForm from "@/components/search/LocationParametersForm"
 import FilterResultsForm from "@/components/search/FilterResultsForm"
@@ -137,37 +137,37 @@ const BasicSearch = () => {
     if (attrName) debounceSearch(newVal, attrName)
   }
 
-  const {
-    next,
-    back,
-    step,
-    steps,
-    activeStep,
-    isFirstStep,
-    isLastStep,
-    goToPage,
-  } = useMultiStepForm([
-    <LocationParametersForm
-      key="0"
-      formData={formData}
-      locationTypes={locationTypes}
-      locationNames={locationNames}
-      handleInputChange={handleInputChange}
-      permitNumbers={permitNumbers}
-      handleOnChange={handleOnChange}
-    />,
-    <FilterResultsForm
-      key="1"
-      formData={formData}
-      mediums={mediums}
-      observedProperties={observedProperties}
-      projects={projects}
-      handleInputChange={handleInputChange}
-      handleOnChange={handleOnChange}
-      handleOnChangeDatepicker={handleOnChangeDatepicker}
-    />,
-    <DownloadForm key="2" formData={formData} />,
-  ])
+  // const {
+  //   next,
+  //   back,
+  //   step,
+  //   steps,
+  //   activeStep,
+  //   isFirstStep,
+  //   isLastStep,
+  //   goToPage,
+  // } = useMultiStepForm([
+  //   <LocationParametersForm
+  //     key="0"
+  //     formData={formData}
+  //     locationTypes={locationTypes}
+  //     locationNames={locationNames}
+  //     handleInputChange={handleInputChange}
+  //     permitNumbers={permitNumbers}
+  //     handleOnChange={handleOnChange}
+  //   />,
+  //   <FilterResultsForm
+  //     key="1"
+  //     formData={formData}
+  //     mediums={mediums}
+  //     observedProperties={observedProperties}
+  //     projects={projects}
+  //     handleInputChange={handleInputChange}
+  //     handleOnChange={handleOnChange}
+  //     handleOnChangeDatepicker={handleOnChangeDatepicker}
+  //   />,
+  //   <DownloadForm key="2" formData={formData} />,
+  // ])
 
   const basicSearch = async (): Promise<void> => {
     setIsDisabled(true)
@@ -185,6 +185,7 @@ const BasicSearch = () => {
         link.click()
         window.URL.revokeObjectURL(url)
       } else {
+        window.scroll(0, 0)
         console.log(res.data.message)
         setErrors(res.data.message)
         setIsDisabled(false)
@@ -203,48 +204,60 @@ const BasicSearch = () => {
 
   const clearForm = () => {
     setErrors([])
-    switch (activeStep) {
-      case 0:
-        setFormData({
-          ...formData,
-          locationType: null,
-          locationName: [],
-          permitNumber: [],
-        })
-        break
-      case 1:
-        setFormData({
-          ...formData,
-          fromDate: null,
-          toDate: null,
-          media: [],
-          observedPropertyGrp: [],
-          projects: [],
-        })
-        break
-      case 2:
-        setFormData({
-          ...formData,
-          locationType: null,
-          locationName: [],
-          permitNumber: [],
-          fromDate: null,
-          toDate: null,
-          media: [],
-          observedPropertyGrp: [],
-          projects: [],
-          fileFormat: null,
-        })
-        goToPage()
-        break
-      default:
-        break
-    }
+    setFormData({
+      ...formData,
+      locationType: null,
+      locationName: [],
+      permitNumber: [],
+      fromDate: null,
+      toDate: null,
+      media: [],
+      observedPropertyGrp: [],
+      projects: [],
+      fileFormat: null,
+    })
+    // switch (activeStep) {
+    //   case 0:
+    //     setFormData({
+    //       ...formData,
+    //       locationType: null,
+    //       locationName: [],
+    //       permitNumber: [],
+    //     })
+    //     break
+    //   case 1:
+    //     setFormData({
+    //       ...formData,
+    //       fromDate: null,
+    //       toDate: null,
+    //       media: [],
+    //       observedPropertyGrp: [],
+    //       projects: [],
+    //     })
+    //     break
+    //   case 2:
+    //     setFormData({
+    //       ...formData,
+    //       locationType: null,
+    //       locationName: [],
+    //       permitNumber: [],
+    //       fromDate: null,
+    //       toDate: null,
+    //       media: [],
+    //       observedPropertyGrp: [],
+    //       projects: [],
+    //       fileFormat: null,
+    //     })
+    //     goToPage()
+    //     break
+    //   default:
+    //     break
+    // }
   }
 
   return (
-    <div className="padding-1">
-      <div className="flex-row">
+    <div className="p-2">
+      <div className="flex flex-row">
         <Link to="/search/basic" className="search-btn">
           Basic
         </Link>
@@ -254,98 +267,79 @@ const BasicSearch = () => {
         </Link>
       </div>
 
-      <div className="padding-y-1">
+      <div className="py-4">
         <TitleText
-          variant="subtitle2"
+          variant="subtitle1"
           text="Download Water Quality Data"
           sx={{ fontWeight: 700 }}
         />
-        <div className="padding-y-1">
-          <HorizontalStepper activeStep={activeStep} noOfSteps={noOfSteps} />
-        </div>
       </div>
 
       <form noValidate onSubmit={onSubmit}>
-        <div className="flex-row gap-half padding-1">
-          <div className="flex-row gap-1">
-            <Badge badgeContent={activeStep + 1} color="primary"></Badge>
-            <div style={{ color: "#3178c4" }}>of {steps.length} </div>
-          </div>
+        <div>
+          <div>
+            {errors.length > 0 && (
+              <div className="text-md text-[red] flex flex-row py-2">
+                <div className="flex flex-row">
+                  <ErrorOutline sx={{ color: "#f70000" }} fontSize="small" />
+                  <span>Error:</span>
+                </div>
 
-          <TitleText
-            text={
-              activeStep == 0
-                ? "Location Parameters"
-                : activeStep == 1
-                  ? "Filter Results"
-                  : "Download"
-            }
-            variant="h6"
-            sx={{ fontWeight: 600 }}
-          />
-        </div>
-
-        {errors.length > 0 && (
-          <div className="errorMsg">
-            <div className="error-heading">
-              <ErrorOutline sx={{ color: "#f70000" }} fontSize="small" />
-              <span>Error</span>
-            </div>
-
-            {errors.map((item, index) => (
-              <div key={index}>
-                <ul>
-                  <li>{item}</li>
-                </ul>
+                {errors.map((item, index) => (
+                  <div key={index}>
+                    <ul>
+                      <li>{item}</li>
+                    </ul>
+                  </div>
+                ))}
               </div>
-            ))}
+            )}
           </div>
-        )}
-
-        <div className="padding-x-1">{step}</div>
-
-        <Grid container>
-          <Grid item sx={{ height: 40 }}></Grid>
-        </Grid>
-        <Grid container spacing={2}>
-          <Grid item xs={12}>
-            <div className="flex-row">
-              <Btn
-                text={isLastStep ? "Start Over" : "Clear Search"}
-                type="button"
-                handleClick={clearForm}
-                sx={{ background: "#fff", color: "#0B5394", fontSize: "8pt" }}
+          <div className="mb-5">
+            <Paper elevation={2}>
+              <LocationParametersForm
+                formData={formData}
+                locationTypes={locationTypes}
+                locationNames={locationNames}
+                handleInputChange={handleInputChange}
+                permitNumbers={permitNumbers}
+                handleOnChange={handleOnChange}
               />
-              {!isFirstStep && (
-                <Btn
-                  text={"Previous"}
-                  type="button"
-                  handleClick={back}
-                  sx={{ fontSize: "8pt" }}
-                />
-              )}
-
-              {!isLastStep && (
-                <Btn
-                  text="Next"
-                  type="button"
-                  handleClick={next}
-                  sx={{ fontSize: "8pt" }}
-                />
-              )}
-
-              {isLastStep && (
-                <Btn
-                  disabled={isDisabled}
-                  text={isLastStep ? "Download" : "Next"}
-                  type={isLastStep ? "submit" : "button"}
-                  handleClick={next}
-                  sx={{ fontSize: "8pt" }}
-                />
-              )}
-            </div>
-          </Grid>
-        </Grid>
+            </Paper>
+          </div>
+          <div className="mb-5">
+            <Paper elevation={2}>
+              <FilterResultsForm
+                formData={formData}
+                mediums={mediums}
+                observedProperties={observedProperties}
+                projects={projects}
+                handleInputChange={handleInputChange}
+                handleOnChange={handleOnChange}
+                handleOnChangeDatepicker={handleOnChangeDatepicker}
+              />
+            </Paper>
+          </div>
+          <div className="mb-5">
+            <Paper elevation={2}>
+              <DownloadForm formData={formData} />
+            </Paper>
+          </div>
+          <div className="flex flex-row ">
+            <Btn
+              text={"Clear Search"}
+              type="button"
+              handleClick={clearForm}
+              sx={{ background: "#fff", color: "#0B5394", fontSize: "8pt" }}
+            />
+            <Btn
+              disabled={isDisabled}
+              text={"Download"}
+              type={"submit"}
+              sx={{ fontSize: "8pt" }}
+            />
+          </div>
+        </div>
       </form>
     </div>
   )

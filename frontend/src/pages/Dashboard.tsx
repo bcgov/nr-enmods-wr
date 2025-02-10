@@ -1,17 +1,17 @@
-import apiService from "@/service/api-service";
-import Button from "@mui/material/Button";
-import Dialog from "@mui/material/Dialog";
-import DialogActions from "@mui/material/DialogActions";
-import DialogContent from "@mui/material/DialogContent";
-import DialogTitle from "@mui/material/DialogTitle";
-import Table from "@mui/material/Table";
-import TableBody from "@mui/material/TableBody";
-import TableCell from "@mui/material/TableCell";
-import TableRow from "@mui/material/TableRow";
-import { DataGrid, GridToolbar } from "@mui/x-data-grid";
-import { useEffect, useState } from "react";
-import type { AxiosResponse } from "~/axios";
-import { Box, Typography } from "@mui/material";
+import apiService from "@/service/api-service"
+import Button from "@mui/material/Button"
+import Dialog from "@mui/material/Dialog"
+import DialogActions from "@mui/material/DialogActions"
+import DialogContent from "@mui/material/DialogContent"
+import DialogTitle from "@mui/material/DialogTitle"
+import Table from "@mui/material/Table"
+import TableBody from "@mui/material/TableBody"
+import TableCell from "@mui/material/TableCell"
+import TableRow from "@mui/material/TableRow"
+import { DataGrid, GridToolbar } from "@mui/x-data-grid"
+import { useEffect, useState } from "react"
+import type { AxiosResponse } from "~/axios"
+import { Box, Typography } from "@mui/material"
 
 const columns = [
   {
@@ -44,9 +44,9 @@ const columns = [
       <div id={`${params.field}`}>Employee Email</div>
     ),
   },
-];
+]
 export default function Dashboard() {
-  const [data, setData] = useState<any>([]);
+  const [data, setData] = useState<any>([])
 
   useEffect(() => {
     apiService
@@ -54,26 +54,26 @@ export default function Dashboard() {
       .get("/v1/users")
       .then((response: AxiosResponse) => {
         console.log(response.data)
-        const users = [];
+        const users = []
         for (const user of response.data) {
           const userDto = {
             id: user.id,
             name: user.name,
             email: user.email,
-          };
-          users.push(userDto);
+          }
+          users.push(userDto)
         }
-        setData(users);
+        setData(users)
       })
       .catch((error) => {
-        console.error(error);
-      });
-  }, []);
-  const [selectedRow, setSelectedRow] = useState(null);
+        console.error(error)
+      })
+  }, [])
+  const [selectedRow, setSelectedRow] = useState(null)
 
   const handleClose = () => {
-    setSelectedRow(null);
-  };
+    setSelectedRow(null)
+  }
   return (
     <div
       style={{
@@ -126,5 +126,5 @@ export default function Dashboard() {
         </DialogActions>
       </Dialog>
     </div>
-  );
+  )
 }

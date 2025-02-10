@@ -6,17 +6,33 @@ const items = [
   { name: "Search", link: "/search" },
 ]
 
-const sidebar = () => {
+const sidebar = ({ handleClickNavMenu }) => {
   return (
-    <div>
-      <List>
-        {items.map((items, index) => (
-          <ListItemButton key={index} component={NavLink} to={items.link}>
-            <ListItemText primary={items.name} />
-          </ListItemButton>
-        ))}
-      </List>
-    </div>
+    <>
+      <div className={"hidden md:block "}>
+        <List>
+          {items.map((items, index) => (
+            <ListItemButton key={index} component={NavLink} to={items.link}>
+              <ListItemText primary={items.name} />
+            </ListItemButton>
+          ))}
+        </List>
+      </div>
+      <div className="md:hidden">
+        <List>
+          {items.map((items, index) => (
+            <ListItemButton
+              key={index}
+              component={NavLink}
+              to={items.link}
+              onClick={handleClickNavMenu}
+            >
+              <ListItemText primary={items.name} />
+            </ListItemButton>
+          ))}
+        </List>
+      </div>
+    </>
   )
 }
 

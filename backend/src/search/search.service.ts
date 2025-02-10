@@ -13,12 +13,13 @@ export class SearchService {
   async exportData(
     basicSearchDto: BasicSearchDto
   ): Promise<AxiosResponse<any>> {
-    try {      
-      const url = process.env.BASE_URL_BC_API + process.env.BASIC_SEARCH_BC_API;
+    try { 
+      const locationIds = this.getLocationIds(basicSearchDto)     
+      const url = process.env.BASE_URL_BC_API + process.env.OBSERVATIONS_API;
       const res = await firstValueFrom(
         this.httpService.get(url, {
           params: {
-            ids: "2cbfe534-e0a3-448d-ba8f-1d1919d66f9a", //TODO remove hardcoded
+            samplingLocationIds: locationIds, 
           },
         })
       );
@@ -26,6 +27,14 @@ export class SearchService {
     } catch (err) {      
       logger.log(err)     
     }
+  }
+
+  private getLocationIds(basicSearchDto: BasicSearchDto): string {
+    let ids ="";
+    basicSearchDto.locationName.forEach(item => {
+      ids += item.id + ','
+    })
+    return ids;
   }
   
   async getLocationTypes(): Promise<AxiosResponse<any>> {

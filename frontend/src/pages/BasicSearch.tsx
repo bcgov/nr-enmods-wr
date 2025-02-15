@@ -1,19 +1,17 @@
 import Btn from "@/components/Btn"
 import TitleText from "@/components/TitleText"
-import { Alert, Badge, Grid, Paper } from "@mui/material"
-import { useMultiStepForm } from "@/customHook/useMultiFormStep"
+import { Alert, Paper } from "@mui/material"
 import LocationParametersForm from "@/components/search/LocationParametersForm"
 import FilterResultsForm from "@/components/search/FilterResultsForm"
 import DownloadForm from "@/components/search/DownloadForm"
 import { useEffect, useState } from "react"
 import apiService from "@/service/api-service"
 import type BasicSearchFormType from "@/interfaces/BasicSearchFormType"
-import HorizontalStepper from "@/components/stepper/HorizontalStepper"
 import { Link } from "react-router-dom"
 import debounce from "lodash/debounce"
-import { BasicSearchAttributes } from "@/enum/basicSearchEnum"
+import { BasicSearchAttr } from "@/enum/basicSearchEnum"
 import { API_VERSION, extractFileName } from "@/util/utility"
-import { ErrorOutline, InfoOutlined } from "@mui/icons-material"
+import { InfoOutlined } from "@mui/icons-material"
 
 const BasicSearch = () => {
   const [isDisabled, setIsDisabled] = useState(false)
@@ -24,7 +22,6 @@ const BasicSearch = () => {
   const [mediums, setMediums] = useState([])
   const [errors, setErrors] = useState([])
   const [observedProperties, setObservedProperties] = useState([])
-  const noOfSteps = [1, 2, 3]
   const [alertMsg, setAlertMsg] = useState("")
   const [formData, setFormData] = useState<BasicSearchFormType>({
     locationType: null,
@@ -38,26 +35,23 @@ const BasicSearch = () => {
     fileFormat: null,
   })
 
-  const setBackendUrl = (
-    fieldName: string,
-    query: string,
-  ): string | undefined => {
+  const dropdwnUrl = (fieldName: string, query: string): string | undefined => {
     if (fieldName) {
       switch (fieldName) {
-        case BasicSearchAttributes.ObservedPropertyGrp:
+        case BasicSearchAttr.ObservedPropertyGrp:
           return `${API_VERSION}/search/getObservedProperties?search=${query}`
-        case BasicSearchAttributes.Media:
+        case BasicSearchAttr.Media:
           return `${API_VERSION}/search/getMediums?search=${query}`
-        case BasicSearchAttributes.PermitNo:
+        case BasicSearchAttr.PermitNo:
           return `${API_VERSION}/search/getPermitNumbers?search=${query}`
-        case BasicSearchAttributes.LocationName:
+        case BasicSearchAttr.LocationName:
           return `${API_VERSION}/search/getLocationNames?search=${query}`
-        case BasicSearchAttributes.LocationType:
+        case BasicSearchAttr.LocationType:
           return `${API_VERSION}/search/getLocationTypes`
-        case BasicSearchAttributes.Projects:
+        case BasicSearchAttr.Projects:
           return `${API_VERSION}/search/getProjects?search=${query}`
         default:
-          return
+          break
       }
     }
   }
@@ -66,22 +60,33 @@ const BasicSearch = () => {
     query: string,
   ): Promise<void> => {
     try {
-      const url = setBackendUrl(fieldName, query)
+      const url = dropdwnUrl(fieldName, query)
       if (url) {
         const apiData = await apiService.getAxiosInstance().get(url)
         if (apiData.status === 200) {
           const response = apiData.data
-          if (fieldName === BasicSearchAttributes.ObservedPropertyGrp)
-            setObservedProperties(response)
-          if (fieldName === BasicSearchAttributes.Media) setMediums(response)
-          if (fieldName === BasicSearchAttributes.PermitNo)
-            setPermitNumbers(response)
-          if (fieldName === BasicSearchAttributes.LocationName)
-            setLocationNames(response)
-          if (fieldName === BasicSearchAttributes.LocationType)
-            setLocationTypes(response)
-          if (fieldName === BasicSearchAttributes.Projects)
-            setProjects(response)
+          switch (fieldName) {
+            case BasicSearchAttr.ObservedPropertyGrp:
+              setObservedProperties(response)
+              break
+            case BasicSearchAttr.Media:
+              setMediums(response)
+              break
+            case BasicSearchAttr.PermitNo:
+              setPermitNumbers(response)
+              break
+            case BasicSearchAttr.LocationName:
+              setLocationNames(response)
+              break
+            case BasicSearchAttr.LocationType:
+              setLocationTypes(response)
+              break
+            case BasicSearchAttr.Projects:
+              setProjects(response)
+              break
+            default:
+              break
+          }
         }
       }
     } catch (err) {
@@ -90,12 +95,12 @@ const BasicSearch = () => {
   }
 
   useEffect(() => {
-    getDropdownOptions(BasicSearchAttributes.ObservedPropertyGrp, "")
-    getDropdownOptions(BasicSearchAttributes.Media, "")
-    getDropdownOptions(BasicSearchAttributes.PermitNo, "")
-    getDropdownOptions(BasicSearchAttributes.LocationName, "")
-    getDropdownOptions(BasicSearchAttributes.LocationType, "")
-    getDropdownOptions(BasicSearchAttributes.Projects, "")
+    getDropdownOptions(BasicSearchAttr.ObservedPropertyGrp, "")
+    getDropdownOptions(BasicSearchAttr.Media, "")
+    getDropdownOptions(BasicSearchAttr.PermitNo, "")
+    getDropdownOptions(BasicSearchAttr.LocationName, "")
+    getDropdownOptions(BasicSearchAttr.LocationType, "")
+    getDropdownOptions(BasicSearchAttr.Projects, "")
   }, [])
 
   const handleOnChange = (
@@ -115,17 +120,17 @@ const BasicSearch = () => {
 
   const debounceSearch = debounce(async (query, attrName) => {
     switch (attrName) {
-      case BasicSearchAttributes.LocationName:
-        getDropdownOptions(BasicSearchAttributes.LocationName, query)
+      case BasicSearchAttr.LocationName:
+        getDropdownOptions(BasicSearchAttr.LocationName, query)
         break
-      case BasicSearchAttributes.PermitNo:
-        getDropdownOptions(BasicSearchAttributes.PermitNo, query)
+      case BasicSearchAttr.PermitNo:
+        getDropdownOptions(BasicSearchAttr.PermitNo, query)
         break
-      case BasicSearchAttributes.Media:
-        getDropdownOptions(BasicSearchAttributes.Media, query)
+      case BasicSearchAttr.Media:
+        getDropdownOptions(BasicSearchAttr.Media, query)
         break
-      case BasicSearchAttributes.ObservedPropertyGrp:
-        getDropdownOptions(BasicSearchAttributes.ObservedPropertyGrp, query)
+      case BasicSearchAttr.ObservedPropertyGrp:
+        getDropdownOptions(BasicSearchAttr.ObservedPropertyGrp, query)
         break
       default:
         break
@@ -152,21 +157,19 @@ const BasicSearch = () => {
       if (res.status === 200) {
         setIsDisabled(false)
         console.log(res)
-        if (!res.data.message) {
+        if (res.data.message) {
+          setAlertMsg(res.data.message)
+        } else {
           const url = window.URL.createObjectURL(new Blob([res.data]))
           const link = document.createElement("a")
           link.href = url
           link.download = extractFileName(res.headers["content-disposition"])
           link.click()
           window.URL.revokeObjectURL(url)
-        } else {
-          setAlertMsg(res.data.message)
         }
       } else {
-        console.log(res.data.message)
-        setErrors(res.data.message)
+        setErrors(res.data.error)
         setIsDisabled(false)
-        //console.log(res.response.data.message)
       }
     } catch (err) {
       console.error(err)

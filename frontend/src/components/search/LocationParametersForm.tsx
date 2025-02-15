@@ -1,6 +1,6 @@
 import { Autocomplete, TextField } from "@mui/material"
 import TooltipInfo from "../TooltipInfo"
-import { BasicSearchAttributes } from "@/enum/basicSearchEnum"
+import { BasicSearchAttr } from "@/enum/basicSearchEnum"
 import TitleText from "../TitleText"
 
 export default function LocationParametersForm(props: any) {
@@ -38,7 +38,7 @@ export default function LocationParametersForm(props: any) {
               }
               getOptionLabel={(option) => option.customId || ""}
               onChange={(e, val) =>
-                handleOnChange(e, val, BasicSearchAttributes.LocationType)
+                handleOnChange(e, val, BasicSearchAttr.LocationType)
               }
               sx={{ width: 300 }}
               renderInput={(params) => (
@@ -56,10 +56,10 @@ export default function LocationParametersForm(props: any) {
               isOptionEqualToValue={(option, value) => option.id === value.id}
               getOptionLabel={(option) => option.name || ""}
               onInputChange={(e, val) =>
-                handleInputChange(e, val, BasicSearchAttributes.LocationName)
+                handleInputChange(e, val, BasicSearchAttr.LocationName)
               }
               onChange={(e, val) =>
-                handleOnChange(e, val, BasicSearchAttributes.LocationName)
+                handleOnChange(e, val, BasicSearchAttr.LocationName)
               }
               sx={{ width: 300 }}
               renderInput={(params) => (
@@ -78,10 +78,10 @@ export default function LocationParametersForm(props: any) {
             isOptionEqualToValue={(option, value) => option.id === value.id}
             getOptionLabel={(option) => option.name || ""}
             onInputChange={(e, val) =>
-              handleInputChange(e, val, BasicSearchAttributes.PermitNo)
+              handleInputChange(e, val, BasicSearchAttr.PermitNo)
             }
             onChange={(e, val) =>
-              handleOnChange(e, val, BasicSearchAttributes.PermitNo)
+              handleOnChange(e, val, BasicSearchAttr.PermitNo)
             }
             sx={{ width: 300 }}
             renderInput={(params) => (

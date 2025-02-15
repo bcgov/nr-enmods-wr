@@ -1,4 +1,4 @@
-export enum BasicSearchAttributes {
+export enum BasicSearchAttr {
   LocationType = "locationType",
   LocationName = "locationName",
   PermitNo = "permitNumber",

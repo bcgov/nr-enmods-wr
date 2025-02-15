@@ -1,5 +1,11 @@
 import { HttpService } from "@nestjs/axios";
-import { HttpStatus, Injectable, Logger } from "@nestjs/common";
+import {
+  BadRequestException,
+  HttpStatus,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from "@nestjs/common";
 import { firstValueFrom } from "rxjs";
 import { BasicSearchDto } from "./dto/basicSearch.dto";
 import { join } from "path";
@@ -9,6 +15,8 @@ import { AxiosResponse } from "axios";
 import { sortArr } from "src/util/utility";
 import csv from "csvtojson";
 import { ObsExportCsvHeader } from "src/enum/obsExportCsvHeader.enum";
+import { error } from "console";
+import { STATUS_CODES } from "http";
 
 const logger = new Logger("BasicSearchService");
 
@@ -17,13 +25,69 @@ export class SearchService {
   constructor(private readonly httpService: HttpService) {}
 
   async exportData(basicSearchDto: BasicSearchDto): Promise<any> {
-    const observationExportUrl =
-      process.env.BASE_URL_BC_API + process.env.OBSERVATIONS_EXPORT_URL;
+    try {
+      const obsExportPromise = this.bcApiCall(
+        this.getAbsoluteUrl(process.env.OBSERVATIONS_EXPORT_URL),
+        this.getUserSearchParams(basicSearchDto)
+      );
+      const observationPromise = this.bcApiCall(
+        this.getAbsoluteUrl(process.env.OBSERVATIONS_URL),
+        this.getUserSearchParams(basicSearchDto)
+      );
 
-    const observationUrl =
-      process.env.BASE_URL_BC_API + process.env.OBSERVATIONS_URL;
+      const res = await Promise.all([obsExportPromise, observationPromise]);
+      if (res.length > 0) {
+        const obsExport = res[0]?.data;
+        const observations = res[1] && JSON.parse(res[1].data)?.domainObjects;
 
-    const params = {
+        if (obsExport && observations.length > 0)
+          return this.prepareCsvExportData(obsExport, observations);
+
+        return { data: "", status: HttpStatus.OK };
+      }
+    } catch (err) {
+      throw new BadRequestException({
+        status: HttpStatus.BAD_REQUEST,
+        error: err.response.error,
+      });
+    }
+  }
+
+  private async prepareCsvExportData(obsExport: string, observation: any[]) {
+    try {
+      const filePath = join(process.cwd(), "/data/tmp.csv");
+      await csv()
+        .fromString(obsExport)
+        .then((jsonObj: any[]) => {
+          const obsExport = jsonObj.slice(0, 1000);
+          const writeStream = createWriteStream(filePath);
+          const csvStream = format({ headers: true });
+
+          for (let i = 0; i < obsExport.length; i++) {
+            for (let j = 0; j < observation.length; j++) {
+              const obsExportObservationId =
+                obsExport[i][ObsExportCsvHeader.ObservationId];
+              if (observation[j].id === obsExportObservationId) {
+                this.writeToCsv(observation[j], obsExport[i], csvStream);
+                break;
+              }
+            }
+          }
+
+          csvStream.pipe(writeStream).on("error", (err) => logger.log(err));
+          writeStream.on("error", (err) => logger.log(err));
+        });
+      return { data: "success", status: HttpStatus.OK };
+    } catch (err) {
+      throw new NotFoundException({
+        status: HttpStatus.NOT_FOUND,
+        error: err.response,
+      });
+    }
+  }
+
+  private getUserSearchParams(basicSearchDto: BasicSearchDto) {
+    return {
       samplingLocationIds: this.getParamsIds(basicSearchDto, "locationName"),
       samplingLocationGroupIds: this.getParamsIds(
         basicSearchDto,
@@ -37,57 +101,6 @@ export class SearchService {
       projectIds: this.getParamsIds(basicSearchDto, "projects"),
       limit: 1000,
     };
-
-    const obsExportPromise = this.bcApiCall(observationExportUrl, params);
-    const observationPromise = this.bcApiCall(observationUrl, params);
-    const filePath = join(process.cwd(), "/data/tmp.csv");
-
-    let status = await Promise.all([obsExportPromise, observationPromise]).then(
-      (data: any[]) => {
-        if (data.length > 0) {
-          const obsExport = data[0]?.data;
-          const observation =
-            data[1] && JSON.parse(data[1].data)?.domainObjects;
-          console.log(observation);
-          if (obsExport && observation.length > 0) {
-            return csv()
-              .fromString(obsExport)
-              .then((jsonObj: any[]) => {
-                const obsExport = jsonObj.slice(0, 1000); // Get only 1000 records
-                // console.log(obsExport);
-                logger.log("Observation export length: " + obsExport.length);
-                logger.log("Observation length: " + observation.length);
-
-                const writeStream = createWriteStream(filePath);
-                const csvStream = format({ headers: true });
-
-                for (let i = 0; i < obsExport.length; i++) {
-                  for (let j = 0; j < observation.length; j++) {
-                    if (
-                      observation[j].id ===
-                      obsExport[i][ObsExportCsvHeader.ObservationId]
-                    ) {
-                      this.writeToCsv(observation[j], obsExport[i], csvStream);
-                      break;
-                    }
-                  }
-                }
-
-                csvStream
-                  .pipe(writeStream)
-                  .on("error", (err) => console.error(err));
-                writeStream.on("error", (err) => console.error(err));
-
-                return "200";
-              });
-          }
-          return "No Data Found";
-        }
-
-        return "400";
-      }
-    );
-    return status;
   }
 
   private async bcApiCall(url: string, params: any): Promise<any> {
@@ -100,6 +113,15 @@ export class SearchService {
       if (res.status === 200) return res;
     } catch (err) {
       logger.log(err);
+      if (err.response.data) {
+        const errResponse = JSON.parse(err.response.data);
+        let errMsg = [];
+        errMsg.push(errResponse.message);
+        throw new BadRequestException({
+          status: HttpStatus.BAD_REQUEST,
+          error: errMsg,
+        });
+      }
     }
   }
 
@@ -197,7 +219,6 @@ export class SearchService {
         }
       }
     }
-
     return;
   }
 
@@ -246,58 +267,84 @@ export class SearchService {
         return dataArr;
       }
     } catch (err) {
-      console.error(err);
+      logger.log(err);
+      throw new BadRequestException({
+        status: HttpStatus.BAD_REQUEST,
+        error: err.response,
+      });
     }
   }
 
-  async getLocationTypes(): Promise<AxiosResponse<any>> {
-    const url = `${process.env.BASE_URL_BC_API}${process.env.LOCATION_TYPE_CODE_TABLE_API}`;    
-    return this.getDropdwnOptions(url, null, "customId");
+  private getAbsoluteUrl(relativeUrl: string) {
+    return `${process.env.BASE_URL_BC_API}${relativeUrl}`;
+  }
+
+  getLocationTypes(): Promise<AxiosResponse<any>> {
+    return this.getDropdwnOptions(
+      this.getAbsoluteUrl(process.env.LOCATION_TYPE_CODE_TABLE_API),
+      null,
+      "customId"
+    );
   }
 
   getLocationNames(query: string): Promise<AxiosResponse<any>> {
-    const url = `${process.env.BASE_URL_BC_API}${process.env.LOCATION_NAME_CODE_TABLE_API}`;
     const params = {
       limit: 100,
       search: query,
       sort: "asc",
     };
-    return this.getDropdwnOptions(url, params, "name");
+    return this.getDropdwnOptions(
+      this.getAbsoluteUrl(process.env.LOCATION_NAME_CODE_TABLE_API),
+      params,
+      "name"
+    );
   }
 
   getPermitNumbers(query: string): Promise<AxiosResponse<any>> {
-    const url = `${process.env.BASE_URL_BC_API}${process.env.PERMIT_NUMBER_CODE_TABLE_API}`;
     const params = {
       limit: 100,
       search: query,
     };
-    return this.getDropdwnOptions(url, params, null);
+    return this.getDropdwnOptions(
+      this.getAbsoluteUrl(process.env.PERMIT_NUMBER_CODE_TABLE_API),
+      params,
+      null
+    );
   }
 
   getMediums(query: string): Promise<AxiosResponse<any>> {
-    const url = `${process.env.BASE_URL_BC_API}${process.env.MEDIA_CODE_TABLE_API}`;
     const params = {
       limit: 100,
       search: query,
     };
-    return this.getDropdwnOptions(url, params, null);
+    return this.getDropdwnOptions(
+      this.getAbsoluteUrl(process.env.MEDIA_CODE_TABLE_API),
+      params,
+      null
+    );
   }
 
   getObservedProperties(query: string): Promise<AxiosResponse<any>> {
-    const url = `${process.env.BASE_URL_BC_API}${process.env.OBSERVED_PROPERTIES_CODE_TABLE_API}`;
     const params = {
       limit: 100,
       search: query,
     };
-    return this.getDropdwnOptions(url, params, null);
+    return this.getDropdwnOptions(
+      this.getAbsoluteUrl(process.env.OBSERVED_PROPERTIES_CODE_TABLE_API),
+      params,
+      null
+    );
   }
 
   getProjects(query: string): Promise<AxiosResponse<any>> {
-    const url = `${process.env.BASE_URL_BC_API}${process.env.PROJECTS_CODE_TABLE_API}`;
     const params = {
       limit: 100,
       search: query,
     };
-    return this.getDropdwnOptions(url, params, null);
+    return this.getDropdwnOptions(
+      this.getAbsoluteUrl(process.env.PROJECTS_CODE_TABLE_API),
+      params,
+      null
+    );
   }
 }

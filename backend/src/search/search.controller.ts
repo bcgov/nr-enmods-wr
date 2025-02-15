@@ -4,6 +4,7 @@ import {
   Get,
   HttpStatus,
   Logger,
+  NotFoundException,
   Post,
   Req,
   Res,
@@ -29,35 +30,36 @@ export class SearchController {
 
   @Post("basicSearch")
   @UsePipes(new ValidationPipe({ transform: true }))
-  public basicSearch(
+  public async basicSearch(
     @Res() response: Response,
     @Body() basicSearchDto: BasicSearchDto
   ) {
     try {
       validateDto(basicSearchDto);
-      this.searchService.exportData(basicSearchDto).then((res) => {
-        console.log("res: " + res);
-        if (res === "200") {
-          const readStream = createReadStream(
-            join(process.cwd(), "/data/tmp.csv")
-          );
-          readStream
-            .on("open", () => {
-              response.attachment("BasicSearchResult.csv");
-              response.status(HttpStatus.OK);
-              readStream.pipe(response);
-            })
-            .on("error", (err) => {
-              console.error(err);
-            });
-        } else {
-          response.status(HttpStatus.OK).send({ message: "No Data Found" });
-        }
-      });
+      const res = await this.searchService.exportData(basicSearchDto);
+      if (res.status === 200) {
+        response.status(HttpStatus.OK);
+        if (res.data) this.sendCsvAsResponse(response);
+        else response.send({ message: "No Data Found" });
+      }
     } catch (error) {
-      console.error(error);
-      response.send({ message: error.response });
+      response.send(error.response);
     }
+  }
+
+  private sendCsvAsResponse(response: Response): void {
+    const readStream = createReadStream(join(process.cwd(), "/data/tmp.csv"));
+    readStream
+      .on("open", () => {
+        response.attachment("BasicSearchResult.csv");
+        readStream.pipe(response);
+      })
+      .on("error", (err) => {
+        throw new NotFoundException({
+          status: HttpStatus.NOT_FOUND,
+          error: err,
+        });
+      });
   }
 
   @Get("getLocationTypes")

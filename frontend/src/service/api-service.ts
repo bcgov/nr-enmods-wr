@@ -16,9 +16,6 @@ class APIService {
     })
     this.client.interceptors.response.use(
       (config) => {
-        console.info(
-          `received response status: ${config.status} , data: ${config.data}`,
-        )
         return config
       },
       (error) => {

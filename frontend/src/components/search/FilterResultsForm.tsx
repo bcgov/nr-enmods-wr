@@ -4,7 +4,7 @@ import TooltipInfo from "../TooltipInfo"
 import { Autocomplete, TextField } from "@mui/material"
 import "react-datepicker/dist/react-datepicker.css"
 import { forwardRef } from "react"
-import { BasicSearchAttributes } from "@/enum/basicSearchEnum"
+import { BasicSearchAttr } from "@/enum/basicSearchEnum"
 
 export default function FilterResultsForm(props: any) {
   const {
@@ -67,7 +67,7 @@ export default function FilterResultsForm(props: any) {
               <DatePicker
                 customInput={<CustomDatePickerInput label={"From"} />}
                 onChange={(val) =>
-                  handleOnChangeDatepicker(val, BasicSearchAttributes.FromDate)
+                  handleOnChangeDatepicker(val, BasicSearchAttr.FromDate)
                 }
                 startDate={formData.fromDate}
                 endDate={formData.toDate}
@@ -85,7 +85,7 @@ export default function FilterResultsForm(props: any) {
                 customInput={<CustomDatePickerInput label={"To"} />}
                 minDate={formData.fromDate}
                 onChange={(val) =>
-                  handleOnChangeDatepicker(val, BasicSearchAttributes.ToDate)
+                  handleOnChangeDatepicker(val, BasicSearchAttr.ToDate)
                 }
                 selected={formData.toDate}
                 selectsEnd
@@ -109,10 +109,10 @@ export default function FilterResultsForm(props: any) {
                 isOptionEqualToValue={(option, value) => option.id === value.id}
                 getOptionLabel={(option) => option.customId || ""}
                 onInputChange={(e, val) =>
-                  handleInputChange(e, val, BasicSearchAttributes.Media)
+                  handleInputChange(e, val, BasicSearchAttr.Media)
                 }
                 onChange={(e, val) =>
-                  handleOnChange(e, val, BasicSearchAttributes.Media)
+                  handleOnChange(e, val, BasicSearchAttr.Media)
                 }
                 sx={{ width: 300 }}
                 renderInput={(params) => (
@@ -130,18 +130,10 @@ export default function FilterResultsForm(props: any) {
                 isOptionEqualToValue={(option, value) => option.id === value.id}
                 getOptionLabel={(option) => option.name || ""}
                 onInputChange={(e, val) =>
-                  handleInputChange(
-                    e,
-                    val,
-                    BasicSearchAttributes.ObservedPropertyGrp,
-                  )
+                  handleInputChange(e, val, BasicSearchAttr.ObservedPropertyGrp)
                 }
                 onChange={(e, val) =>
-                  handleOnChange(
-                    e,
-                    val,
-                    BasicSearchAttributes.ObservedPropertyGrp,
-                  )
+                  handleOnChange(e, val, BasicSearchAttr.ObservedPropertyGrp)
                 }
                 sx={{ width: 300 }}
                 renderInput={(params) => (
@@ -161,10 +153,10 @@ export default function FilterResultsForm(props: any) {
                 isOptionEqualToValue={(option, value) => option.id === value.id}
                 getOptionLabel={(option) => option.customId || ""}
                 onInputChange={(e, val) =>
-                  handleInputChange(e, val, BasicSearchAttributes.Projects)
+                  handleInputChange(e, val, BasicSearchAttr.Projects)
                 }
                 onChange={(e, val) =>
-                  handleOnChange(e, val, BasicSearchAttributes.Projects)
+                  handleOnChange(e, val, BasicSearchAttr.Projects)
                 }
                 sx={{ width: 300 }}
                 renderInput={(params) => (

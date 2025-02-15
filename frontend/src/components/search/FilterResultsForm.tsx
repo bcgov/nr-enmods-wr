@@ -54,7 +54,7 @@ export default function FilterResultsForm(props: any) {
             sx={{ fontWeight: 500, px: 1 }}
           />
         </div>
-        <div >
+        <div>
           <div className="p-1">
             <TitleText
               variant="body2"
@@ -159,7 +159,7 @@ export default function FilterResultsForm(props: any) {
                 getOptionKey={(option) => option.id}
                 options={projects}
                 isOptionEqualToValue={(option, value) => option.id === value.id}
-                getOptionLabel={(option) => option.name || ""}
+                getOptionLabel={(option) => option.customId || ""}
                 onInputChange={(e, val) =>
                   handleInputChange(e, val, BasicSearchAttributes.Projects)
                 }

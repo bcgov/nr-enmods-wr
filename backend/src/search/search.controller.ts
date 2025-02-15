@@ -16,8 +16,8 @@ import { SearchService } from "./search.service";
 import { Response, Request } from "express";
 import { BasicSearchDto } from "./dto/basicSearch.dto";
 import { validateDto } from "src/validation/validateDto";
-import { extractFileName } from "src/util/utility";
-
+import { createReadStream } from "fs";
+import { join } from "path";
 
 const logger = new Logger("SearchController");
 
@@ -36,16 +36,26 @@ export class SearchController {
     try {
       validateDto(basicSearchDto);
       this.searchService.exportData(basicSearchDto).then((res) => {
-        if (res.status === HttpStatus.OK) {
-          const contentDisposition = res.headers["content-disposition"];
-          response
-            .attachment(extractFileName(contentDisposition))
-            .status(HttpStatus.OK)
-            .send(res.data);
+        console.log("res: " + res);
+        if (res === "200") {
+          const readStream = createReadStream(
+            join(process.cwd(), "/data/tmp.csv")
+          );
+          readStream
+            .on("open", () => {
+              response.attachment("BasicSearchResult.csv");
+              response.status(HttpStatus.OK);
+              readStream.pipe(response);
+            })
+            .on("error", (err) => {
+              console.error(err);
+            });
+        } else {
+          response.status(HttpStatus.OK).send({ message: "No Data Found" });
         }
       });
     } catch (error) {
-      logger.log(error);
+      console.error(error);
       response.send({ message: error.response });
     }
   }

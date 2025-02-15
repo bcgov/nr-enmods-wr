@@ -77,12 +77,12 @@ export default function App() {
           </div>
         )}
 
-        <div className="flex mt-16 justify-center items-start w-[100%]">
-          <div className="w-[20%] border border-l-2 h-screen hidden md:block">
+        <div className="flex justify-start items-start min-h-screen  w-[100%]  ">
+          <div className="w-[20%] mt-[4em] min-h-screen hidden md:block ">
             <Sidebar handleClickNavMenu={handleClickNavMenu} />
           </div>
 
-          <div className=" md:w-[80%]  p-2">
+          <div className=" md:w-[80%] min-h-screen mt-[4em] p-2 border border-r-2">
             <AppRoutes />
           </div>
         </div>

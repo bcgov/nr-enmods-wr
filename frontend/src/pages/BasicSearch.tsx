@@ -1,6 +1,6 @@
 import Btn from "@/components/Btn"
 import TitleText from "@/components/TitleText"
-import { Badge, Grid, Paper } from "@mui/material"
+import { Alert, Badge, Grid, Paper } from "@mui/material"
 import { useMultiStepForm } from "@/customHook/useMultiFormStep"
 import LocationParametersForm from "@/components/search/LocationParametersForm"
 import FilterResultsForm from "@/components/search/FilterResultsForm"
@@ -13,7 +13,7 @@ import { Link } from "react-router-dom"
 import debounce from "lodash/debounce"
 import { BasicSearchAttributes } from "@/enum/basicSearchEnum"
 import { API_VERSION, extractFileName } from "@/util/utility"
-import { ErrorOutline } from "@mui/icons-material"
+import { ErrorOutline, InfoOutlined } from "@mui/icons-material"
 
 const BasicSearch = () => {
   const [isDisabled, setIsDisabled] = useState(false)
@@ -25,6 +25,7 @@ const BasicSearch = () => {
   const [errors, setErrors] = useState([])
   const [observedProperties, setObservedProperties] = useState([])
   const noOfSteps = [1, 2, 3]
+  const [alertMsg, setAlertMsg] = useState("")
   const [formData, setFormData] = useState<BasicSearchFormType>({
     locationType: null,
     locationName: [],
@@ -69,7 +70,7 @@ const BasicSearch = () => {
       if (url) {
         const apiData = await apiService.getAxiosInstance().get(url)
         if (apiData.status === 200) {
-          const response = apiData.data.domainObjects
+          const response = apiData.data
           if (fieldName === BasicSearchAttributes.ObservedPropertyGrp)
             setObservedProperties(response)
           if (fieldName === BasicSearchAttributes.Media) setMediums(response)
@@ -103,10 +104,12 @@ const BasicSearch = () => {
     attrName: string,
   ) => {
     setErrors([])
+    setAlertMsg("")
     setFormData({ ...formData, [attrName]: val })
   }
   const handleOnChangeDatepicker = (val: any, attrName: string) => {
     setErrors([])
+    setAlertMsg("")
     setFormData({ ...formData, [attrName]: val })
   }
 
@@ -137,38 +140,6 @@ const BasicSearch = () => {
     if (attrName) debounceSearch(newVal, attrName)
   }
 
-  // const {
-  //   next,
-  //   back,
-  //   step,
-  //   steps,
-  //   activeStep,
-  //   isFirstStep,
-  //   isLastStep,
-  //   goToPage,
-  // } = useMultiStepForm([
-  //   <LocationParametersForm
-  //     key="0"
-  //     formData={formData}
-  //     locationTypes={locationTypes}
-  //     locationNames={locationNames}
-  //     handleInputChange={handleInputChange}
-  //     permitNumbers={permitNumbers}
-  //     handleOnChange={handleOnChange}
-  //   />,
-  //   <FilterResultsForm
-  //     key="1"
-  //     formData={formData}
-  //     mediums={mediums}
-  //     observedProperties={observedProperties}
-  //     projects={projects}
-  //     handleInputChange={handleInputChange}
-  //     handleOnChange={handleOnChange}
-  //     handleOnChangeDatepicker={handleOnChangeDatepicker}
-  //   />,
-  //   <DownloadForm key="2" formData={formData} />,
-  // ])
-
   const basicSearch = async (): Promise<void> => {
     setIsDisabled(true)
     try {
@@ -176,16 +147,22 @@ const BasicSearch = () => {
         .getAxiosInstance()
         .post("/v1/search/basicSearch", formData)
 
+      console.log(res)
+      window.scroll(0, 0)
       if (res.status === 200) {
         setIsDisabled(false)
-        const url = window.URL.createObjectURL(new Blob([res.data]))
-        const link = document.createElement("a")
-        link.href = url
-        link.download = extractFileName(res.headers["content-disposition"])
-        link.click()
-        window.URL.revokeObjectURL(url)
+        console.log(res)
+        if (!res.data.message) {
+          const url = window.URL.createObjectURL(new Blob([res.data]))
+          const link = document.createElement("a")
+          link.href = url
+          link.download = extractFileName(res.headers["content-disposition"])
+          link.click()
+          window.URL.revokeObjectURL(url)
+        } else {
+          setAlertMsg(res.data.message)
+        }
       } else {
-        window.scroll(0, 0)
         console.log(res.data.message)
         setErrors(res.data.message)
         setIsDisabled(false)
@@ -203,6 +180,7 @@ const BasicSearch = () => {
   }
 
   const clearForm = () => {
+    setAlertMsg("")
     setErrors([])
     setFormData({
       ...formData,
@@ -216,43 +194,6 @@ const BasicSearch = () => {
       projects: [],
       fileFormat: null,
     })
-    // switch (activeStep) {
-    //   case 0:
-    //     setFormData({
-    //       ...formData,
-    //       locationType: null,
-    //       locationName: [],
-    //       permitNumber: [],
-    //     })
-    //     break
-    //   case 1:
-    //     setFormData({
-    //       ...formData,
-    //       fromDate: null,
-    //       toDate: null,
-    //       media: [],
-    //       observedPropertyGrp: [],
-    //       projects: [],
-    //     })
-    //     break
-    //   case 2:
-    //     setFormData({
-    //       ...formData,
-    //       locationType: null,
-    //       locationName: [],
-    //       permitNumber: [],
-    //       fromDate: null,
-    //       toDate: null,
-    //       media: [],
-    //       observedPropertyGrp: [],
-    //       projects: [],
-    //       fileFormat: null,
-    //     })
-    //     goToPage()
-    //     break
-    //   default:
-    //     break
-    // }
   }
 
   return (
@@ -275,16 +216,27 @@ const BasicSearch = () => {
         />
       </div>
 
+      {alertMsg && (
+        <Alert
+          sx={{ my: 1 }}
+          icon={<InfoOutlined fontSize="inherit" />}
+          severity="info"
+          onClose={() => setAlertMsg("")}
+        >
+          {alertMsg}
+        </Alert>
+      )}
+
       <form noValidate onSubmit={onSubmit}>
         <div>
           <div>
             {errors.length > 0 && (
-              <div className="text-md text-[red] flex flex-row py-2">
-                <div className="flex flex-row">
-                  <ErrorOutline sx={{ color: "#f70000" }} fontSize="small" />
-                  <span>Error:</span>
-                </div>
-
+              <Alert
+                sx={{ my: 1 }}
+                icon={<InfoOutlined fontSize="inherit" />}
+                severity="error"
+                onClose={() => setErrors([])}
+              >
                 {errors.map((item, index) => (
                   <div key={index}>
                     <ul>
@@ -292,7 +244,7 @@ const BasicSearch = () => {
                     </ul>
                   </div>
                 ))}
-              </div>
+              </Alert>
             )}
           </div>
           <div className="mb-5">

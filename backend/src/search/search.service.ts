@@ -10,7 +10,7 @@ import { firstValueFrom } from "rxjs";
 import { BasicSearchDto } from "./dto/basicSearch.dto";
 import { join } from "path";
 import { format } from "@fast-csv/format";
-import { createWriteStream } from "fs";
+import { createReadStream, createWriteStream } from "fs";
 import { AxiosResponse } from "axios";
 import { sortArr } from "src/util/utility";
 import csv from "csvtojson";
@@ -21,6 +21,7 @@ const logger = new Logger("BasicSearchService");
 @Injectable()
 export class SearchService {
   constructor(private readonly httpService: HttpService) {}
+  private readonly dirName = "/data/"
 
   async exportData(basicSearchDto: BasicSearchDto): Promise<any> {
     try {
@@ -53,29 +54,41 @@ export class SearchService {
 
   private async prepareCsvExportData(obsExport: string, observation: any[]) {
     try {
-      const filePath = join(process.cwd(), "/data/tmp.csv");
+      const fileName = `tmp${Date.now()}.csv`;
+      const filePath = join(process.cwd(), `${this.dirName}${fileName}`);
       await csv()
         .fromString(obsExport)
         .then((jsonObj: any[]) => {
           const obsExport = jsonObj.slice(0, 1000);
           const writeStream = createWriteStream(filePath);
-          const csvStream = format({ headers: true });
+          const csvFormatterStream = format({ headers: true });
 
           for (let i = 0; i < obsExport.length; i++) {
             for (let j = 0; j < observation.length; j++) {
               const obsExportObservationId =
                 obsExport[i][ObsExportCsvHeader.ObservationId];
               if (observation[j].id === obsExportObservationId) {
-                this.writeToCsv(observation[j], obsExport[i], csvStream);
+                this.writeToCsv(
+                  observation[j],
+                  obsExport[i],
+                  csvFormatterStream
+                );
                 break;
               }
             }
           }
-         
-          csvStream.pipe(writeStream).on("error", (err) => logger.log(err));
+
+          csvFormatterStream
+            .pipe(writeStream)
+            .on("error", (err) => logger.log(err));
           writeStream.on("error", (err) => logger.log(err));
         });
-      return { data: "success", status: HttpStatus.OK };
+
+      const readStream = createReadStream(filePath);
+      readStream.on("error", (err) => {
+        throw err;
+      });
+      return { data: readStream, status: HttpStatus.OK };
     } catch (err) {
       throw new NotFoundException({
         status: HttpStatus.NOT_FOUND,

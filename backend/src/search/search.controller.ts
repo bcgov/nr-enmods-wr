@@ -4,7 +4,6 @@ import {
   Get,
   HttpStatus,
   Logger,
-  NotFoundException,
   Post,
   Req,
   Res,
@@ -17,8 +16,7 @@ import { SearchService } from "./search.service";
 import { Response, Request } from "express";
 import { BasicSearchDto } from "./dto/basicSearch.dto";
 import { validateDto } from "src/validation/validateDto";
-import { createReadStream } from "fs";
-import { join } from "path";
+import { unlinkSync } from "fs";
 
 const logger = new Logger("SearchController");
 
@@ -39,7 +37,7 @@ export class SearchController {
       const res = await this.searchService.exportData(basicSearchDto);
       if (res.status === 200) {
         response.status(HttpStatus.OK);
-        if (res.data) this.sendCsvAsResponse(response);
+        if (res.data) this.sendCsvResponse(res.data, response);
         else response.send({ message: "No Data Found" });
       }
     } catch (error) {
@@ -47,18 +45,15 @@ export class SearchController {
     }
   }
 
-  private sendCsvAsResponse(response: Response): void {
-    const readStream = createReadStream(join(process.cwd(), "/data/tmp.csv"));
-    response.attachment("BasicSearchResult.csv");
+  private sendCsvResponse(readStream: any, response: Response): void {
     readStream
-      .on("open", () => {             
+      .on("open", () => {
+        response.attachment("BasicSearchResult.csv");
         readStream.pipe(response);
       })
-      .on("error", (err) => {
-        throw new NotFoundException({
-          status: HttpStatus.NOT_FOUND,
-          error: err,
-        });
+      .on("close", () => {
+        logger.log("Deleting tmp file: " + readStream.path);
+        unlinkSync(readStream.path);
       });
   }
 

@@ -12,6 +12,7 @@ import debounce from "lodash/debounce"
 import { BasicSearchAttr } from "@/enum/basicSearchEnum"
 import { API_VERSION, extractFileName } from "@/util/utility"
 import { InfoOutlined } from "@mui/icons-material"
+import Loading from "@/components/Loading"
 
 const BasicSearch = () => {
   const [isDisabled, setIsDisabled] = useState(false)
@@ -23,6 +24,7 @@ const BasicSearch = () => {
   const [errors, setErrors] = useState([])
   const [observedProperties, setObservedProperties] = useState([])
   const [alertMsg, setAlertMsg] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
   const [formData, setFormData] = useState<BasicSearchFormType>({
     locationType: null,
     locationName: [],
@@ -147,15 +149,14 @@ const BasicSearch = () => {
 
   const basicSearch = async (): Promise<void> => {
     setIsDisabled(true)
+    setIsLoading(true)
     try {
       const res = await apiService
         .getAxiosInstance()
         .post("/v1/search/basicSearch", formData)
 
-      console.log(res)
       window.scroll(0, 0)
       if (res.status === 200) {
-        setIsDisabled(false)
         console.log(res)
         if (res.data.message) {
           setAlertMsg(res.data.message)
@@ -169,8 +170,9 @@ const BasicSearch = () => {
         }
       } else {
         setErrors(res.data.error)
-        setIsDisabled(false)
       }
+      setIsDisabled(false)
+      setIsLoading(false)
     } catch (err) {
       console.error(err)
     }
@@ -178,11 +180,13 @@ const BasicSearch = () => {
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+
     console.log(formData)
     basicSearch()
   }
 
   const clearForm = () => {
+    window.scroll(0, 0)
     setAlertMsg("")
     setErrors([])
     setFormData({
@@ -201,6 +205,8 @@ const BasicSearch = () => {
 
   return (
     <div className="p-2">
+      <Loading isLoading={isLoading} />
+
       <div className="flex flex-row">
         <Link to="/search/basic" className="search-btn">
           Basic

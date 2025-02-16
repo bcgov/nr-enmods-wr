@@ -1,4 +1,3 @@
-import Box from "@mui/material/Box"
 import Header from "@/components/Header"
 // import Footer from '@/components/Footer'
 import AppRoutes from "@/routes"
@@ -82,7 +81,7 @@ export default function App() {
             <Sidebar handleClickNavMenu={handleClickNavMenu} />
           </div>
 
-          <div className=" md:w-[80%] min-h-screen mt-[4em] p-2 border border-r-2">
+          <div className="w-full md:w-[80%] min-h-screen mt-[4em] p-2 border border-r-2">
             <AppRoutes />
           </div>
         </div>

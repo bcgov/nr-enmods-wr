@@ -15,8 +15,6 @@ import { AxiosResponse } from "axios";
 import { sortArr } from "src/util/utility";
 import csv from "csvtojson";
 import { ObsExportCsvHeader } from "src/enum/obsExportCsvHeader.enum";
-import { error } from "console";
-import { STATUS_CODES } from "http";
 
 const logger = new Logger("BasicSearchService");
 
@@ -73,7 +71,7 @@ export class SearchService {
               }
             }
           }
-
+         
           csvStream.pipe(writeStream).on("error", (err) => logger.log(err));
           writeStream.on("error", (err) => logger.log(err));
         });

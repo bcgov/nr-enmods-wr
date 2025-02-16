@@ -4,14 +4,11 @@ import { AppModule } from "./app.module";
 import { customLogger } from "./common/logger.config";
 import { NestExpressApplication } from "@nestjs/platform-express";
 import helmet from "helmet";
-import { ValidationPipe, VersioningType } from "@nestjs/common";
+import { VersioningType } from "@nestjs/common";
 import { metricsMiddleware } from "./prom";
-import cors from "cors";
 import { CorsOptions } from "@nestjs/common/interfaces/external/cors-options.interface";
+import compression from "compression";
 
-/**
- *
- */
 export async function bootstrap() {
   const cosrOptions: CorsOptions = {
     exposedHeaders: ["Content-Disposition"],
@@ -21,6 +18,12 @@ export async function bootstrap() {
       logger: customLogger,
     });
   app.use(helmet());
+  app.use(
+    compression({
+      level: 6,
+      threshold: 10 * 1000,
+    })
+  );
   app.enableCors(cosrOptions);
   app.set("trust proxy", 1);
   app.use(metricsMiddleware);

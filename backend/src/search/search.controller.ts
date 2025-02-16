@@ -49,9 +49,9 @@ export class SearchController {
 
   private sendCsvAsResponse(response: Response): void {
     const readStream = createReadStream(join(process.cwd(), "/data/tmp.csv"));
+    response.attachment("BasicSearchResult.csv");
     readStream
-      .on("open", () => {
-        response.attachment("BasicSearchResult.csv");
+      .on("open", () => {             
         readStream.pipe(response);
       })
       .on("error", (err) => {

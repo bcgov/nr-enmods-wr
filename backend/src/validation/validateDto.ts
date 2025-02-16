@@ -19,6 +19,6 @@ import { HttpException, HttpStatus, Logger } from "@nestjs/common";
     if (isEmpty) {
       let errArr: string[] = [];
       errArr.push("Please enter at least one input field.");
-      throw new HttpException(errArr, HttpStatus.BAD_REQUEST);
+      throw new HttpException({error: errArr}, HttpStatus.BAD_REQUEST);
     }
   }

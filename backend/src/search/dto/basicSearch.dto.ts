@@ -1,12 +1,9 @@
+import { Type } from "class-transformer";
 import {
-  ArrayMaxSize,
-  ArrayMinSize,
-  ArrayNotEmpty,
   IsArray,
   IsDate,
   IsNotEmpty,
   IsOptional,
-  validate,
   ValidateIf,
 } from "class-validator";
 
@@ -24,11 +21,13 @@ export class BasicSearchDto {
   public readonly permitNumber: any[];
 
   @ValidateIf((obj) => obj.fromDate !== null)
-  @IsDate({ message: "Invalid Date" })
+  @IsDate({ message: "Please enter valid From date" })
+  @Type(() => Date)
   public readonly fromDate: Date;
 
   @ValidateIf((obj) => obj.toDate !== null)
-  @IsDate({ message: "Invalid Date" })
+  @IsDate({ message: "Please enter valid To date" })
+  @Type(() => Date)
   public readonly toDate: Date;
 
   @ValidateIf((obj) => obj.media.length > 0)

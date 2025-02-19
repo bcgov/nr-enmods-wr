@@ -147,44 +147,6 @@ const BasicSearch = () => {
     if (attrName) debounceSearch(newVal, attrName)
   }
 
-  const basicSearch = async (): Promise<void> => {
-    setIsDisabled(true)
-    setIsLoading(true)
-    try {
-      const res = await apiService
-        .getAxiosInstance()
-        .post("/v1/search/basicSearch", formData)
-
-      window.scroll(0, 0)
-      if (res.status === 200) {
-        console.log(res)
-        if (res.data.message) {
-          setAlertMsg(res.data.message)
-        } else {
-          const url = window.URL.createObjectURL(new Blob([res.data]))
-          const link = document.createElement("a")
-          link.href = url
-          link.download = extractFileName(res.headers["content-disposition"])
-          link.click()
-          window.URL.revokeObjectURL(url)
-        }
-      } else {
-        setErrors(res.data.error)
-      }
-      setIsDisabled(false)
-      setIsLoading(false)
-    } catch (err) {
-      console.error(err)
-    }
-  }
-
-  const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-
-    console.log(formData)
-    basicSearch()
-  }
-
   const clearForm = () => {
     window.scroll(0, 0)
     setAlertMsg("")
@@ -201,6 +163,46 @@ const BasicSearch = () => {
       projects: [],
       fileFormat: null,
     })
+  }
+
+  const basicSearch = async (): Promise<void> => {
+    setIsDisabled(true)
+    setIsLoading(true)
+    try {
+      const res = await apiService
+        .getAxiosInstance()
+        .post("/v1/search/basicSearch", formData)
+
+      if (res.status === 200) {
+        window.scroll(0, 0)
+        console.log(res)
+        if (res.data.message) {
+          setAlertMsg(res.data.message)
+        } else {
+          clearForm()
+          const url = window.URL.createObjectURL(new Blob([res.data]))
+          const link = document.createElement("a")
+          link.href = url
+          link.download = extractFileName(res.headers["content-disposition"])
+          link.click()
+          window.URL.revokeObjectURL(url)
+        }
+      } else {
+        window.scroll(0, 0)
+        console.log(res);
+        setErrors(res.data.error)
+      }
+      setIsDisabled(false)
+      setIsLoading(false)
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    console.log(formData)
+    basicSearch()
   }
 
   return (

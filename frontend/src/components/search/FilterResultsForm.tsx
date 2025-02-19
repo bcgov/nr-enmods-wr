@@ -62,8 +62,8 @@ export default function FilterResultsForm(props: any) {
               text="Date Range Format: mm-dd-yyyy"
             />
           </div>
-          <div className="flex flex-col sm:flex-row justify-between p-4">
-            <div className="pb-4">
+          <div className="flex flex-col lg:flex-row justify-between p-4 gap-4">
+            <div className="flex">
               <DatePicker
                 customInput={<CustomDatePickerInput label={"From"} />}
                 onChange={(val) =>
@@ -80,7 +80,7 @@ export default function FilterResultsForm(props: any) {
                 useShortMonthInDropdown
               />
             </div>
-            <div className="flex flex-row">
+            <div className="flex ">
               <DatePicker
                 customInput={<CustomDatePickerInput label={"To"} />}
                 minDate={formData.fromDate}
@@ -99,11 +99,12 @@ export default function FilterResultsForm(props: any) {
               <TooltipInfo title="Date Range" />
             </div>
           </div>
-          <div className="flex flex-col sm:flex-row justify-between px-4">
-            <div className="flex flex-row pb-4">
+          <div className="flex flex-col lg:flex-row gap-4 justify-between px-4">
+            <div className="flex items-center">
               <Autocomplete
                 multiple
-                value={formData.media}
+                freeSolo
+                value={formData?.media}
                 getOptionKey={(option) => option.id}
                 options={mediums}
                 isOptionEqualToValue={(option, value) => option.id === value.id}
@@ -121,10 +122,11 @@ export default function FilterResultsForm(props: any) {
               />
               <TooltipInfo title="Media" />
             </div>
-            <div className="flex flex-row">
+            <div className="flex items-center">
               <Autocomplete
                 multiple
-                value={formData.observedPropertyGrp}
+                freeSolo
+                value={formData?.observedPropertyGrp}
                 getOptionKey={(option) => option.id}
                 options={observedProperties}
                 isOptionEqualToValue={(option, value) => option.id === value.id}
@@ -147,7 +149,8 @@ export default function FilterResultsForm(props: any) {
             <div className="flex flex-row p-4">
               <Autocomplete
                 multiple
-                value={formData.projects}
+                freeSolo
+                value={formData?.projects}
                 getOptionKey={(option) => option.id}
                 options={projects}
                 isOptionEqualToValue={(option, value) => option.id === value.id}

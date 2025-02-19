@@ -4,7 +4,6 @@ import {
   HttpStatus,
   Injectable,
   Logger,
-  NotFoundException,
 } from "@nestjs/common";
 import { firstValueFrom } from "rxjs";
 import { BasicSearchDto } from "./dto/basicSearch.dto";
@@ -21,7 +20,7 @@ const logger = new Logger("BasicSearchService");
 @Injectable()
 export class SearchService {
   constructor(private readonly httpService: HttpService) {}
-  private readonly dirName = "/data/"
+  private readonly dirName = "/data/";
 
   async exportData(basicSearchDto: BasicSearchDto): Promise<any> {
     try {
@@ -59,7 +58,9 @@ export class SearchService {
       await csv()
         .fromString(obsExport)
         .then((jsonObj: any[]) => {
-          const obsExport = jsonObj.slice(0, 1000);
+          logger.log("Observation length: " + observation.length)
+          logger.log("Observation export length: " + jsonObj.length )
+          const obsExport = jsonObj.slice(0, 1000); //Note: Max. limit to 1000 records
           const writeStream = createWriteStream(filePath);
           const csvFormatterStream = format({ headers: true });
 
@@ -86,14 +87,12 @@ export class SearchService {
 
       const readStream = createReadStream(filePath);
       readStream.on("error", (err) => {
+        console.error(err);
         throw err;
       });
       return { data: readStream, status: HttpStatus.OK };
     } catch (err) {
-      throw new NotFoundException({
-        status: HttpStatus.NOT_FOUND,
-        error: err.response,
-      });
+      console.error(err);
     }
   }
 
@@ -110,6 +109,8 @@ export class SearchService {
         "observedPropertyGrp"
       ),
       projectIds: this.getParamsIds(basicSearchDto, "projects"),
+      "start-observedTime": basicSearchDto.fromDate,
+      "end-observedTime": basicSearchDto.toDate,
       limit: 1000,
     };
   }

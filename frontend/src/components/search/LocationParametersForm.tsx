@@ -28,10 +28,10 @@ export default function LocationParametersForm(props: any) {
             sx={{ fontWeight: 500, p: 1 }}
           />
         </div>
-        <div className="flex flex-col sm:flex-row justify-between px-4">
-          <div className="flex flex-row py-4">
+        <div className="flex flex-col px-4 lg:flex-row gap-4 justify-between">
+          <div className="flex items-center">
             <Autocomplete
-              value={formData.locationType}
+              value={formData?.locationType}
               options={locationTypes}
               isOptionEqualToValue={(option, value) =>
                 option.customId === value.customId
@@ -47,13 +47,16 @@ export default function LocationParametersForm(props: any) {
             />
             <TooltipInfo title="Location Type" />
           </div>
-          <div className="flex flex-row">
+          <div className="flex items-center">
             <Autocomplete
               multiple
-              value={formData.locationName}
+              freeSolo
+              value={formData?.locationName || null}
               getOptionKey={(option) => option.id}
               options={locationNames}
-              isOptionEqualToValue={(option, value) => option.id === value.id}
+              isOptionEqualToValue={(option, selectedValue) =>
+                option.id === selectedValue.id
+              }
               getOptionLabel={(option) => option.name || ""}
               onInputChange={(e, val) =>
                 handleInputChange(e, val, BasicSearchAttr.LocationName)
@@ -69,10 +72,11 @@ export default function LocationParametersForm(props: any) {
             <TooltipInfo title="Location Name" />
           </div>
         </div>
-        <div className="flex flex-row p-4">
+        <div className="flex items-center p-4">
           <Autocomplete
             multiple
-            value={formData.permitNumber}
+            freeSolo
+            value={formData?.permitNumber}
             getOptionKey={(option) => option.id}
             options={permitNumbers}
             isOptionEqualToValue={(option, value) => option.id === value.id}

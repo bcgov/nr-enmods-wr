@@ -21,6 +21,8 @@ const logger = new Logger("BasicSearchService");
 export class SearchService {
   constructor(private readonly httpService: HttpService) {}
   private readonly dirName = "/data/";
+  private readonly MAX_DROPDWN_OPTIONS_LIMIT = 100;
+  private readonly MAX_API_DATA_LIMIT = 1000;
 
   async exportData(basicSearchDto: BasicSearchDto): Promise<any> {
     try {
@@ -65,7 +67,7 @@ export class SearchService {
     cursor: string
   ): Promise<any> {
     const relativeUrl =
-    obsApiName === "observation"
+      obsApiName === "observation"
         ? process.env.OBSERVATIONS_URL
         : process.env.OBSERVATIONS_EXPORT_URL;
     return this.bcApiCall(
@@ -162,7 +164,7 @@ export class SearchService {
       projectIds: basicSearchDto.projects.toString(),
       "start-observedTime": basicSearchDto.fromDate,
       "end-observedTime": basicSearchDto.toDate,
-      limit: 1000,
+      limit: this.MAX_API_DATA_LIMIT,
       cursor: cursor,
     };
   }
@@ -198,7 +200,7 @@ export class SearchService {
     csvStream.write({
       Ministry_Contact: this.getMinistryContact(fieldVisit?.extendedAttributes),
       Sampling_Agency: this.getSamplingAgency(fieldVisit?.extendedAttributes),
-      Project: fieldVisit.project.name,
+      Project: fieldVisit.project?.name,
       Work_Order_number: this.getWorkOrderNo(specimen?.extendedAttributes),
       Location_ID: obsExport[ObsExportCsvHeader.LocationId],
       Location_Name: fieldVisit.samplingLocation.name,
@@ -345,7 +347,7 @@ export class SearchService {
 
   getLocationNames(query: string): Promise<AxiosResponse<any>> {
     const params = {
-      limit: 100,
+      limit: this.MAX_DROPDWN_OPTIONS_LIMIT,
       search: query,
       sort: "asc",
     };
@@ -358,7 +360,7 @@ export class SearchService {
 
   getPermitNumbers(query: string): Promise<AxiosResponse<any>> {
     const params = {
-      limit: 100,
+      limit: this.MAX_DROPDWN_OPTIONS_LIMIT,
       search: query,
     };
     return this.getDropdwnOptions(
@@ -370,7 +372,7 @@ export class SearchService {
 
   getMediums(query: string): Promise<AxiosResponse<any>> {
     const params = {
-      limit: 100,
+      limit: this.MAX_DROPDWN_OPTIONS_LIMIT,
       search: query,
     };
     return this.getDropdwnOptions(
@@ -382,7 +384,7 @@ export class SearchService {
 
   getObservedProperties(query: string): Promise<AxiosResponse<any>> {
     const params = {
-      limit: 100,
+      limit: this.MAX_DROPDWN_OPTIONS_LIMIT,
       search: query,
     };
     return this.getDropdwnOptions(
@@ -394,7 +396,7 @@ export class SearchService {
 
   getProjects(query: string): Promise<AxiosResponse<any>> {
     const params = {
-      limit: 100,
+      limit: this.MAX_DROPDWN_OPTIONS_LIMIT,
       search: query,
     };
     return this.getDropdwnOptions(

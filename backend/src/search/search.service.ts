@@ -15,43 +15,44 @@ import { sortArr } from "src/util/utility";
 import csv from "csvtojson";
 import { ObsExportCsvHeader } from "src/enum/obsExportCsvHeader.enum";
 
-const logger = new Logger("BasicSearchService");
+
 
 @Injectable()
 export class SearchService {
   constructor(private readonly httpService: HttpService) {}
-  private readonly dirName = "/data/";
+  private readonly logger = new Logger("BasicSearchService");
+  private readonly DIR_NAME = "/data/";
   private readonly MAX_DROPDWN_OPTIONS_LIMIT = 100;
-  private readonly MAX_API_DATA_LIMIT = 1000;
+  private readonly MAX_API_DATA_LIMIT = 1_000;
+  private readonly OBSERVATIONS_URL= process.env.OBSERVATIONS_URL
+  private readonly OBSERVATIONS_EXPORT_URL = process.env.OBSERVATIONS_EXPORT_URL
 
-  async exportData(basicSearchDto: BasicSearchDto): Promise<any> {
+  public async exportData(basicSearchDto: BasicSearchDto): Promise<any> {
     try {
       const obsExportPromise = this.getObservationPromise(
         basicSearchDto,
-        "obsExport",
+        this.OBSERVATIONS_EXPORT_URL,
         ""
       );
       const observationPromise = this.getObservationPromise(
         basicSearchDto,
-        "observation",
+        this.OBSERVATIONS_URL,
         ""
       );
 
       const res = await Promise.all([obsExportPromise, observationPromise]);
 
       if (res.length > 0) {
-        if (res[0].status === 200 && res[1].status === 200) {
-          const obsExport = res[0].data;
-          const observations = await this.checkForMoreObsData(
-            JSON.parse(res[1].data),
-            basicSearchDto
-          );
+        const obsExport = res[0].data;
+        const observations = await this.getObsFromPagination(
+          JSON.parse(res[1].data),
+          basicSearchDto
+        );
 
-          if (obsExport && observations.length > 0)
-            return this.prepareCsvExportData(obsExport, observations);
+        if (obsExport && observations.length > 0)
+          return this.prepareCsvExportData(obsExport, observations);
 
-          return { data: "", status: HttpStatus.OK };
-        }
+        return { data: "", status: HttpStatus.OK };
       }
     } catch (err) {
       throw new BadRequestException({
@@ -63,71 +64,67 @@ export class SearchService {
 
   private getObservationPromise(
     basicSearchDto: BasicSearchDto,
-    obsApiName: string,
+    url: string,
     cursor: string
   ): Promise<any> {
-    const relativeUrl =
-      obsApiName === "observation"
-        ? process.env.OBSERVATIONS_URL
-        : process.env.OBSERVATIONS_EXPORT_URL;
     return this.bcApiCall(
-      this.getAbsoluteUrl(relativeUrl),
+      this.getAbsoluteUrl(url),
       this.getUserSearchInputs(basicSearchDto, cursor)
     );
   }
 
-  private async checkForMoreObsData(
+  private async getObsFromPagination(
     observations: any,
     basicSearchDto: BasicSearchDto
   ): Promise<any> {
-    const totalDataCount = observations.totalCount;
-    const currentObsData = observations.domainObjects;
-    const currentDataCount = currentObsData.length;
+    const totalRecordCount = observations.totalCount;
+    let currentObsData = observations.domainObjects;
     let cursor = observations.cursor;
 
-    if (totalDataCount > currentObsData.length && cursor) {
-      const noOfLoop = Math.floor(totalDataCount / currentDataCount);
-      let totalRecords = [];
+    if (totalRecordCount > currentObsData.length && cursor) {
+      const noOfLoop = Math.ceil(totalRecordCount / currentObsData.length);
       let i = 0;
 
       while (i < noOfLoop) {
+        this.logger.log("Cursor for the next record: " + cursor);
         const res = await this.getObservationPromise(
           basicSearchDto,
-          "observation",
+          this.OBSERVATIONS_URL,
           cursor
         );
-        if (res.status === 200) {
-          const data = JSON.parse(res.data).domainObjects;
-          totalRecords = currentObsData.concat(data);
-          cursor = res.cursor;
+        if (res.status === HttpStatus.OK) {
+          const data = JSON.parse(res.data);
+          currentObsData = currentObsData.concat(data.domainObjects);
+          cursor = data.cursor;
           i++;
         }
       }
-      return totalRecords;
-    } else {
-      return currentObsData;
     }
+
+    return currentObsData;
   }
 
   private async prepareCsvExportData(obsExport: string, observations: any[]) {
     try {
       const fileName = `tmp${Date.now()}.csv`;
-      const filePath = join(process.cwd(), `${this.dirName}${fileName}`);
+      const filePath = join(process.cwd(), `${this.DIR_NAME}${fileName}`);
       await csv()
         .fromString(obsExport)
         .then((obsExportData: any[]) => {
-          logger.log("Observation API data length: " + observations.length);
-          logger.log(
+          this.logger.log("Observation API data length: " + observations.length);
+          this.logger.log(
             "Observation export API data length: " + obsExportData.length
           );
+          sortArr(obsExportData, ObsExportCsvHeader.ObservationId);
+          sortArr(observations, "id");
           const writeStream = createWriteStream(filePath);
           const csvFormatterStream = format({ headers: true });
 
           for (let i = 0; i < obsExportData.length; i++) {
             for (let j = 0; j < observations.length; j++) {
-              const obsExportObservationId =
+              const obsExportId =
                 obsExportData[i][ObsExportCsvHeader.ObservationId];
-              if (observations[j].id === obsExportObservationId) {
+              if (observations[j].id === obsExportId) {
                 this.writeToCsv(
                   observations[j],
                   obsExportData[i],
@@ -140,18 +137,18 @@ export class SearchService {
 
           csvFormatterStream
             .pipe(writeStream)
-            .on("error", (err) => logger.log(err));
-          writeStream.on("error", (err) => logger.log(err));
+            .on("error", (err) => this.logger.error(err));
+          writeStream.on("error", (err) => this.logger.error(err));
         });
 
       const readStream = createReadStream(filePath);
       readStream.on("error", (err) => {
-        console.error(err);
+        this.logger.error(err);
         throw err;
       });
       return { data: readStream, status: HttpStatus.OK };
     } catch (err) {
-      console.error(err);
+      this.logger.error(err);
     }
   }
 
@@ -176,9 +173,9 @@ export class SearchService {
           params: params,
         })
       );
-      if (res.status === 200) return res;
+      if (res.status === HttpStatus.OK) return res;
     } catch (err) {
-      logger.log(err);
+      this.logger.error(err);
       if (err.response.data) {
         const errResponse = JSON.parse(err.response.data);
         let errMsg = [];
@@ -319,13 +316,13 @@ export class SearchService {
           params: params,
         })
       );
-      if (res.status === 200) {
+      if (res.status === HttpStatus.OK) {
         const dataArr = JSON.parse(res.data).domainObjects;
         sortArr(dataArr, sortBy);
         return dataArr;
       }
     } catch (err) {
-      logger.log(err);
+      this.logger.error(err);
       throw new BadRequestException({
         status: HttpStatus.BAD_REQUEST,
         error: err.response,
@@ -337,7 +334,7 @@ export class SearchService {
     return `${process.env.BASE_URL_BC_API}${relativeUrl}`;
   }
 
-  getLocationTypes(): Promise<AxiosResponse<any>> {
+  public getLocationTypes(): Promise<AxiosResponse<any>> {
     return this.getDropdwnOptions(
       this.getAbsoluteUrl(process.env.LOCATION_TYPE_CODE_TABLE_API),
       null,
@@ -345,7 +342,7 @@ export class SearchService {
     );
   }
 
-  getLocationNames(query: string): Promise<AxiosResponse<any>> {
+  public getLocationNames(query: string): Promise<AxiosResponse<any>> {
     const params = {
       limit: this.MAX_DROPDWN_OPTIONS_LIMIT,
       search: query,
@@ -358,7 +355,7 @@ export class SearchService {
     );
   }
 
-  getPermitNumbers(query: string): Promise<AxiosResponse<any>> {
+  public getPermitNumbers(query: string): Promise<AxiosResponse<any>> {
     const params = {
       limit: this.MAX_DROPDWN_OPTIONS_LIMIT,
       search: query,
@@ -370,7 +367,7 @@ export class SearchService {
     );
   }
 
-  getMediums(query: string): Promise<AxiosResponse<any>> {
+  public getMediums(query: string): Promise<AxiosResponse<any>> {
     const params = {
       limit: this.MAX_DROPDWN_OPTIONS_LIMIT,
       search: query,
@@ -382,7 +379,7 @@ export class SearchService {
     );
   }
 
-  getObservedProperties(query: string): Promise<AxiosResponse<any>> {
+  public getObservedProperties(query: string): Promise<AxiosResponse<any>> {
     const params = {
       limit: this.MAX_DROPDWN_OPTIONS_LIMIT,
       search: query,
@@ -394,7 +391,7 @@ export class SearchService {
     );
   }
 
-  getProjects(query: string): Promise<AxiosResponse<any>> {
+  public getProjects(query: string): Promise<AxiosResponse<any>> {
     const params = {
       limit: this.MAX_DROPDWN_OPTIONS_LIMIT,
       search: query,

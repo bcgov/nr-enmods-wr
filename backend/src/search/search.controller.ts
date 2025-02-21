@@ -18,12 +18,11 @@ import { BasicSearchDto } from "./dto/basicSearch.dto";
 import { validateDto } from "src/validation/validateDto";
 import { unlinkSync } from "fs";
 
-const logger = new Logger("SearchController");
-
 @ApiTags("search")
 @Public() //TODO: secure endpoints
 @Controller({ path: "search", version: "1" })
 export class SearchController {
+  private readonly logger = new Logger("SearchController");
   constructor(private searchService: SearchService) {}
 
   @Post("basicSearch")
@@ -35,7 +34,7 @@ export class SearchController {
     try {
       validateDto(basicSearchDto);
       const res = await this.searchService.exportData(basicSearchDto);
-      if (res.status === 200) {
+      if (res.status === HttpStatus.OK) {
         response.status(HttpStatus.OK);
         if (res.data) this.sendCsvResponse(res.data, response);
         else response.send({ message: "No Data Found" });
@@ -52,7 +51,7 @@ export class SearchController {
         readStream.pipe(response);
       })
       .on("close", () => {
-        logger.log("Deleting tmp file: " + readStream.path);
+        this.logger.log("Deleting tmp file: " + readStream.path);
         unlinkSync(readStream.path);
       });
   }

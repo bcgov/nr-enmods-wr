@@ -24,24 +24,32 @@ export class SearchService {
 
   async exportData(basicSearchDto: BasicSearchDto): Promise<any> {
     try {
-      const obsExportPromise = this.bcApiCall(
-        this.getAbsoluteUrl(process.env.OBSERVATIONS_EXPORT_URL),
-        this.getUserSearchParams(basicSearchDto)
+      const obsExportPromise = this.getObservationPromise(
+        basicSearchDto,
+        "obsExport",
+        ""
       );
-      const observationPromise = this.bcApiCall(
-        this.getAbsoluteUrl(process.env.OBSERVATIONS_URL),
-        this.getUserSearchParams(basicSearchDto)
+      const observationPromise = this.getObservationPromise(
+        basicSearchDto,
+        "observation",
+        ""
       );
 
       const res = await Promise.all([obsExportPromise, observationPromise]);
+
       if (res.length > 0) {
-        const obsExport = res[0]?.data;
-        const observations = res[1] && JSON.parse(res[1].data)?.domainObjects;
+        if (res[0].status === 200 && res[1].status === 200) {
+          const obsExport = res[0].data;
+          const observations = await this.checkForMoreObsData(
+            JSON.parse(res[1].data),
+            basicSearchDto
+          );
 
-        if (obsExport && observations.length > 0)
-          return this.prepareCsvExportData(obsExport, observations);
+          if (obsExport && observations.length > 0)
+            return this.prepareCsvExportData(obsExport, observations);
 
-        return { data: "", status: HttpStatus.OK };
+          return { data: "", status: HttpStatus.OK };
+        }
       }
     } catch (err) {
       throw new BadRequestException({
@@ -51,27 +59,76 @@ export class SearchService {
     }
   }
 
-  private async prepareCsvExportData(obsExport: string, observation: any[]) {
+  private getObservationPromise(
+    basicSearchDto: BasicSearchDto,
+    obsApiName: string,
+    cursor: string
+  ): Promise<any> {
+    const relativeUrl =
+    obsApiName === "observation"
+        ? process.env.OBSERVATIONS_URL
+        : process.env.OBSERVATIONS_EXPORT_URL;
+    return this.bcApiCall(
+      this.getAbsoluteUrl(relativeUrl),
+      this.getUserSearchInputs(basicSearchDto, cursor)
+    );
+  }
+
+  private async checkForMoreObsData(
+    observations: any,
+    basicSearchDto: BasicSearchDto
+  ): Promise<any> {
+    const totalDataCount = observations.totalCount;
+    const currentObsData = observations.domainObjects;
+    const currentDataCount = currentObsData.length;
+    let cursor = observations.cursor;
+
+    if (totalDataCount > currentObsData.length && cursor) {
+      const noOfLoop = Math.floor(totalDataCount / currentDataCount);
+      let totalRecords = [];
+      let i = 0;
+
+      while (i < noOfLoop) {
+        const res = await this.getObservationPromise(
+          basicSearchDto,
+          "observation",
+          cursor
+        );
+        if (res.status === 200) {
+          const data = JSON.parse(res.data).domainObjects;
+          totalRecords = currentObsData.concat(data);
+          cursor = res.cursor;
+          i++;
+        }
+      }
+      return totalRecords;
+    } else {
+      return currentObsData;
+    }
+  }
+
+  private async prepareCsvExportData(obsExport: string, observations: any[]) {
     try {
       const fileName = `tmp${Date.now()}.csv`;
       const filePath = join(process.cwd(), `${this.dirName}${fileName}`);
       await csv()
         .fromString(obsExport)
-        .then((jsonObj: any[]) => {
-          logger.log("Observation length: " + observation.length)
-          logger.log("Observation export length: " + jsonObj.length )
-          const obsExport = jsonObj.slice(0, 1000); //Note: Max. limit to 1000 records
+        .then((obsExportData: any[]) => {
+          logger.log("Observation API data length: " + observations.length);
+          logger.log(
+            "Observation export API data length: " + obsExportData.length
+          );
           const writeStream = createWriteStream(filePath);
           const csvFormatterStream = format({ headers: true });
 
-          for (let i = 0; i < obsExport.length; i++) {
-            for (let j = 0; j < observation.length; j++) {
+          for (let i = 0; i < obsExportData.length; i++) {
+            for (let j = 0; j < observations.length; j++) {
               const obsExportObservationId =
-                obsExport[i][ObsExportCsvHeader.ObservationId];
-              if (observation[j].id === obsExportObservationId) {
+                obsExportData[i][ObsExportCsvHeader.ObservationId];
+              if (observations[j].id === obsExportObservationId) {
                 this.writeToCsv(
-                  observation[j],
-                  obsExport[i],
+                  observations[j],
+                  obsExportData[i],
                   csvFormatterStream
                 );
                 break;
@@ -96,22 +153,17 @@ export class SearchService {
     }
   }
 
-  private getUserSearchParams(basicSearchDto: BasicSearchDto) {
+  private getUserSearchInputs(basicSearchDto: BasicSearchDto, cursor: string) {
     return {
-      samplingLocationIds: this.getParamsIds(basicSearchDto, "locationName"),
-      samplingLocationGroupIds: this.getParamsIds(
-        basicSearchDto,
-        "permitNumber"
-      ),
-      media: this.getParamsIds(basicSearchDto, "media"),
-      observedPropertyIds: this.getParamsIds(
-        basicSearchDto,
-        "observedPropertyGrp"
-      ),
-      projectIds: this.getParamsIds(basicSearchDto, "projects"),
+      samplingLocationIds: basicSearchDto.locationName.toString(),
+      samplingLocationGroupIds: basicSearchDto.permitNumber.toString(),
+      media: basicSearchDto.media.toString(),
+      observedPropertyIds: basicSearchDto.observedPropertyGrp.toString(),
+      projectIds: basicSearchDto.projects.toString(),
       "start-observedTime": basicSearchDto.fromDate,
       "end-observedTime": basicSearchDto.toDate,
       limit: 1000,
+      cursor: cursor,
     };
   }
 
@@ -252,14 +304,6 @@ export class SearchService {
 
   private getWorkOrderNo(arr: any[]) {
     return this.getDataFromObj(arr, "text");
-  }
-
-  private getParamsIds(basicSearchDto: BasicSearchDto, attrName: string) {
-    let ids = "";
-    basicSearchDto[attrName].forEach((item: any) => {
-      ids += item.id + ",";
-    });
-    return ids;
   }
 
   private async getDropdwnOptions(

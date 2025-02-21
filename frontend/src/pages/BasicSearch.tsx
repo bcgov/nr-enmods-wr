@@ -165,13 +165,14 @@ const BasicSearch = () => {
     })
   }
 
-  const basicSearch = async (): Promise<void> => {
+  const basicSearch = async (data: { [key: string]: any }): Promise<void> => {
     setIsDisabled(true)
     setIsLoading(true)
+    console.log(data)
     try {
       const res = await apiService
         .getAxiosInstance()
-        .post("/v1/search/basicSearch", formData)
+        .post("/v1/search/basicSearch", data)
 
       if (res.status === 200) {
         window.scroll(0, 0)
@@ -189,7 +190,7 @@ const BasicSearch = () => {
         }
       } else {
         window.scroll(0, 0)
-        console.log(res);
+        console.log(res)
         setErrors(res.data.error)
       }
       setIsDisabled(false)
@@ -199,10 +200,23 @@ const BasicSearch = () => {
     }
   }
 
+  const prepareFormData = (formData: { [key: string]: any }) => {
+    const data = { ...formData }
+    for (const key in formData) {
+      if (Array.isArray(formData[key])) {
+        const arr: string[] = []
+        formData[key].forEach((item) => {
+          arr.push(item.id)
+        })
+        data[key] = arr
+      }
+    }
+    return data
+  }
+
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    console.log(formData)
-    basicSearch()
+    basicSearch(prepareFormData(formData))
   }
 
   return (

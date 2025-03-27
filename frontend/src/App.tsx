@@ -1,10 +1,8 @@
 import Box from '@mui/material/Box'
+import Header from '@/components/Header'
 import AppRoutes from '@/routes'
 import { BrowserRouter } from 'react-router-dom'
-import {
-  Footer,
-  Header,
-} from "@bcgov/design-system-react-components";
+import { Footer } from "@bcgov/design-system-react-components";
 import { IconButton } from '~/@mui/material'
 import { HomeRounded } from '~/@mui/icons-material'
 
@@ -25,21 +23,27 @@ const styles = {
     justifyContent: 'center',
     alignItems: 'flex-start',
   },
+  separator: {
+    width: '1px',
+    marginLeft: "-5%",
+    bgcolor: 'rgb(217, 217, 217)',
+    minHeight: '100%',
+  },
 }
+
 export default function App() {
   return (
-    <Box sx={styles.container}>
-      <Header title={'QuickStart OpenShift'}> <a href={'/'} target={'_self'}>
-        <IconButton color="secondary">
-          <HomeRounded color="secondary"></HomeRounded>
-        </IconButton>
-      </a></Header>
-      <Box sx={styles.content}>
-        <BrowserRouter>
-          <AppRoutes />
-        </BrowserRouter>
+     <BrowserRouter>
+      <Box sx={styles.container}>
+        <Header />
+         <Box sx={styles.content}>
+           <Box sx={styles.separator} />
+           <Box sx={styles.content}>
+             <AppRoutes />
+           </Box>
+         </Box>
+        <Footer />
       </Box>
-      <Footer />
-    </Box>
+    </BrowserRouter>
   )
 }

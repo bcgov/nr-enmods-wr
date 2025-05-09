@@ -1,65 +1,9 @@
 # Reusable vars
-x-var:
-  - &POSTGRES_USER
-    postgres
-  - &POSTGRES_PASSWORD
-    default
-  - &POSTGRES_DATABASE
-    postgres
-  - &POSTGRES_SCHEMA
-    ENMODWR
-
-# Reusable envars for postgres
-x-postgres-vars: &postgres-vars
-  POSTGRES_HOST: database
-  POSTGRES_USER: *POSTGRES_USER
-  POSTGRES_PASSWORD: *POSTGRES_PASSWORD
-  POSTGRES_DATABASE: *POSTGRES_DATABASE
-  POSTGRES_SCHEMA: *POSTGRES_SCHEMA
-
 services:
-  database:
-    image: postgres:15
-    container_name: database
-    environment:
-      <<: *postgres-vars
-    healthcheck:
-      test: ["CMD", "pg_isready", "-U", *POSTGRES_USER]
-    ports: ["5432:5432"]
-
-  migrations:
-    image: flyway/flyway:10-alpine
-    container_name: migrations
-    command: info migrate info
-    volumes: ["./migrations/sql:/flyway/sql:ro"]
-    environment:
-      FLYWAY_URL: jdbc:postgresql://database:5432/postgres
-      FLYWAY_USER: *POSTGRES_USER
-      FLYWAY_PASSWORD: *POSTGRES_PASSWORD
-      FLYWAY_BASELINE_ON_MIGRATE: true
-      FLYWAY_DEFAULT_SCHEMA: *POSTGRES_SCHEMA
-    depends_on:
-      database:
-        condition: service_healthy
-
-  schemaspy:
-    image: schemaspy/schemaspy:6.2.4
-    profiles: ["schemaspy"]
-    container_name: schemaspy
-    command: -t pgsql11 -db postgres -host database -port 5432 -u postgres -p default -schemas enmodwr
-    depends_on:
-      migrations:
-        condition: service_completed_successfully
-    volumes: ["./output:/output"]
-
   backend:
     container_name: backend
-    depends_on:
-      migrations:
-        condition: service_started
     entrypoint: sh -c "npm i && npm run start:dev"
     environment:
-      <<: *postgres-vars
       NODE_ENV: development
     image: node:22
     ports: ["3001:3000"]

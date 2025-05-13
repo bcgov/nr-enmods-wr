@@ -1,7 +1,7 @@
 # .prettierrc.yml
 
 # Use single quotes instead of double quotes
-singleQuote: true
+singleQuote: false
 
 # Use 2 spaces for indentation
 tabWidth: 2

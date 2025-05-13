@@ -1,0 +1,1 @@
+This folder is used to store the generated csv file temporarily and then deleted afterward. 

@@ -1,6 +1,7 @@
-import { defineConfig } from 'vite'
-import { fileURLToPath, URL } from 'node:url'
-import react from '@vitejs/plugin-react'
+import { defineConfig } from "vite"
+import { fileURLToPath, URL } from "node:url"
+import react from "@vitejs/plugin-react"
+
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -9,12 +10,12 @@ export default defineConfig({
     port: parseInt(process.env.PORT),
     fs: {
       // Allow serving files from one level up to the project root
-      allow: ['..'],
+      allow: [".."],
     },
     proxy: {
       // Proxy API requests to the backend
-      '/api': {
-        target: 'http://localhost:3000',
+      "/api": {
+        target: "http://localhost:3000",
         changeOrigin: true,
       },
     },
@@ -22,18 +23,18 @@ export default defineConfig({
   resolve: {
     // https://vitejs.dev/config/shared-options.html#resolve-alias
     alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url)),
-      '~': fileURLToPath(new URL('./node_modules', import.meta.url)),
+      "@": fileURLToPath(new URL("./src", import.meta.url)),
+      "~": fileURLToPath(new URL("./node_modules", import.meta.url)),
     },
-    extensions: ['.js', '.json', '.jsx', '.mjs', '.ts', '.tsx', '.vue'],
+    extensions: [".js", ".json", ".jsx", ".mjs", ".ts", ".tsx", ".vue"],
   },
   build: {
     // Build Target
     // https://vitejs.dev/config/build-options.html#build-target
-    target: 'esnext',
+    target: "esnext",
     // Minify option
     // https://vitejs.dev/config/build-options.html#build-minify
-    minify: 'esbuild',
+    minify: "esbuild",
     // Rollup Options
     // https://vitejs.dev/config/build-options.html#build-rollupoptions
     rollupOptions: {
@@ -41,16 +42,16 @@ export default defineConfig({
         manualChunks: {
           // Split external library from transpiled code.
           react: [
-            'react',
-            'react-dom',
-            'react-router-dom',
-            'react-router',
-            '@emotion/react',
-            '@emotion/styled',
+            "react",
+            "react-dom",
+            "react-router-dom",
+            "react-router",
+            "@emotion/react",
+            "@emotion/styled",
           ],
-          mui: ['@mui/material', '@mui/icons-material'],
-          mui_tables: ['mui-datatables'],
-          axios: ['axios'],
+          mui: ["@mui/material", "@mui/icons-material"],
+          mui_tables: ["mui-datatables"],
+          axios: ["axios"],
         },
       },
     },

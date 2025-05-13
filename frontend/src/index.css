@@ -1,3 +1,126 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+@font-face {
+  font-family: "BCSans";
+  font-style: normal;
+  src: url("../node_modules/@bcgov/bc-sans/fonts/BCSans-Regular.woff")
+    format("woff");
+}
+@font-face {
+  font-family: "BCSans-Italic";
+  font-style: italic;
+  src: url("../node_modules/@bcgov/bc-sans/fonts/BCSans-Italic.woff")
+    format("woff");
+}
+@font-face {
+  font-family: "BCSans-Bold";
+  font-weight: 700;
+  src: url("../node_modules/@bcgov/bc-sans/fonts/BCSans-Bold.woff")
+    format("woff");
+}
+@font-face {
+  font-family: "BCSans-BoldItalic";
+  font-style: italic;
+  font-weight: 700;
+  src: url("../node_modules/@bcgov/bc-sans/fonts/BCSans-BoldItalic.woff")
+    format("woff");
+}
 .MuiDrawer-paperAnchorLeft {
   margin-top: 4.2em !important;
+}
+
+.search-point-location {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+}
+
+.flex-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.padding-1 {
+  padding: 1rem;
+}
+
+.padding-half {
+  padding: .5rem;
+}
+
+.padding-y-1 {
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+}
+.padding-y-2 {
+  padding-top: 2rem;
+  padding-bottom: 2rem;
+}
+
+.padding-x-1 {
+  padding-right: 1rem;
+  padding-left: 1rem;
+}
+
+.margin-top-1 {
+  margin-top: 1rem;
+}
+
+.margin-bottom-1 {
+  margin-bottom: 1rem;
+}
+
+.gap-1 {
+  gap: 1rem;
+}
+
+.gap-half {
+  gap: .5rem;
+}
+
+.search-btn {
+  color: #0B5394;
+  border: 2px solid #0B5394;
+  text-decoration: none;
+  padding: .2rem;
+  font-weight: 500;
+  border-radius: 4px;
+  font-size: 10pt;
+}
+
+.search-btn:hover {
+  background-color: #0B5394;
+  color: #fff;
+}
+
+.react-datepicker-popper{
+  z-index: 10;
+}
+
+.errorMsg{
+  color: #f70000;
+  font-size: small;
+  margin-left: 1rem;
+}
+
+.error-heading{
+  display: flex;
+  align-items: center;
+  justify-content: start;
+  gap: .2rem;
+  font-size: medium;
+}
+
+.heading-section{
+  border: 1px solid #0B5394;
+  padding: .5rem;  
+  background: #38598a;
+  color: #fff;
+  border-top-left-radius: .2rem;
+  border-top-right-radius: .2rem;
 }

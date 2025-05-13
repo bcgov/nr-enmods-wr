@@ -73,3 +73,10 @@ rules:
     'error',
     { prefer: 'type-imports' },
   ]
+
+  "prettier/prettier": [
+  "error",
+  {
+    "endOfLine": "auto"
+  }
+]

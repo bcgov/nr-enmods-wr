@@ -34,8 +34,8 @@ const Home = () => {
         The <span className="font-semibold">EMS Web Reporting (EMS WR)</span>{" "}
         tool provides read-only access to EMS data. Users can leverage advanced
         search features to locate and download environmental data as{" "}
-        <span className="font-mono">.csv</span> files, and can also generate
-        custom PDF reports from the results. To begin exploring data, visit the{" "}
+        <span className="font-mono">.csv</span> files. To begin exploring data,
+        visit the{" "}
         <Link
           to="/search"
           className="text-blue-600 hover:underline font-semibold"

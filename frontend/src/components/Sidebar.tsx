@@ -2,7 +2,7 @@ import { List, ListItemButton, ListItemText } from "@mui/material"
 import { NavLink } from "react-router-dom"
 
 const items = [
-  { name: "BC Home", link: "/" },
+  { name: "Home", link: "/home" },
   { name: "Search", link: "/search" },
 ]
 

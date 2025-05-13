@@ -5,6 +5,7 @@ import { BrowserRouter } from "react-router-dom"
 import Sidebar from "./components/Sidebar"
 import "./index.css"
 import { useState } from "react"
+import { Footer } from "@bcgov/design-system-react-components"
 
 export default function App() {
   const [openNav, setOpenNav] = useState(false)
@@ -35,6 +36,7 @@ export default function App() {
           </div>
         </div>
       </div>
+      <Footer />
     </BrowserRouter>
   )
 }

@@ -1,24 +1,18 @@
-import BCGovLogo from "@/assets/BCID_H_rgb_pos.png"
-import { AppBar, IconButton, Toolbar, Box } from "@mui/material"
+import BCGovLogo from "@/assets/gov-bc-logo-horiz.png"
+import { AppBar, IconButton, Toolbar, Box, Typography } from "@mui/material"
+// import Typography from '@mui/material/Typography'
 import { HomeRounded } from "@mui/icons-material"
 import Navbar from "./Navbar"
+import { borderBottom, maxHeight } from "~/@mui/system"
 
 const styles = {
-  appBar: {
-    color: "#ffffff",
-    backgroundColor: "#ffffff",
-    // backgroundColor: '#eeeeff',
-    borderBottom: "1px solid rgb(217, 217, 217)",
-    display: "flex",
-    zIndex: (theme: any) => theme.zIndex.drawer + 1,
-  },
   toolbar: {
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
   },
   innerContent: {
-    maxWidth: "1200px",
+    maxWidth: "1800px",
     width: "100%",
     margin: "0 auto",
     display: "flex",
@@ -31,38 +25,36 @@ const styles = {
     backgroundColor: "#ffffff",
   },
   separator: {
-    height: "1px",
-    backgroundColor: "rgb(217, 217, 217)",
+    height: "2px",
+    backgroundColor: "#fcba19",
     width: "100%",
   },
   navToolbar: {
     minHeight: "40px !important",
     justifyContent: "space-between",
     width: "100%",
+    maxHeight: "40px",
+    backgroundColor: "#38598a",
+    borderBottom: "px solid rgba(0, 0, 0, 0.1)",
   },
 }
-export default function Header({ setOpenNav, openNav }) {
+export default function Header() {
   return (
-    <AppBar
-      position="fixed"
-      sx={styles.appBar}
-      elevation={0}
-      className="nav-header"
-    >
-      <Box sx={styles.innerContent}>
-        <Toolbar sx={{ justifyContent: "space-between" }}>
-          <img style={{ maxHeight: "60px" }} alt="Logo" src={BCGovLogo} />
-          <a href={"/"} target={"_self"}>
-            <IconButton color="secondary">
-              <HomeRounded color="secondary"></HomeRounded>
-            </IconButton>
-          </a>
+    <AppBar position="fixed" elevation={0} className="nav-header">
+      <Box sx={{ bgcolor: "#003366" }}>
+        <Toolbar sx={{ maxHeight: "10px" }}>
+          <img
+            style={{ maxHeight: "60px", paddingLeft: "20%" }}
+            alt="Logo"
+            src={BCGovLogo}
+          />
+          <h1 style={{ paddingLeft: "2%" }}>EMS Web Reporting</h1>
         </Toolbar>
       </Box>
       <Box sx={styles.separator} />
-      <Box sx={styles.innerContent}>
+      <Box sx={{ bgcolor: "#003366" }}>
         <Toolbar sx={styles.navToolbar}>
-          <Navbar setOpenNav={setOpenNav} openNav={openNav} />
+          <Navbar />
         </Toolbar>
       </Box>
     </AppBar>

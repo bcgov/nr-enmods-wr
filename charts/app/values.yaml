@@ -64,6 +64,22 @@ backend:
   pdb:
     enabled: false # enable it in PRODUCTION for having pod disruption budget.
     minAvailable: 1 # the minimum number of pods that must be available during the disruption budget.
+  persistence:
+    enabled: true
+    accessMode: ReadWriteMany
+    size: 150Mi
+    storageClassName: netapp-file-standard
+    swapFiles:
+      enabled: true
+      size: 250Mi # The size of the swap file, adjust as needed
+      storageClassName: netapp-file-standard # Or use your specific storage class
+  volumeMounts:
+    - name: wr-csv-files
+      mountPath: /app/data/
+  volumes:
+    - name: wr-csv-files
+      persistentVolumeClaim:
+        claimName: wr-csv-files
 
 frontend:
   # -- enable or disable a component deployment.

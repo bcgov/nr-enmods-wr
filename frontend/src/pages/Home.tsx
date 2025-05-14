@@ -5,7 +5,7 @@ const Home = () => {
   return (
     <div className="p-2">
       <h1 className="text-3xl font-bold text-gray-800 mb-6">
-        Welcome to EMS Web Reporting
+        Welcome to EnMoDS Web Reporting Reporting
       </h1>
 
       <p className="text-lg text-gray-700 mb-4">
@@ -31,8 +31,8 @@ const Home = () => {
       </p>
 
       <p className="text-lg text-gray-700 mb-6">
-        The <span className="font-semibold">EMS Web Reporting (EMS WR)</span>{" "}
-        tool provides read-only access to EMS data. Users can leverage advanced
+        The <span className="font-semibold">EnMoDS Web Reporting</span> tool
+        provides read-only access to EMS data. Users can leverage advanced
         search features to locate and download environmental data as{" "}
         <span className="font-mono">.csv</span> files. To begin exploring data,
         visit the{" "}

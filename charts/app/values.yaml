@@ -64,6 +64,13 @@ backend:
   pdb:
     enabled: false # enable it in PRODUCTION for having pod disruption budget.
     minAvailable: 1 # the minimum number of pods that must be available during the disruption budget.
+  volumeMounts:
+    - name: wr-csv-files
+      mountPath: /app/data/
+  volumes:
+    - name: wr-csv-files
+      persistentVolumeClaim:
+        claimName: wr-csv-files
 
 frontend:
   # -- enable or disable a component deployment.

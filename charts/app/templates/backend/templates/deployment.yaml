@@ -24,6 +24,10 @@ spec:
       labels:
         {{- include "backend.labels" . | nindent 8 }}
     spec:
+      volumes:
+        - name: wr-csv-files
+          persistentVolumeClaim:
+          claimName: {{ .Release.Name }}-wr-csv-files
       {{- if .Values.backend.podSecurityContext }}
       securityContext:
         {{- toYaml .Values.backend.podSecurityContext | nindent 12 }}
@@ -73,6 +77,9 @@ spec:
             requests:
               cpu: 50m
               memory: 75Mi
+          volumeMounts:
+            - name: wr-csv-files
+              mountPath: /app/data/
       {{- with .Values.backend.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

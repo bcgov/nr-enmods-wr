@@ -50,11 +50,11 @@ backend:
     #-- resources specific to vault initContainer. it is optional and is an object.
     resources:
       limits:
-        cpu: 50m
-        memory: 50Mi
+        cpu: 100m
+        memory: 512Mi
       requests:
         cpu: 50m
-        memory: 25Mi
+        memory: 128Mi
   #-- the service for the component. for inter namespace communication, use the service name as the hostname.
   service:
     #-- the type of the service. it can be ClusterIP, NodePort, LoadBalancer, ExternalName. ClusterIP is the default and is recommended.

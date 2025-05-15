@@ -48,7 +48,7 @@ export default function Header() {
             alt="Logo"
             src={BCGovLogo}
           />
-          <h1 style={{ paddingLeft: "2%" }}>EMS Web Reporting</h1>
+          <h1 style={{ paddingLeft: "2%" }}>ENMODS Web Reporting</h1>
         </Toolbar>
       </Box>
       <Box sx={styles.separator} />

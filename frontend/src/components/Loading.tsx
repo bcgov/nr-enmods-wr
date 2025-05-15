@@ -24,9 +24,9 @@ export default function Loading(props: any) {
         sx={{ fontSize: "1.2rem", maxWidth: 600 }}
       >
         Please wait while your data is being processed. This may take several
-        minutes.
+        minutes
         <br />
-        <strong>Please do not refresh your screen.</strong>
+        <strong>Please do not refresh your screen</strong>
       </Typography>
     </Backdrop>
   )

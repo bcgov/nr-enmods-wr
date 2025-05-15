@@ -73,10 +73,10 @@ spec:
           resources: # this is optional
             limits:
               cpu: 150m
-              memory: 150Mi
+              memory: 512Mi
             requests:
               cpu: 50m
-              memory: 75Mi
+              memory: 128Mi
           volumeMounts:
             - name: wr-csv-files
               mountPath: /app/data/

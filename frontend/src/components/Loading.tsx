@@ -17,7 +17,7 @@ export default function Loading(props: any) {
       <CircularProgress color="inherit" />
       <TitleText
         variant={"subtitle1"}
-        text="Please wait while your data is being processed..."
+        text="Please wait while your data is being processed, this may take several minutes.  Please do not refresh your screen."
         sx={{ fontSize: "1.2rem" }}
       />
     </Backdrop>

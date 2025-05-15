@@ -1,21 +1,15 @@
 import { HttpService } from "@nestjs/axios";
-import {
-  BadRequestException,
-  HttpStatus,
-  Injectable,
-  Logger,
-} from "@nestjs/common";
+import { BadRequestException, HttpStatus, Injectable, Logger } from "@nestjs/common";
 import { firstValueFrom } from "rxjs";
 import { BasicSearchDto } from "./dto/basicSearch.dto";
 import { join } from "path";
-import { format } from "@fast-csv/format";
-import { createReadStream, createWriteStream } from "fs";
 import { AxiosResponse } from "axios";
 import { sortArr } from "src/util/utility";
 import csv from "csvtojson";
 import { ObsExportCsvHeader } from "src/enum/obsExportCsvHeader.enum";
-
-
+import * as fs from "fs";
+import * as fastcsv from "@fast-csv/format";
+import { parse } from "csv-parse";
 
 @Injectable()
 export class SearchService {
@@ -24,33 +18,22 @@ export class SearchService {
   private readonly DIR_NAME = "/data/";
   private readonly MAX_DROPDWN_OPTIONS_LIMIT = 100;
   private readonly MAX_API_DATA_LIMIT = 1_000;
-  private readonly OBSERVATIONS_URL= process.env.OBSERVATIONS_URL
-  private readonly OBSERVATIONS_EXPORT_URL = process.env.OBSERVATIONS_EXPORT_URL
+  private readonly OBSERVATIONS_URL = process.env.OBSERVATIONS_URL;
+  private readonly OBSERVATIONS_EXPORT_URL = process.env.OBSERVATIONS_EXPORT_URL;
 
   public async exportData(basicSearchDto: BasicSearchDto): Promise<any> {
+    this.logger.debug(`Observations URL: ${this.OBSERVATIONS_URL}`);
     try {
-      const obsExportPromise = this.getObservationPromise(
-        basicSearchDto,
-        this.OBSERVATIONS_EXPORT_URL,
-        ""
-      );
-      const observationPromise = this.getObservationPromise(
-        basicSearchDto,
-        this.OBSERVATIONS_URL,
-        ""
-      );
+      const obsExportPromise = this.getObservationPromise(basicSearchDto, this.OBSERVATIONS_EXPORT_URL, "");
+      const observationPromise = this.getObservationPromise(basicSearchDto, this.OBSERVATIONS_URL, "");
 
       const res = await Promise.all([obsExportPromise, observationPromise]);
 
       if (res.length > 0) {
         const obsExport = res[0].data;
-        const observations = await this.getObsFromPagination(
-          JSON.parse(res[1].data),
-          basicSearchDto
-        );
+        const observations = await this.getObsFromPagination(JSON.parse(res[1].data), basicSearchDto);
 
-        if (obsExport && observations.length > 0)
-          return this.prepareCsvExportData(obsExport, observations);
+        if (obsExport && observations.length > 0) return this.prepareCsvExportData(obsExport, observations);
 
         return { data: "", status: HttpStatus.OK };
       }
@@ -62,21 +45,11 @@ export class SearchService {
     }
   }
 
-  private getObservationPromise(
-    basicSearchDto: BasicSearchDto,
-    url: string,
-    cursor: string
-  ): Promise<any> {
-    return this.bcApiCall(
-      this.getAbsoluteUrl(url),
-      this.getUserSearchInputs(basicSearchDto, cursor)
-    );
+  private getObservationPromise(basicSearchDto: BasicSearchDto, url: string, cursor: string): Promise<any> {
+    return this.bcApiCall(this.getAbsoluteUrl(url), this.getUserSearchInputs(basicSearchDto, cursor));
   }
 
-  private async getObsFromPagination(
-    observations: any,
-    basicSearchDto: BasicSearchDto
-  ): Promise<any> {
+  private async getObsFromPagination(observations: any, basicSearchDto: BasicSearchDto): Promise<any> {
     const totalRecordCount = observations.totalCount;
     let currentObsData = observations.domainObjects;
     let cursor = observations.cursor;
@@ -87,11 +60,7 @@ export class SearchService {
 
       while (i < noOfLoop) {
         this.logger.log("Cursor for the next record: " + cursor);
-        const res = await this.getObservationPromise(
-          basicSearchDto,
-          this.OBSERVATIONS_URL,
-          cursor
-        );
+        const res = await this.getObservationPromise(basicSearchDto, this.OBSERVATIONS_URL, cursor);
         if (res.status === HttpStatus.OK) {
           const data = JSON.parse(res.data);
           currentObsData = currentObsData.concat(data.domainObjects);
@@ -108,47 +77,48 @@ export class SearchService {
     try {
       const fileName = `tmp${Date.now()}.csv`;
       const filePath = join(process.cwd(), `${this.DIR_NAME}${fileName}`);
-      await csv()
-        .fromString(obsExport)
-        .then((obsExportData: any[]) => {
-          this.logger.log("Observation API data length: " + observations.length);
-          this.logger.log(
-            "Observation export API data length: " + obsExportData.length
-          );
-          sortArr(obsExportData, ObsExportCsvHeader.ObservationId);
-          sortArr(observations, "id");
-          const writeStream = createWriteStream(filePath);
-          const csvFormatterStream = format({ headers: true });
 
-          for (let i = 0; i < obsExportData.length; i++) {
-            for (let j = 0; j < observations.length; j++) {
-              const obsExportId =
-                obsExportData[i][ObsExportCsvHeader.ObservationId];
-              if (observations[j].id === obsExportId) {
-                this.writeToCsv(
-                  observations[j],
-                  obsExportData[i],
-                  csvFormatterStream
-                );
-                break;
-              }
-            }
-          }
+      const observationMap = new Map<string, any>();
+      for (const obs of observations) {
+        observationMap.set(obs.id, obs);
+      }
 
-          csvFormatterStream
-            .pipe(writeStream)
-            .on("error", (err) => this.logger.error(err));
-          writeStream.on("error", (err) => this.logger.error(err));
-        });
+      const csvStream = fastcsv.format({ headers: true });
+      const writeStream = fs.createWriteStream(filePath);
 
-      const readStream = createReadStream(filePath);
-      readStream.on("error", (err) => {
-        this.logger.error(err);
-        throw err;
+      csvStream.pipe(writeStream).on("error", (err) => this.logger.error(err));
+
+      const parser = parse({ columns: true });
+      parser.on("data", (row: any) => {
+        const obsId = row[ObsExportCsvHeader.ObservationId];
+        const matchingObs = observationMap.get(obsId);
+        if (matchingObs) {
+          this.writeToCsv(matchingObs, row, csvStream);
+        }
       });
-      return { data: readStream, status: HttpStatus.OK };
+
+      parser.on("end", () => {
+        csvStream.end();
+      });
+
+      parser.on("error", (err) => {
+        this.logger.error("CSV parsing error:", err);
+      });
+
+      // Stream the original obsExport string into parser
+      const exportStream = require("stream").Readable.from([obsExport]);
+      exportStream.pipe(parser);
+
+      return {
+        data: fs.createReadStream(filePath),
+        status: HttpStatus.OK,
+      };
     } catch (err) {
       this.logger.error(err);
+      throw new BadRequestException({
+        status: HttpStatus.BAD_REQUEST,
+        error: err?.message || "Failed to prepare CSV export data",
+      });
     }
   }
 
@@ -171,7 +141,7 @@ export class SearchService {
       const res = await firstValueFrom(
         this.httpService.get(url, {
           params: params,
-        })
+        }),
       );
       if (res.status === HttpStatus.OK) return res;
     } catch (err) {
@@ -229,8 +199,7 @@ export class SearchService {
       Observed_Property_ID: obsExport[ObsExportCsvHeader.ObservedPropertyId],
       CAS_Number: obsExport[ObsExportCsvHeader.CasNumber],
       Result_Value: obsExport[ObsExportCsvHeader.ResultValue],
-      Method_Detection_Limit:
-        obsExport[ObsExportCsvHeader.MethodDetectionLimit],
+      Method_Detection_Limit: obsExport[ObsExportCsvHeader.MethodDetectionLimit],
       Method_Reporting_Limit: obsExport[ObsExportCsvHeader.MethodReportingUnit],
       Result_Unit: obsExport[ObsExportCsvHeader.ResultUnit],
       Detection_Condition: obsExport[ObsExportCsvHeader.DetectionCondition],
@@ -245,9 +214,7 @@ export class SearchService {
       Result_Grade: obsExport[ObsExportCsvHeader.ResultGrade],
       Activity_Name: obsExport[ObsExportCsvHeader.ActivityName],
       Tissue_Type: "",
-      Lab_Arrival_Temperature: this.getLabArrivalTemp(
-        specimen?.extendedAttributes
-      ),
+      Lab_Arrival_Temperature: this.getLabArrivalTemp(specimen?.extendedAttributes),
       Specimen_Name: obsExport[ObsExportCsvHeader.SpecimenName],
       Lab_Quality_Flag: obsExport[ObsExportCsvHeader.LabQualityFlag],
       Lab_Arrival_Date_Time: obsExport[ObsExportCsvHeader.LabArrivalDateTime],
@@ -257,8 +224,7 @@ export class SearchService {
       Lab_Comment: obsExport[ObsExportCsvHeader.LabComment],
       Lab_Batch_ID: obsExport[ObsExportCsvHeader.LabBatchId],
       QC_Type: obsExport[ObsExportCsvHeader.QCType],
-      QC_Source_Activity_Name:
-        obsExport[ObsExportCsvHeader.QCSourceActivityName],
+      QC_Source_Activity_Name: obsExport[ObsExportCsvHeader.QCSourceActivityName],
       Validation_Warnings: obsExport[ObsExportCsvHeader.ValidationWarnings],
       Standards_Violation: obsExport[ObsExportCsvHeader.StandardsViolation],
     });
@@ -305,16 +271,12 @@ export class SearchService {
     return this.getDataFromObj(arr, "text");
   }
 
-  private async getDropdwnOptions(
-    url: string,
-    params: any,
-    sortBy: string | null
-  ): Promise<any> {
+  private async getDropdwnOptions(url: string, params: any, sortBy: string | null): Promise<any> {
     try {
       const res = await firstValueFrom(
         this.httpService.get(url, {
           params: params,
-        })
+        }),
       );
       if (res.status === HttpStatus.OK) {
         const dataArr = JSON.parse(res.data).domainObjects;
@@ -335,11 +297,7 @@ export class SearchService {
   }
 
   public getLocationTypes(): Promise<AxiosResponse<any>> {
-    return this.getDropdwnOptions(
-      this.getAbsoluteUrl(process.env.LOCATION_TYPE_CODE_TABLE_API),
-      null,
-      "customId"
-    );
+    return this.getDropdwnOptions(this.getAbsoluteUrl(process.env.LOCATION_TYPE_CODE_TABLE_API), null, "customId");
   }
 
   public getLocationNames(query: string): Promise<AxiosResponse<any>> {
@@ -348,11 +306,7 @@ export class SearchService {
       search: query,
       sort: "asc",
     };
-    return this.getDropdwnOptions(
-      this.getAbsoluteUrl(process.env.LOCATION_NAME_CODE_TABLE_API),
-      params,
-      "name"
-    );
+    return this.getDropdwnOptions(this.getAbsoluteUrl(process.env.LOCATION_NAME_CODE_TABLE_API), params, "name");
   }
 
   public getPermitNumbers(query: string): Promise<AxiosResponse<any>> {
@@ -360,11 +314,7 @@ export class SearchService {
       limit: this.MAX_DROPDWN_OPTIONS_LIMIT,
       search: query,
     };
-    return this.getDropdwnOptions(
-      this.getAbsoluteUrl(process.env.PERMIT_NUMBER_CODE_TABLE_API),
-      params,
-      null
-    );
+    return this.getDropdwnOptions(this.getAbsoluteUrl(process.env.PERMIT_NUMBER_CODE_TABLE_API), params, null);
   }
 
   public getMediums(query: string): Promise<AxiosResponse<any>> {
@@ -372,11 +322,7 @@ export class SearchService {
       limit: this.MAX_DROPDWN_OPTIONS_LIMIT,
       search: query,
     };
-    return this.getDropdwnOptions(
-      this.getAbsoluteUrl(process.env.MEDIA_CODE_TABLE_API),
-      params,
-      null
-    );
+    return this.getDropdwnOptions(this.getAbsoluteUrl(process.env.MEDIA_CODE_TABLE_API), params, null);
   }
 
   public getObservedProperties(query: string): Promise<AxiosResponse<any>> {
@@ -384,11 +330,7 @@ export class SearchService {
       limit: this.MAX_DROPDWN_OPTIONS_LIMIT,
       search: query,
     };
-    return this.getDropdwnOptions(
-      this.getAbsoluteUrl(process.env.OBSERVED_PROPERTIES_CODE_TABLE_API),
-      params,
-      null
-    );
+    return this.getDropdwnOptions(this.getAbsoluteUrl(process.env.OBSERVED_PROPERTIES_CODE_TABLE_API), params, null);
   }
 
   public getProjects(query: string): Promise<AxiosResponse<any>> {
@@ -396,10 +338,6 @@ export class SearchService {
       limit: this.MAX_DROPDWN_OPTIONS_LIMIT,
       search: query,
     };
-    return this.getDropdwnOptions(
-      this.getAbsoluteUrl(process.env.PROJECTS_CODE_TABLE_API),
-      params,
-      null
-    );
+    return this.getDropdwnOptions(this.getAbsoluteUrl(process.env.PROJECTS_CODE_TABLE_API), params, null);
   }
 }

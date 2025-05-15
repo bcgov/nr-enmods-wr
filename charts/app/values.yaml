@@ -50,7 +50,7 @@ backend:
     #-- resources specific to vault initContainer. it is optional and is an object.
     resources:
       limits:
-        cpu: 100m
+        cpu: 150m
         memory: 512Mi
       requests:
         cpu: 50m

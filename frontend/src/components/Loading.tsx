@@ -6,6 +6,8 @@ export default function Loading(props: any) {
   return (
     <Backdrop
       sx={{
+        color: "#fff",
+        backgroundColor: "rgba(0, 0, 0, 0.7)",
         zIndex: (theme) => theme.zIndex.drawer + 1,
         display: "flex",
         flexDirection: "column",

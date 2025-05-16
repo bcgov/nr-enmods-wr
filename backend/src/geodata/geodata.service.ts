@@ -1,7 +1,13 @@
+import "multer";
 import { Injectable, Logger } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
 import axios from "axios";
 import * as crypto from "crypto";
+import * as fs from "fs";
+import * as path from "path";
+import { exec } from "child_process";
+import { promisify } from "util";
+import archiver from "archiver";
 
 // If these IDs are not consistent across environments, we will need to fetch them instead.
 const EXTENDED_ATTRIBUTES = {
@@ -13,16 +19,41 @@ const EXTENDED_ATTRIBUTES = {
 @Injectable()
 export class GeodataService {
   private readonly logger = new Logger("GeodataService");
+  private readonly execAsync = promisify(exec);
+  private readonly tempDir = "/tmp/geodata";
+
+  constructor() {
+    // Ensure temp directory exists
+    if (!fs.existsSync(this.tempDir)) {
+      fs.mkdirSync(this.tempDir, { recursive: true });
+    }
+  }
 
   // Run at midnight
   // @Cron("0 0 0 * * *")
-  @Cron("30 * * * * *")
+  @Cron("0 * * * * *")
   async processAndUpload(): Promise<void> {
-    this.logger.log("Starting sampling location cron job.");
-    const rawData = await this.fetchSamplingLocations();
-    const transformedDataFile = this.transformData(rawData);
-    await this.saveToS3(transformedDataFile);
-    this.logger.log("Finished sampling location cron job.");
+    try {
+      this.logger.debug("Starting sampling location cron job");
+
+      this.logger.debug("Fetching Sampling Locations");
+      const rawData = await this.fetchSamplingLocations();
+      this.logger.debug("Generating gdb zip and georeferenced csv file");
+      const { csvFile, gdbFile } = await this.transformData(rawData);
+
+      this.logger.debug("Saving gdb zip and csv file to S3");
+      await this.saveToS3(csvFile);
+      await this.saveToS3(gdbFile);
+
+      this.logger.debug("Cleaning up temp files");
+      // Cleanup temporary files
+      fs.unlinkSync(csvFile.path);
+      fs.unlinkSync(gdbFile.path);
+      this.logger.debug("Finished sampling location cron job");
+    } catch (error) {
+      this.logger.error(`Error in processAndUpload: ${error.message}`);
+      throw error;
+    }
   }
 
   async fetchSamplingLocations(): Promise<any> {
@@ -53,7 +84,7 @@ export class GeodataService {
       cursor = response.data.cursor || null;
       total = response.data.totalCount || 0;
 
-      this.logger.log(
+      this.logger.debug(
         `Fetched ${entries.length} entries from /v1/samplinglocations. Processed: ${processedCount}/${total}`,
       );
 
@@ -62,12 +93,12 @@ export class GeodataService {
       loopCount++;
       // Log progress periodically
       if (loopCount % 5 === 0 || processedCount >= total) {
-        this.logger.log(`Progress: ${processedCount}/${total}`);
+        this.logger.debug(`Progress: ${processedCount}/${total}`);
       }
 
       // Break if we've processed all expected entries
       if (processedCount >= total) {
-        this.logger.log(`Completed fetching data for /v1/samplinglocations`);
+        this.logger.debug(`Completed fetching data for /v1/samplinglocations`);
         break;
       }
 
@@ -94,10 +125,11 @@ export class GeodataService {
   }
 
   /**
-   * Takes the raw data from aqi and simplifies it, converts it to file buffer
+   * Generates gdb zip and georeferenced csv file from the raw data
    * @param rawData
    * @returns
-   */ transformData(rawData: any) {
+   */
+  async transformData(rawData: any) {
     let transformedData: any;
     try {
       // Transform into GeoJSON format
@@ -119,13 +151,11 @@ export class GeodataService {
             locationGroupNames:
               location.samplingLocationGroups.map((group) => group.name) || [],
             locationType: location.type.customId,
-            // We need to get this somehow
             watershedGroupName: null,
             watershedGroupCode: null,
             elevation: location.elevation?.value || null,
             elevationUnit: location.elevation?.unit?.customId || null,
             horizontalCollectionMethod: location.horizontalCollectionMethod,
-            // These fields do not seem to be a part of the sampling locations api
             numberOfObservations: null,
             numberOfFieldVisits: null,
             earliestFieldVisit: null,
@@ -145,26 +175,66 @@ export class GeodataService {
           },
         })),
       };
-      const jsonString = JSON.stringify(transformedData, null, 2); // formats the file nicely but increases the size by 60%
-      const buffer = Buffer.from(jsonString, "utf-8");
+
       const dateString = new Date()
         .toISOString()
         .replaceAll(".", "")
         .replaceAll(":", "");
-      const file: Express.Multer.File = {
+
+      // Save GeoJSON to temp file
+      const geojsonPath = path.join(
+        this.tempDir,
+        `samplinglocations-${dateString}.geojson`,
+      );
+      const jsonString = JSON.stringify(transformedData, null, 2);
+      fs.writeFileSync(geojsonPath, jsonString, "utf-8");
+
+      // Convert to GDB (creates a directory)
+      const gdbPath = await this.convertToGdb(geojsonPath, dateString);
+
+      // Zip the GDB directory
+      const gdbZipPath = `${gdbPath}.zip`;
+      await new Promise((resolve, reject) => {
+        const output = fs.createWriteStream(gdbZipPath);
+        const archive = archiver("zip", { zlib: { level: 9 } });
+        output.on("close", resolve);
+        archive.on("error", reject);
+        archive.pipe(output);
+        archive.directory(gdbPath, false);
+        archive.finalize();
+      });
+
+      // Convert to georeferenced CSV using ogr2ogr
+      const csvPath = await this.convertToCsv(geojsonPath, dateString);
+
+      // Create file objects for both formats
+      const csvFile: Express.Multer.File = {
         fieldname: "file",
-        originalname: `samplinglocations-${dateString}.geojson`,
+        originalname: path.basename(csvPath),
         encoding: "7bit",
-        mimetype: "application/geo+json",
-        buffer: buffer,
-        size: buffer.length,
+        mimetype: "text/csv",
+        buffer: fs.readFileSync(csvPath),
+        size: fs.statSync(csvPath).size,
         stream: null,
-        destination: null,
-        filename: null,
-        path: null,
+        destination: this.tempDir,
+        filename: path.basename(csvPath),
+        path: csvPath,
       };
 
-      return file;
+      const gdbFile: Express.Multer.File = {
+        fieldname: "file",
+        originalname: path.basename(gdbZipPath),
+        encoding: "7bit",
+        mimetype: "application/zip",
+        buffer: fs.readFileSync(gdbZipPath),
+        size: fs.statSync(gdbZipPath).size,
+        stream: null,
+        destination: this.tempDir,
+        filename: path.basename(gdbZipPath),
+        path: gdbZipPath,
+      };
+
+      return { csvFile, gdbFile };
     } catch (error) {
       console.error("Error during transformation:", error);
     }
@@ -214,6 +284,48 @@ export class GeodataService {
       });
     } catch (error) {
       this.logger.error("Error uploading file to object store:", error);
+      throw error;
+    }
+  }
+
+  private async convertToGdb(
+    geojsonPath: string,
+    dateString: string,
+  ): Promise<string> {
+    const gdbPath = path.join(this.tempDir, `output_${dateString}.gdb`);
+
+    try {
+      const { stdout, stderr } = await this.execAsync(
+        `ogr2ogr -f "OpenFileGDB" "${gdbPath}" "${geojsonPath}"`,
+      );
+      if (stderr) {
+        this.logger.warn(`GDB conversion warning: ${stderr}`);
+      }
+      return gdbPath;
+    } catch (error) {
+      this.logger.error(`Failed to convert to GDB: ${error.message}`);
+      throw error;
+    }
+  }
+
+  private async convertToCsv(
+    geojsonPath: string,
+    dateString: string,
+  ): Promise<string> {
+    const csvPath = path.join(
+      this.tempDir,
+      `samplinglocations-${dateString}.csv`,
+    );
+    try {
+      const { stdout, stderr } = await this.execAsync(
+        `ogr2ogr -f "CSV" "${csvPath}" "${geojsonPath}" -lco GEOMETRY=AS_XY`,
+      );
+      if (stderr) {
+        this.logger.warn(`CSV conversion warning: ${stderr}`);
+      }
+      return csvPath;
+    } catch (error) {
+      this.logger.error(`Failed to convert to CSV: ${error.message}`);
       throw error;
     }
   }

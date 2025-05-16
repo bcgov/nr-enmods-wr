@@ -1,26 +1,32 @@
 # Build
-FROM osgeo/gdal:alpine-small-latest AS base
+FROM ghcr.io/osgeo/gdal:alpine-small-3.11.0 AS builder
 
+# Install dependencies and show versions
 RUN apk add --no-cache nodejs npm
 
 # Copy, build static files; see .dockerignore for exclusions
 WORKDIR /app
 COPY . ./
-RUN npm run deploy
+RUN npm ci && npm run build
 
-# Deploy using minimal Distroless image
-FROM gcr.io/distroless/nodejs22-debian12:nonroot
+# Create final image
+FROM ghcr.io/osgeo/gdal:alpine-small-3.11.0
+
+# Install Node.js and show versions
+RUN apk add --no-cache nodejs npm
+
 ENV NODE_ENV=production
 
 # Copy app and dependencies
 WORKDIR /app
-COPY --from=build /app/node_modules ./node_modules
-COPY --from=build /app/dist ./dist
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/dist ./dist
 
 # Boilerplate, not used in OpenShift/Kubernetes
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=3s CMD curl -f http://localhost:3000/api
 
+RUN ls -l /app/dist
+
 # Nonroot user, limit heap size to 512 MB
-USER nonroot
-CMD ["--max-old-space-size=512", "/app/dist/main"]
+CMD ["node", "--max-old-space-size=512", "/app/dist/main.js"]

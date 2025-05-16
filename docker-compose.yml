@@ -2,15 +2,24 @@
 services:
   backend:
     container_name: backend
-    entrypoint: sh -c "npm i && npm run start:dev"
+    # entrypoint: sh -c "npm i && npm run start:dev"
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     environment:
       NODE_ENV: development
-    image: node:22
+      OBJECTSTORE_URL: ${OBJECTSTORE_URL}
+      OBJECTSTORE_ACCESS_KEY: ${OBJECTSTORE_ACCESS_KEY}
+      OBJECTSTORE_SECRET_KEY: ${OBJECTSTORE_SECRET_KEY}
+      OBJECTSTORE_BUCKET: ${OBJECTSTORE_BUCKET}
+      BASE_URL_BC_API: ${BASE_URL_BC_API}
+      API_KEY: ${API_KEY}
+      AUTH_TOKEN: ${AUTH_TOKEN}
+    # image: node:22
     ports: ["3001:3000"]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/api"]
     working_dir: "/app"
-    volumes: ["./backend:/app", "/app/node_modules"]
 
   frontend:
     container_name: frontend

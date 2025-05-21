@@ -30,26 +30,33 @@ export class GeodataService {
   }
 
   // Run at midnight
-  // @Cron("0 0 0 * * *")
-  @Cron("0 * * * * *")
+  // @Cron("0 24 16 * * *")
+  @Cron("0 0 0 * * *")
   async processAndUpload(): Promise<void> {
     try {
+      const start = Date.now();
       this.logger.debug("Starting sampling location cron job");
 
       this.logger.debug("Fetching Sampling Locations");
-      const rawData = await this.fetchSamplingLocations();
+      // const rawData = await this.fetchSamplingLocations();
       this.logger.debug("Generating gdb zip and georeferenced csv file");
-      const { csvFile, gdbFile } = await this.transformData(rawData);
+      // const { csvFile, gdbFile } = await this.transformData(rawData);
+      const { csvFile, gdbFile } = await this.transformData(null);
 
       this.logger.debug("Saving gdb zip and csv file to S3");
-      await this.saveToS3(csvFile);
-      await this.saveToS3(gdbFile);
+      // await this.saveToS3(csvFile);
+      // await this.saveToS3(gdbFile);
 
       this.logger.debug("Cleaning up temp files");
       // Cleanup temporary files
-      fs.unlinkSync(csvFile.path);
-      fs.unlinkSync(gdbFile.path);
+      // fs.unlinkSync(csvFile.path);
+      // fs.unlinkSync(gdbFile.path);
       this.logger.debug("Finished sampling location cron job");
+      const timeTaken = Date.now() - start;
+      const totalSeconds = Math.floor(timeTaken / 1000);
+      const minutes = totalSeconds / 60;
+      const seconds = totalSeconds % 60;
+      console.log(`Time Taken: ${minutes} minutes ${seconds} seconds`);
     } catch (error) {
       this.logger.error(`Error in processAndUpload: ${error.message}`);
       throw error;
@@ -133,48 +140,48 @@ export class GeodataService {
     let transformedData: any;
     try {
       // Transform into GeoJSON format
-      transformedData = {
-        type: "FeatureCollection",
-        features: rawData.map((location) => ({
-          type: "Feature",
-          geometry: {
-            type: "Point",
-            coordinates: [
-              location.longitude ? parseFloat(location.longitude) : null,
-              location.latitude ? parseFloat(location.latitude) : null,
-            ],
-          },
-          properties: {
-            id: location.id,
-            name: location.name,
-            comments: location.description,
-            locationGroupNames:
-              location.samplingLocationGroups.map((group) => group.name) || [],
-            locationType: location.type.customId,
-            watershedGroupName: null,
-            watershedGroupCode: null,
-            elevation: location.elevation?.value || null,
-            elevationUnit: location.elevation?.unit?.customId || null,
-            horizontalCollectionMethod: location.horizontalCollectionMethod,
-            numberOfObservations: null,
-            numberOfFieldVisits: null,
-            earliestFieldVisit: null,
-            mostRecentFieldVisit: null,
-            closedDate: this.getExtendedAttributeValue(
-              location.extendedAttributes,
-              EXTENDED_ATTRIBUTES.closedDate,
-            ),
-            establishedDate: this.getExtendedAttributeValue(
-              location.extendedAttributes,
-              EXTENDED_ATTRIBUTES.establishedDate,
-            ),
-            wellTagNumber: this.getExtendedAttributeValue(
-              location.extendedAttributes,
-              EXTENDED_ATTRIBUTES.wellTagNumber,
-            ),
-          },
-        })),
-      };
+      // transformedData = {
+      //   type: "FeatureCollection",
+      //   features: rawData.map((location) => ({
+      //     type: "Feature",
+      //     geometry: {
+      //       type: "Point",
+      //       coordinates: [
+      //         location.longitude ? parseFloat(location.longitude) : null,
+      //         location.latitude ? parseFloat(location.latitude) : null,
+      //       ],
+      //     },
+      //     properties: {
+      //       id: location.id,
+      //       name: location.name,
+      //       comments: location.description,
+      //       locationGroupNames:
+      //         location.samplingLocationGroups.map((group) => group.name) || [],
+      //       locationType: location.type.customId,
+      //       watershedGroupName: null,
+      //       watershedGroupCode: null,
+      //       elevation: location.elevation?.value || null,
+      //       elevationUnit: location.elevation?.unit?.customId || null,
+      //       horizontalCollectionMethod: location.horizontalCollectionMethod,
+      //       numberOfObservations: null,
+      //       numberOfFieldVisits: null,
+      //       earliestFieldVisit: null,
+      //       mostRecentFieldVisit: null,
+      //       closedDate: this.getExtendedAttributeValue(
+      //         location.extendedAttributes,
+      //         EXTENDED_ATTRIBUTES.closedDate,
+      //       ),
+      //       establishedDate: this.getExtendedAttributeValue(
+      //         location.extendedAttributes,
+      //         EXTENDED_ATTRIBUTES.establishedDate,
+      //       ),
+      //       wellTagNumber: this.getExtendedAttributeValue(
+      //         location.extendedAttributes,
+      //         EXTENDED_ATTRIBUTES.wellTagNumber,
+      //       ),
+      //     },
+      //   })),
+      // };
 
       const dateString = new Date()
         .toISOString()
@@ -186,8 +193,12 @@ export class GeodataService {
         this.tempDir,
         `samplinglocations-${dateString}.geojson`,
       );
-      const jsonString = JSON.stringify(transformedData, null, 2);
-      fs.writeFileSync(geojsonPath, jsonString, "utf-8");
+      // const jsonString = JSON.stringify(transformedData, null, 2);
+      // fs.writeFileSync(geojsonPath, jsonString, "utf-8");
+      const featuresWithWatershed = await this.addWatershedToGeojson(
+        "/app/dist/geodata/sl.geojson",
+        dateString,
+      );
 
       // Convert to GDB (creates a directory)
       const gdbPath = await this.convertToGdb(geojsonPath, dateString);
@@ -326,6 +337,57 @@ export class GeodataService {
       return csvPath;
     } catch (error) {
       this.logger.error(`Failed to convert to CSV: ${error.message}`);
+      throw error;
+    }
+  }
+
+  private async addWatershedToGeojson(
+    geojsonPath: string,
+    dateString: string,
+  ): Promise<any[]> {
+    const watershedGdbPath = path.resolve(
+      __dirname,
+      "FWA_WATERSHED_GROUPS_POLY.gdb",
+    );
+    const watershedLayer = "WHSE_BASEMAPPING_FWA_WATERSHED_GROUPS_POLY";
+    const vrtPath = path.join(this.tempDir, `watershed_geo.vrt`);
+    const outputPath = path.join(this.tempDir, `slw.geojson`);
+    const geojsonLayerName = `sl`;
+
+    const vrtXml = `
+      <OGRVRTDataSource>
+        <OGRVRTLayer name="${geojsonLayerName}">
+          <SrcDataSource>${geojsonPath}</SrcDataSource>
+          <GeometryType>wkbPoint</GeometryType>
+          <LayerSRS>EPSG:4326</LayerSRS>
+        </OGRVRTLayer>
+        <OGRVRTLayer name="${watershedLayer}">
+          <SrcDataSource>${watershedGdbPath}</SrcDataSource>
+          <SrcLayer>${watershedLayer}</SrcLayer>
+          <GeometryType>wkbPolygon</GeometryType>
+          <LayerSRS>EPSG:4269</LayerSRS>
+        </OGRVRTLayer>
+      </OGRVRTDataSource>`;
+
+    fs.writeFileSync(vrtPath, vrtXml.trim());
+
+    const sql = `
+    SELECT p.*, w.WATERSHED_GROUP_CODE, w.WATERSHED_GROUP_NAME
+    FROM ${geojsonLayerName} p
+    LEFT JOIN ${watershedLayer} w
+    ON ST_Intersects(p.geometry, w.geometry)
+  `.replace(/\s+/g, " ");
+
+    const ogrCmd = `ogr2ogr -f GeoJSON "${outputPath}" "${vrtPath}" -dialect sqlite -sql "${sql}"`;
+
+    try {
+      const { stdout, stderr } = await this.execAsync(ogrCmd);
+      if (stderr) this.logger.warn(`Watershed join stderr: ${stderr}`);
+      const joined = JSON.parse(fs.readFileSync(outputPath, "utf-8"));
+      console.log("COMPLETE");
+      return joined.features;
+    } catch (error) {
+      this.logger.error(`Watershed join failed: ${error.message}`);
       throw error;
     }
   }

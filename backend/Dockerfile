@@ -22,7 +22,6 @@ WORKDIR /app
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/src/util/FWA_WATERSHED_GROUPS_POLY.gdb ./dist/geodata/FWA_WATERSHED_GROUPS_POLY.gdb
-COPY --from=builder /app/src/util/sl.geojson ./dist/geodata/sl.geojson
 
 # Boilerplate, not used in OpenShift/Kubernetes
 EXPOSE 3000

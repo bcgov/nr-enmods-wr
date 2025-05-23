@@ -1,0 +1,16 @@
+export enum SearchAttr {
+  LocationType = "locationType",
+  LocationName = "locationName",
+  LocationGroup = "locationGroup",
+  PermitNo = "permitNumber",
+  Media = "media",
+  ObservedPropertyGrp = "observedPropertyGrp",
+  ObservedProperty = "observedProperty",
+  WorkedOrderNo = "workedOrderNo",
+  SamplingAgency = "samplingAgency",
+  AnalyzingAgency = "analyzingAgency",
+  AnalyticalMethod = "analyticalMethod",
+  Projects = "projects",
+  FromDate = "fromDate",
+  ToDate = "toDate",
+}

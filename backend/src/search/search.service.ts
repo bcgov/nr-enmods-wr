@@ -10,6 +10,7 @@ import { ObsExportCsvHeader } from "src/enum/obsExportCsvHeader.enum";
 import * as fs from "fs";
 import * as fastcsv from "@fast-csv/format";
 import { parse } from "csv-parse";
+import { rawListeners } from "process";
 
 @Injectable()
 export class SearchService {
@@ -301,12 +302,21 @@ export class SearchService {
   }
 
   public getLocationNames(query: string): Promise<AxiosResponse<any>> {
+    console.log(query);
     const params = {
       limit: this.MAX_DROPDWN_OPTIONS_LIMIT,
       search: query,
       sort: "asc",
     };
     return this.getDropdwnOptions(this.getAbsoluteUrl(process.env.LOCATION_NAME_CODE_TABLE_API), params, "name");
+  }
+
+  public getLocationGroups(query: string): Promise<AxiosResponse<any>> {
+    const params = {
+      limit: this.MAX_DROPDWN_OPTIONS_LIMIT,
+      search: query,
+    };
+    return this.getDropdwnOptions(this.getAbsoluteUrl(process.env.LOCATION_GROUP_CODE_TABLE_API), params, "name");
   }
 
   public getPermitNumbers(query: string): Promise<AxiosResponse<any>> {
@@ -325,12 +335,12 @@ export class SearchService {
     return this.getDropdwnOptions(this.getAbsoluteUrl(process.env.MEDIA_CODE_TABLE_API), params, null);
   }
 
-  public getObservedProperties(query: string): Promise<AxiosResponse<any>> {
+  public getObservedPropertyGroups(query: string): Promise<AxiosResponse<any>> {
     const params = {
       limit: this.MAX_DROPDWN_OPTIONS_LIMIT,
       search: query,
     };
-    return this.getDropdwnOptions(this.getAbsoluteUrl(process.env.OBSERVED_PROPERTIES_CODE_TABLE_API), params, null);
+    return this.getDropdwnOptions(this.getAbsoluteUrl(process.env.OBSERVED_PROPERTIES_GROUP_CODE_TABLE_API), params, null);
   }
 
   public getProjects(query: string): Promise<AxiosResponse<any>> {
@@ -340,4 +350,46 @@ export class SearchService {
     };
     return this.getDropdwnOptions(this.getAbsoluteUrl(process.env.PROJECTS_CODE_TABLE_API), params, null);
   }
+
+  public getAnalyticalMethods(query: string): Promise<AxiosResponse<any>> {
+    const params = {
+      limit: this.MAX_DROPDWN_OPTIONS_LIMIT,
+      search: query,
+    };
+    return this.getDropdwnOptions(this.getAbsoluteUrl(process.env.ANALYTICAL_METHOD_CODE_TABLE_API), params, null);
+  }
+
+  public getAnalyzingAgencies(query: string): Promise<AxiosResponse<any>> {
+    const params = {
+      limit: this.MAX_DROPDWN_OPTIONS_LIMIT,
+      search: query,
+    };
+    return this.getDropdwnOptions(this.getAbsoluteUrl(process.env.ANALYZING_AGENCY_CODE_TABLE_API), params, null);
+  }
+
+  public getObservedProperties(query: string): Promise<AxiosResponse<any>> {
+    const params = {
+      limit: this.MAX_DROPDWN_OPTIONS_LIMIT,
+      search: query,
+    };
+    return this.getDropdwnOptions(this.getAbsoluteUrl(process.env.OBSERVED_PROPERTIES_CODE_TABLE_API), params, null);
+  }
+
+  public getWorkedOrderNos(query: string): Promise<AxiosResponse<any>> {
+    const params = {
+      limit: this.MAX_DROPDWN_OPTIONS_LIMIT,
+      search: query,
+    };
+    return this.getDropdwnOptions(this.getAbsoluteUrl(process.env.WORKED_ORDER_NO_CODE_TABLE_API), params, null);
+  }
+
+  public getSamplingAgencies(query: string): Promise<AxiosResponse<any>> {
+    const params = {
+      limit: this.MAX_DROPDWN_OPTIONS_LIMIT,
+      search: query,
+    };
+    return this.getDropdwnOptions(this.getAbsoluteUrl(process.env.SAMPLING_AGENCY_CODE_TABLE_API), params, null);
+  }
+
+
 }

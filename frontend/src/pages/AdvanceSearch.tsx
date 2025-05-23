@@ -4,20 +4,192 @@ import {
   Accordion,
   AccordionDetails,
   AccordionSummary,
+  Autocomplete,
   Grid,
+  Paper,
   TextField,
 } from "@mui/material"
 import { GridExpandMoreIcon } from "@mui/x-data-grid"
 import TitleText from "@/components/TitleText"
 import TooltipInfo from "@/components/TooltipInfo"
+import LocationParametersForm from "@/components/search/LocationParametersForm"
+import { useEffect, useState } from "react"
+import FilterResultsForm from "@/components/search/FilterResultsForm"
+import { sanitizeSortModel } from "~/@mui/x-data-grid/hooks/features/sorting/gridSortingUtils"
+import AdditionalCriteria from "@/components/search/AdditionalCriteria"
+import { SearchAttr } from "@/enum/searchEnum"
+import apiService from "@/service/api-service"
+import { API_VERSION } from "@/util/utility"
 
 type Props = {}
 
 const AdvanceSearch = (props: Props) => {
+  const [locationTypes, setLocationTypes] = useState([])
+  const [locationNames, setLocationNames] = useState([])
+  const [permitNumbers, setPermitNumbers] = useState([])
+  const [projects, setProjects] = useState([])
+  const [locationGroups, setLocationGroups] = useState([])
+  const [observeredProperties, setObservedProperties] = useState([])
+  const [observedPropGroups, setObservedPropGroups] = useState([])
+  const [workedOrderNos, setWorkedOrderNos] = useState([])
+  const [analyzingAgencies, setAnalyzingAgencies] = useState([])
+  const [analyticalMethods, setAnalyticalMethods] = useState([])
+  const [samplingAgencies, setSamplingAgencies] = useState([])
+  const [mediums, setMediums] = useState([])
+  const [collectionMethods, setCollectionMethods] = useState([])
+  const [qcSampleTypes, setQcSampleTypes] = useState([])
+  const [dataClassifications, setDataClassifications] = useState([])
+  const [sampleDepths, setSampleDepths] = useState([])
+  const [specimenIds, setSpecimenIds] = useState([])
+
+  const dropdowns = {
+    location: {
+      locationTypes: locationTypes,
+      locationNames: locationNames,
+      locationGroups: locationGroups,
+      permitNumbers: permitNumbers,
+    },
+    filterResult: {
+      mediums: mediums,
+      projects: projects,
+      observedPropGroups: observedPropGroups,
+      observeredProperties: observeredProperties,
+      workedOrderNos: workedOrderNos,
+      samplingAgencies: samplingAgencies,
+      analyzingAgencies: analyzingAgencies,
+      analyticalMethods: analyticalMethods,
+    },
+    additionalCriteria: {
+      collectionMethods: collectionMethods,
+      qcSampleTypes: qcSampleTypes,
+      dataClassifications: dataClassifications,
+      sampleDepths: sampleDepths,
+      specimenIds: specimenIds,
+    },
+  }
+
+  const [formData, setFormData] = useState({
+    locationName: [],
+    locationType: [],
+    permitNumber: [],
+    media: [],
+    observedPropertyGrp: [],
+    observedProperty: [],
+    workedOrderNo: [],
+    samplingAgency: [],
+    analyzingAgency: [],
+    projects: [],
+    analyticalMethod: [],
+  })
+
+  useEffect(() => {
+    getDropdownOptions(SearchAttr.ObservedPropertyGrp, "")
+    getDropdownOptions(SearchAttr.Media, "")
+    getDropdownOptions(SearchAttr.PermitNo, "")
+    getDropdownOptions(SearchAttr.LocationName, "")
+    getDropdownOptions(SearchAttr.LocationType, "")
+    getDropdownOptions(SearchAttr.Projects, "")
+    getDropdownOptions(SearchAttr.LocationGroup, "")
+    getDropdownOptions(SearchAttr.WorkedOrderNo, "")
+    getDropdownOptions(SearchAttr.ObservedProperty, "")
+    getDropdownOptions(SearchAttr.SamplingAgency, "")
+    getDropdownOptions(SearchAttr.AnalyzingAgency, "")
+    getDropdownOptions(SearchAttr.AnalyticalMethod, "")
+  }, [])
+
+  const dropdwnUrl = (fieldName: string, query: string): string | undefined => {
+    if (fieldName) {
+      switch (fieldName) {
+        case SearchAttr.ObservedPropertyGrp:
+          return `${API_VERSION}/search/getObservedPropertyGroups?search=${query}`
+        case SearchAttr.Media:
+          return `${API_VERSION}/search/getMediums?search=${query}`
+        case SearchAttr.PermitNo:
+          return `${API_VERSION}/search/getPermitNumbers?search=${query}`
+        case SearchAttr.LocationName:
+          return `${API_VERSION}/search/getLocationNames?search=${query}`
+        case SearchAttr.LocationType:
+          return `${API_VERSION}/search/getLocationTypes`
+        case SearchAttr.Projects:
+          return `${API_VERSION}/search/getProjects?search=${query}`
+        case SearchAttr.LocationGroup:
+          return `${API_VERSION}/search/getLocationGroups?search=${query}`
+        case SearchAttr.AnalyticalMethod:
+          return `${API_VERSION}/search/getAnalyticalMethods?search=${query}`
+        case SearchAttr.AnalyzingAgency:
+          return `${API_VERSION}/search/getAnalyzingAgencies?search=${query}`
+        case SearchAttr.ObservedProperty:
+          return `${API_VERSION}/search/getObservedProperties?search=${query}`
+        case SearchAttr.WorkedOrderNo:
+          return `${API_VERSION}/search/getWorkedOrderNos?search=${query}`
+        case SearchAttr.SamplingAgency:
+          return `${API_VERSION}/search/getSamplingAgencies?search=${query}`
+        default:
+          break
+      }
+    }
+  }
+  const getDropdownOptions = async (
+    fieldName: string,
+    query: string,
+  ): Promise<void> => {
+    try {
+      const url = dropdwnUrl(fieldName, query)
+      if (url) {
+        const apiData = await apiService.getAxiosInstance().get(url)
+        if (apiData.status === 200) {
+          const response = apiData.data
+          switch (fieldName) {
+            case SearchAttr.ObservedPropertyGrp:
+              setObservedPropGroups(response)
+              break
+            case SearchAttr.Media:
+              setMediums(response)
+              break
+            case SearchAttr.PermitNo:
+              setPermitNumbers(response)
+              break
+            case SearchAttr.LocationName:
+              setLocationNames(response)
+              break
+            case SearchAttr.LocationType:
+              setLocationTypes(response)
+              break
+            case SearchAttr.LocationGroup:
+              setLocationGroups(response)
+              break
+            case SearchAttr.Projects:
+              setProjects(response)
+              break
+            case SearchAttr.ObservedProperty:
+              setObservedProperties(response)
+              break
+            case SearchAttr.WorkedOrderNo:
+              setWorkedOrderNos(response)
+              break
+            case SearchAttr.SamplingAgency:
+              setSamplingAgencies(response)
+              break
+            case SearchAttr.AnalyticalMethod:
+              setAnalyticalMethods(response)
+              break
+            case SearchAttr.AnalyzingAgency:
+              setAnalyzingAgencies(response)
+              break
+            default:
+              break
+          }
+        }
+      }
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
   return (
     <>
-      <div className="padding-1">
-        <div className="flex-row">
+      <div className="p-2">
+        <div className="flex-row px-1 py-4">
           <Link to="/search/basic" className="search-btn">
             Basic
           </Link>
@@ -28,9 +200,9 @@ const AdvanceSearch = (props: Props) => {
         </div>
 
         <form noValidate>
-          <div className="padding-1">
+          <div className="">
             {/* Select Location Parameter  */}
-            <Accordion>
+            <Accordion defaultExpanded>
               <AccordionSummary
                 expandIcon={<GridExpandMoreIcon />}
                 aria-controls="select-location-parameter-content"
@@ -44,237 +216,27 @@ const AdvanceSearch = (props: Props) => {
                 />
               </AccordionSummary>
               <AccordionDetails>
-                <p>
-                  Specify location paramerters to describe the spatial extent of
-                  the desired dataset. All fields are optional.
-                </p>
+                <TitleText
+                  text="Specify location paramerters to describe the spatial extent of
+                  the desired dataset. All fields are optional."
+                  variant="subtitle1"
+                  sx={{ p: 1 }}
+                />
 
-                <Grid container spacing={2}>
-                  <Grid item xs={3}>
-                    <div className="flex-row">
-                      <TitleText
-                        variant="subtitle1"
-                        text="Location Type"
-                        sx={{ fontWeight: 600 }}
-                      />
-                      <TooltipInfo title="Location Type" />
-                    </div>
-                    <div>
-                      <TextField
-                        variant="outlined"
-                        size="small"
-                        name="locationType"
-                        value={""}
-                      />
-                    </div>
-                    <div className="flex-row">
-                      <TitleText
-                        variant="subtitle1"
-                        text="Location Name or ID"
-                        sx={{ fontWeight: 600 }}
-                      />
-                      <TooltipInfo title="Location Name or ID" />
-                    </div>
-                    <div>
-                      <TextField
-                        variant="outlined"
-                        size="small"
-                        name="locationType"
-                        value={""}
-                      />
-                    </div>
-                    <div className="flex-row">
-                      <TitleText
-                        variant="subtitle1"
-                        text="Permit ID"
-                        sx={{ fontWeight: 600 }}
-                      />
-                      <TooltipInfo title="Permit ID" />
-                    </div>
-                    <div>
-                      <TextField
-                        variant="outlined"
-                        size="small"
-                        name="locationType"
-                        value={""}
-                      />
-                    </div>
-                  </Grid>
-                  <Grid item xs={3}>
-                    <div className="flex-row">
-                      <TitleText
-                        variant="subtitle1"
-                        text="Point Location"
-                        sx={{ fontWeight: 600 }}
-                      />
-                      <TooltipInfo title="Point Location" />
-                    </div>
-                    <div className="flex-row">
-                      <TitleText
-                        variant="body1"
-                        text="Within"
-                        sx={{ fontWeight: 500 }}
-                      />
-                    </div>
-                    <div>
-                      <TextField
-                        variant="outlined"
-                        size="small"
-                        name="within"
-                        value={""}
-                      />
-                    </div>
-                    <div className="flex-row">
-                      <TitleText
-                        variant="body1"
-                        text="kilometers of"
-                        sx={{ fontWeight: 500 }}
-                      />
-                    </div>
-                    <div className="flex-row">
-                      <TitleText
-                        variant="body1"
-                        text="Latitude"
-                        sx={{ fontWeight: 500 }}
-                      />
-                    </div>
-                    <div>
-                      <TextField
-                        variant="outlined"
-                        size="small"
-                        name="within"
-                        value={""}
-                      />
-                    </div>
-                    <div className="flex-row">
-                      <TitleText
-                        variant="body1"
-                        text="Longitude"
-                        sx={{ fontWeight: 500 }}
-                      />
-                    </div>
-                    <div>
-                      <TextField
-                        variant="outlined"
-                        size="small"
-                        name="within"
-                        value={""}
-                      />
-                    </div>
-                    <div className="padding-y-1">
-                      <Btn text="Use my Location" size="small" />
-                    </div>
-                  </Grid>
-                  <Grid item xs={3}>
-                    <div className="flex-row">
-                      <TitleText
-                        variant="subtitle1"
-                        text="Bounding Box"
-                        sx={{ fontWeight: 600 }}
-                      />
-                      <TooltipInfo title="Bounding Box" />
-                    </div>
-                    <div className="flex-row">
-                      <TitleText
-                        variant="body1"
-                        text="North:"
-                        sx={{ fontWeight: 500 }}
-                      />
-                    </div>
-                    <div>
-                      <TextField
-                        variant="outlined"
-                        size="small"
-                        name="north"
-                        value={""}
-                      />
-                    </div>
-                    <div className="flex-row">
-                      <TitleText
-                        variant="body1"
-                        text="South:"
-                        sx={{ fontWeight: 500 }}
-                      />
-                    </div>
-                    <div>
-                      <TextField
-                        variant="outlined"
-                        size="small"
-                        name="south"
-                        value={""}
-                      />
-                    </div>
-                    <div className="flex-row">
-                      <TitleText
-                        variant="body1"
-                        text="East:"
-                        sx={{ fontWeight: 500 }}
-                      />
-                    </div>
-                    <div>
-                      <TextField
-                        variant="outlined"
-                        size="small"
-                        name="east"
-                        value={""}
-                      />
-                    </div>
-                    <div className="flex-row">
-                      <TitleText
-                        variant="body1"
-                        text="West:"
-                        sx={{ fontWeight: 500 }}
-                      />
-                    </div>
-                    <div>
-                      <TextField
-                        variant="outlined"
-                        size="small"
-                        name="west"
-                        value={""}
-                      />
-                    </div>
-                  </Grid>
-                  <Grid item xs={3}>
-                    <div className="flex-row">
-                      <TitleText
-                        variant="subtitle1"
-                        text="Project Name"
-                        sx={{ fontWeight: 600 }}
-                      />
-                      <TooltipInfo title="Project Name" />
-                    </div>
-                    <div>
-                      <TextField
-                        variant="outlined"
-                        size="small"
-                        name="locationType"
-                        value={""}
-                      />
-                    </div>
-
-                    <div className="flex-row">
-                      <TitleText
-                        variant="subtitle1"
-                        text="Location Group"
-                        sx={{ fontWeight: 600 }}
-                      />
-                      <TooltipInfo title="Location Group" />
-                    </div>
-                    <div>
-                      <TextField
-                        variant="outlined"
-                        size="small"
-                        name="locationType"
-                        value={""}
-                      />
-                    </div>
-                  </Grid>
-                </Grid>
+                <div className="mb-0">
+                  <LocationParametersForm
+                    formData={formData}
+                    locationDropdwns={dropdowns.location}
+                    handleInputChange={""}
+                    handleOnChange={""}
+                    searchType="advance"
+                  />
+                </div>
               </AccordionDetails>
             </Accordion>
+
             {/* Filter Results */}
-            <Accordion>
+            <Accordion defaultExpanded>
               <AccordionSummary
                 expandIcon={<GridExpandMoreIcon />}
                 aria-controls="filter-results-content"
@@ -288,233 +250,26 @@ const AdvanceSearch = (props: Props) => {
                 />
               </AccordionSummary>
               <AccordionDetails>
-                <p>
-                  Specify data source, date range, and sampling filters to apply
-                  to the desired dataset. All fields are optional.
-                </p>
+                <TitleText
+                  text="Specify data source, date range, and sampling filters to apply
+                  to the desired dataset. All fields are optional."
+                  variant="subtitle1"
+                  sx={{ p: 1 }}
+                />
 
-                <Grid container spacing={2}>
-                  <Grid item xs={4}>
-                    <div className="flex-row">
-                      <TitleText
-                        variant="subtitle1"
-                        text="Sample Medium"
-                        sx={{ fontWeight: 600 }}
-                      />
-                      <TooltipInfo title="Location Type" />
-                    </div>
-                    <div>
-                      <TextField
-                        variant="outlined"
-                        size="small"
-                        name="locationType"
-                        value={""}
-                      />
-                    </div>
-                    <div className="flex-row">
-                      <TitleText
-                        variant="subtitle1"
-                        text="Observed Property Group"
-                        sx={{ fontWeight: 600 }}
-                      />
-                      <TooltipInfo title="Location Name or ID" />
-                    </div>
-                    <div>
-                      <TextField
-                        variant="outlined"
-                        size="small"
-                        name="locationType"
-                        value={""}
-                      />
-                    </div>
-                    <div className="flex-row">
-                      <TitleText
-                        variant="subtitle1"
-                        text="Observed Property"
-                        sx={{ fontWeight: 600 }}
-                      />
-                      <TooltipInfo title="Permit ID" />
-                    </div>
-                    <div>
-                      <TextField
-                        variant="outlined"
-                        size="small"
-                        name="locationType"
-                        value={""}
-                      />
-                    </div>
-                    <div className="flex-row">
-                      <TitleText
-                        variant="subtitle1"
-                        text="Worked Order Number"
-                        sx={{ fontWeight: 600 }}
-                      />
-                      <TooltipInfo title="Permit ID" />
-                    </div>
-                    <div>
-                      <TextField
-                        variant="outlined"
-                        size="small"
-                        name="locationType"
-                        value={""}
-                      />
-                    </div>
-                  </Grid>
-
-                  <Grid item xs={4}>
-                    <div className="flex-row">
-                      <TitleText
-                        variant="subtitle1"
-                        text="Sampling Agency"
-                        sx={{ fontWeight: 600 }}
-                      />
-                      <TooltipInfo title="Point Location" />
-                    </div>
-
-                    <div>
-                      <TextField
-                        variant="outlined"
-                        size="small"
-                        name="within"
-                        value={""}
-                      />
-                    </div>
-
-                    <div className="flex-row">
-                      <TitleText
-                        variant="subtitle1"
-                        text="Analyzing Agency"
-                        sx={{ fontWeight: 600 }}
-                      />
-                      <TooltipInfo title="Point Location" />
-                    </div>
-                    <div>
-                      <TextField
-                        variant="outlined"
-                        size="small"
-                        name="within"
-                        value={""}
-                      />
-                    </div>
-                    <div className="flex-row">
-                      <TitleText
-                        variant="subtitle1"
-                        text="Analytical Method"
-                        sx={{ fontWeight: 600 }}
-                      />
-                      <TooltipInfo title="Point Location" />
-                    </div>
-                    <div>
-                      <TextField
-                        variant="outlined"
-                        size="small"
-                        name="within"
-                        value={""}
-                      />
-                    </div>
-
-                    <div className="flex-row">
-                      <TitleText
-                        variant="subtitle1"
-                        text="Taxonomic Name"
-                        sx={{ fontWeight: 600 }}
-                      />
-                      <TooltipInfo title="Point Location" />
-                    </div>
-                    <div>
-                      <TextField
-                        variant="outlined"
-                        size="small"
-                        name="within"
-                        value={""}
-                      />
-                    </div>
-                  </Grid>
-
-                  <Grid item xs={4}>
-                    <div className="flex-row">
-                      <TitleText
-                        variant="subtitle1"
-                        text="Date Range"
-                        sx={{ fontWeight: 600 }}
-                      />
-                      <TooltipInfo title="Project Name" />
-                    </div>
-                    <div className="flex-row">
-                      <TitleText
-                        variant="body2"
-                        text="Dates should be entered as mm-dd-yyyy, mm-yyyy. or yyyy"
-                        sx={{ fontWeight: 500 }}
-                      />
-                    </div>
-                    <div className="flex-row">
-                      <TitleText
-                        variant="body2"
-                        text="from:"
-                        sx={{ fontWeight: 500 }}
-                      />
-                    </div>
-                    <div>
-                      <TextField
-                        variant="outlined"
-                        size="small"
-                        name="locationType"
-                        value={""}
-                      />
-                    </div>
-
-                    <div className="flex-row">
-                      <TitleText
-                        variant="body2"
-                        text="to:"
-                        sx={{ fontWeight: 500 }}
-                      />
-                    </div>
-                    <div>
-                      <TextField
-                        variant="outlined"
-                        size="small"
-                        name="to"
-                        value={""}
-                      />
-                    </div>
-
-                    <div className="flex-row">
-                      <TitleText
-                        variant="subtitle1"
-                        text="Minimum Sampling Activities Per location"
-                        sx={{ fontWeight: 600 }}
-                      />
-                      <TooltipInfo title="Project Name" />
-                    </div>
-                    <div>
-                      <TextField
-                        variant="outlined"
-                        size="small"
-                        name="locationType"
-                        value={""}
-                      />
-                    </div>
-                    <div className="flex-row">
-                      <TitleText
-                        variant="subtitle1"
-                        text="Minimum Results Per location"
-                        sx={{ fontWeight: 600 }}
-                      />
-                      <TooltipInfo title="Project Name" />
-                    </div>
-                    <div>
-                      <TextField
-                        variant="outlined"
-                        size="small"
-                        name="locationType"
-                        value={""}
-                      />
-                    </div>
-                  </Grid>
-                </Grid>
+                <div className="mb-5">
+                  <FilterResultsForm
+                    formData={formData}
+                    filterResultDrpdwns={dropdowns.filterResult}
+                    handleInputChange={""}
+                    handleOnChange={""}
+                    handleOnChangeDatepicker={""}
+                    searchType="advance"
+                  />
+                </div>
               </AccordionDetails>
             </Accordion>
+
             {/* Additional Criteria */}
             <Accordion>
               <AccordionSummary
@@ -530,182 +285,33 @@ const AdvanceSearch = (props: Props) => {
                 />
               </AccordionSummary>
               <AccordionDetails>
-                <p>
-                  Specify data source, date range, and sampling filters to apply
-                  to the desired dataset. All fields are optional.
-                </p>
+                <TitleText
+                  text="Specify data source, date range, and sampling filters to apply
+                  to the desired dataset. All fields are optional."
+                  variant="subtitle1"
+                  sx={{ p: 1 }}
+                />
 
-                <Grid container spacing={2}>
-                  <Grid item xs={4}>
-                    <div className="flex-row">
-                      <TitleText
-                        variant="subtitle1"
-                        text="Collection Method"
-                        sx={{ fontWeight: 600 }}
-                      />
-                    </div>
-                    <div>
-                      <TextField
-                        variant="outlined"
-                        size="small"
-                        name="collectionMethod"
-                        value={""}
-                      />
-                    </div>
-                    <div className="flex-row">
-                      <TitleText
-                        variant="subtitle1"
-                        text="QC Sample Type"
-                        sx={{ fontWeight: 600 }}
-                      />
-                      <TooltipInfo title="QC Sample Type" />
-                    </div>
-                    <div>
-                      <TextField
-                        variant="outlined"
-                        size="small"
-                        name="qcSampleType"
-                        value={""}
-                      />
-                    </div>
-                    <div className="flex-row">
-                      <TitleText
-                        variant="subtitle1"
-                        text="Data Classification"
-                        sx={{ fontWeight: 600 }}
-                      />
-                      <TooltipInfo title="Data Classification" />
-                    </div>
-                    <div>
-                      <TextField
-                        variant="outlined"
-                        size="small"
-                        name="dataClassification"
-                        value={""}
-                      />
-                    </div>
-                    <div className="flex-row">
-                      <TitleText
-                        variant="subtitle1"
-                        text="Sample Depth (m)"
-                        sx={{ fontWeight: 600 }}
-                      />
-                      <TooltipInfo title="Sample Depth" />
-                    </div>
-                    <div>
-                      <TextField
-                        variant="outlined"
-                        size="small"
-                        name="sampleDepth"
-                        value={""}
-                      />
-                    </div>
-                  </Grid>
-
-                  <Grid item xs={4}>
-                    <div className="flex-row">
-                      <TitleText
-                        variant="subtitle1"
-                        text="Units"
-                        sx={{ fontWeight: 600 }}
-                      />
-                      <TooltipInfo title="Units" />
-                    </div>
-
-                    <div>
-                      <TextField
-                        variant="outlined"
-                        size="small"
-                        name="units"
-                        value={""}
-                      />
-                    </div>
-
-                    <div className="flex-row">
-                      <TitleText
-                        variant="subtitle1"
-                        text="Specimen ID"
-                        sx={{ fontWeight: 600 }}
-                      />
-                      <TooltipInfo title="Specimen ID" />
-                    </div>
-                    <div>
-                      <TextField
-                        variant="outlined"
-                        size="small"
-                        name="specimenId"
-                        value={""}
-                      />
-                    </div>
-                  </Grid>
-
-                  <Grid item xs={4}>
-                    <div className="flex-row">
-                      <TitleText
-                        variant="subtitle1"
-                        text="Lab Arrival Date Range"
-                        sx={{ fontWeight: 600 }}
-                      />
-                    </div>
-                    <div className="flex-row">
-                      <TitleText
-                        variant="body2"
-                        text="Dates should be entered as mm-dd-yyyy, mm-yyyy. or yyyy"
-                        sx={{ fontWeight: 500 }}
-                      />
-                    </div>
-                    <div className="flex-row">
-                      <TitleText
-                        variant="body2"
-                        text="from:"
-                        sx={{ fontWeight: 500 }}
-                      />
-                    </div>
-                    <div>
-                      <TextField
-                        variant="outlined"
-                        size="small"
-                        name="from"
-                        value={""}
-                      />
-                    </div>
-
-                    <div className="flex-row">
-                      <TitleText
-                        variant="body2"
-                        text="to:"
-                        sx={{ fontWeight: 500 }}
-                      />
-                    </div>
-                    <div>
-                      <TextField
-                        variant="outlined"
-                        size="small"
-                        name="to"
-                        value={""}
-                      />
-                    </div>
-
-                    <div className="flex-row">
-                      <TitleText
-                        variant="subtitle1"
-                        text="Lab Batch ID"
-                        sx={{ fontWeight: 600 }}
-                      />
-                      <TooltipInfo title="Lab Batch ID" />
-                    </div>
-                    <div>
-                      <TextField
-                        variant="outlined"
-                        size="small"
-                        name="labBatchId"
-                        value={""}
-                      />
-                    </div>
-                  </Grid>
-                </Grid>
+                {/* <AdditionalCriteria
+                  additionalCriteriaDrpdwns={dropdowns.additionalCriteria}
+                /> */}
               </AccordionDetails>
             </Accordion>
+          </div>
+
+          <div className="flex flex-row pt-6 ">
+            <Btn
+              text={"Clear Search"}
+              type="button"
+              // handleClick={clearForm}
+              sx={{ background: "#fff", color: "#0B5394", fontSize: "8pt" }}
+            />
+            <Btn
+              // disabled={isDisabled}
+              text={"Download"}
+              type={"submit"}
+              sx={{ fontSize: "8pt" }}
+            />
           </div>
         </form>
       </div>

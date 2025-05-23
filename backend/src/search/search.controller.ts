@@ -63,8 +63,15 @@ export class SearchController {
 
   @Get("getLocationNames")
   public getLocacationNames(@Req() req: Request) {
+    console.log("HELLO");
     const query: any = req.query.search;
     return this.searchService.getLocationNames(query);
+  }
+
+  @Get("getLocationGroups")
+  public getLocationGroups(@Req() req: Request) {
+    const query: any = req.query.search;
+    return this.searchService.getLocationGroups(query);
   }
 
   @Get("getPermitNumbers")
@@ -85,9 +92,39 @@ export class SearchController {
     return this.searchService.getMediums(query);
   }
 
+  @Get("getObservedPropertyGroups")
+  public getObservedPropertyGroups(@Req() req: Request) {
+    const query: any = req.query.search;
+    return this.searchService.getObservedPropertyGroups(query);
+  }
+
+  @Get("getAnalyticalMethods")
+  public getAnalyticalMethods(@Req() req: Request) {
+    const query: any = req.query.search;
+    return this.searchService.getAnalyticalMethods(query);
+  }
+
+  @Get("getAnalyzingAgencies")
+  public getAnalyzingAgencies(@Req() req: Request) {
+    const query: any = req.query.search;
+    return this.searchService.getAnalyzingAgencies(query);
+  }
+
   @Get("getObservedProperties")
   public getObservedProperties(@Req() req: Request) {
     const query: any = req.query.search;
     return this.searchService.getObservedProperties(query);
+  }
+
+  @Get("getWorkedOrderNos")
+  public getWorkedOrderNos(@Req() req: Request) {
+    const query: any = req.query.search;
+    return this.searchService.getWorkedOrderNos(query);
+  }
+
+  @Get("getSamplingAgencies")
+  public getSamplingAgencies(@Req() req: Request) {
+    const query: any = req.query.search;
+    return this.searchService.getSamplingAgencies(query);
   }
 }

@@ -4,7 +4,7 @@ import { FileInfo } from "./geodata/entities/file-info.entity";
 const ormconfig: TypeOrmModuleOptions = {
   logging: ["error"],
   type: "postgres",
-  host: process.env.POSTGRES_HOST || "localhost",
+  host: process.env.POSTGRES_HOST || "postgres",
   port: 5432,
   database: process.env.POSTGRES_DATABASE || "enmodswr",
   username: process.env.POSTGRES_USER || "enmodswr_user",

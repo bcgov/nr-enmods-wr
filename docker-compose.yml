@@ -16,6 +16,10 @@ services:
       OBJECTSTORE_FOLDER: ${OBJECTSTORE_FOLDER}
       API_KEY: ${API_KEY}
       AUTH_TOKEN: ${AUTH_TOKEN}
+      POSTGRES_HOST: postgres
+      POSTGRES_USER: enmodswr_user
+      POSTGRES_PASSWORD: enmodswr_password
+      POSTGRES_DATABASE: enmodswr_db
     # image: node:22
     ports: ["3001:3000"]
     healthcheck:
@@ -46,19 +50,18 @@ services:
     environment:
       POSTGRES_USER: enmodswr_user
       POSTGRES_PASSWORD: enmodswr_password
-      POSTGRES_DB: enmodswr
+      POSTGRES_DB: enmodswr_db
     ports:
       - '5432:5432'
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "enmodswr_user", "-d", "enmodswr"]
-
   migrations:
     image: flyway/flyway:10-alpine
     container_name: migrations
     command: migrate
     volumes: ["./migrations/sql:/flyway/sql:ro"]
     environment:
-      FLYWAY_URL: jdbc:postgresql://postgres:5432/enmodswr
+      FLYWAY_URL: jdbc:postgresql://postgres:5432/enmodswr_db
       FLYWAY_USER: enmodswr_user
       FLYWAY_PASSWORD: enmodswr_password
       FLYWAY_BASELINE_ON_MIGRATE: true

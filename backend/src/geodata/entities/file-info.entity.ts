@@ -13,6 +13,6 @@ export class FileInfo {
   @Column({ name: "file_name", type: "varchar", length: 100, nullable: false })
   file_name: string;
 
-  @CreateDateColumn({ name: "when_created", type: "timestamp" })
-  when_created: Date;
+  @CreateDateColumn({ name: "date_created", type: "timestamp" })
+  date_created: Date;
 }

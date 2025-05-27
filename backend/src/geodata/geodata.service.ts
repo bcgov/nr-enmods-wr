@@ -8,6 +8,9 @@ import * as path from "path";
 import { exec } from "child_process";
 import { promisify } from "util";
 import archiver from "archiver";
+import { InjectRepository } from "@nestjs/typeorm";
+import { FileInfo } from "./entities/file-info.entity";
+import { Repository } from "typeorm";
 
 // If these IDs are not consistent across environments, we will need to fetch them instead.
 const EXTENDED_ATTRIBUTES = {
@@ -18,7 +21,10 @@ const EXTENDED_ATTRIBUTES = {
 
 @Injectable()
 export class GeodataService {
-  constructor() {
+  constructor(
+    @InjectRepository(FileInfo)
+    private readonly fileInfoRepository: Repository<FileInfo>,
+  ) {
     // Ensure temp directory exists
     if (!fs.existsSync(this.tempDir)) {
       fs.mkdirSync(this.tempDir, { recursive: true });
@@ -32,30 +38,40 @@ export class GeodataService {
   private readonly samplingLocationsEndpoint =
     process.env.SAMPLING_LOCATIONS_ENDPOINT;
 
-  @Cron("30 59 21 * * *")
+  @Cron("30 38 21 * * *")
   async processAndUpload(): Promise<void> {
     try {
       const start = Date.now();
       this.logger.debug("Starting sampling location cron job");
+      // Used for file names & datebase timestamp
+      const newDate = new Date();
+      // Fetch latest gpkg from S3
+      const { latestFilePath, latestDateCreated } =
+        await this.fetchLatestGpkg();
+      // Fetch data that has been uploaded since the last run
+      const rawData = await this.fetchSamplingLocations(latestDateCreated);
+      // Transform the raw data to geojson format
+      const transformedData = await this.transformData(rawData);
+      // Perform intersections & write the files locally
+      const { gdbPath, csvPath, gpkgPath } = await this.intersectAndGenerate(
+        latestFilePath,
+        transformedData,
+        newDate,
+      );
+      // Upload the files to S3
+      await this.uploadFiles(gdbPath, csvPath, gpkgPath);
 
-      // this.logger.debug("Fetching Sampling Locations");
-      // const rawData = await this.fetchSamplingLocations();
-      // this.logger.debug("Generating gdb zip and georeferenced csv file");
-      // const { csvFile, gdbFile } = await this.transformData(rawData);
+      // Save a file info entry into the database
+      await this.saveNewFileInfo(path.basename(gpkgPath), newDate);
 
-      // this.logger.debug("Saving gdb zip and csv file to S3");
-      // await this.saveToS3(csvFile);
-      // await this.saveToS3(gdbFile);
-
-      // // Clean up generated geojson/gpkg files
-      // await this.cleanUpFiles();
-      await this.fullTest();
+      // Clean up the locally generated files
+      await this.cleanUpFiles();
 
       // Timer logs
       this.logger.debug("Finished sampling location cron job");
       const end = Date.now();
       this.logger.debug(
-        `Time Taken: ${Math.floor((end - start) / 60000)} minutes ${Math.floor(((end - start) / 1000) % 60)} seconds`,
+        `Time Taken: ${Math.floor((end - start) / 3600000)} hours, ${Math.floor(((end - start) / 60000) % 60)} minutes ${Math.floor(((end - start) / 1000) % 60)} seconds`,
       );
     } catch (error) {
       this.logger.error(`Error in processAndUpload: ${error.message}`);
@@ -63,10 +79,150 @@ export class GeodataService {
     }
   }
 
+  async saveNewFileInfo(fileName: string, dateCreated: Date) {
+    const newFileInfo = this.fileInfoRepository.create({
+      file_name: fileName,
+      date_created: dateCreated,
+    });
+    await this.fileInfoRepository.save(newFileInfo);
+  }
+
+  async fetchLatestGpkg(): Promise<{
+    latestFilePath: string;
+    latestDateCreated: Date;
+  } | null> {
+    this.logger.debug("Attempting to fetch the latest GPKG file.");
+
+    // 1. Get file info from database with most recent date_created value
+    let latestFileInfo;
+    try {
+      latestFileInfo = await this.fileInfoRepository.findOne({
+        where: {},
+        order: { date_created: "DESC" },
+      });
+    } catch (dbError) {
+      this.logger.error(
+        `Error fetching latest file info from database: ${dbError.message}`,
+        dbError.stack,
+      );
+      return null;
+    }
+
+    if (!latestFileInfo) {
+      this.logger.warn("No file information found in the database.");
+      return null;
+    }
+
+    const fileName = latestFileInfo.file_name;
+    if (!fileName) {
+      this.logger.error(
+        `File information found (ID: ${latestFileInfo.id}), but file_name is missing.`,
+      );
+      return null;
+    }
+
+    this.logger.debug(`Latest file to fetch from S3: ${fileName}`);
+
+    // 2. Fetch that file from the S3 bucket
+    const OBJECTSTORE_URL = process.env.OBJECTSTORE_URL;
+    const OBJECTSTORE_ACCESS_KEY = process.env.OBJECTSTORE_ACCESS_KEY;
+    const OBJECTSTORE_SECRET_KEY = process.env.OBJECTSTORE_SECRET_KEY;
+    const OBJECTSTORE_BUCKET = process.env.OBJECTSTORE_BUCKET;
+    const OBJECTSTORE_FOLDER = process.env.OBJECTSTORE_FOLDER;
+
+    if (
+      !OBJECTSTORE_URL ||
+      !OBJECTSTORE_ACCESS_KEY ||
+      !OBJECTSTORE_SECRET_KEY ||
+      !OBJECTSTORE_BUCKET ||
+      !OBJECTSTORE_FOLDER
+    ) {
+      this.logger.error(
+        "S3 object store configuration is incomplete. Check environment variables.",
+      );
+      return null;
+    }
+
+    const dateValue = new Date().toUTCString();
+    const stringToSign = `GET\n\n\n${dateValue}\n/${OBJECTSTORE_BUCKET}/${OBJECTSTORE_FOLDER}/${fileName}`;
+
+    const signature = crypto
+      .createHmac("sha1", OBJECTSTORE_SECRET_KEY)
+      .update(stringToSign)
+      .digest("base64");
+
+    const requestUrl = `${OBJECTSTORE_URL}/${OBJECTSTORE_BUCKET}/${OBJECTSTORE_FOLDER}/${fileName}`;
+
+    const headers = {
+      Authorization: `AWS ${OBJECTSTORE_ACCESS_KEY}:${signature}`,
+      Date: dateValue,
+    };
+
+    let s3response;
+    try {
+      this.logger.debug(`Fetching ${fileName} from S3 URL: ${requestUrl}`);
+      s3response = await axios({
+        method: "get",
+        url: requestUrl,
+        headers: headers,
+        responseType: "stream",
+      });
+
+      if (s3response.status !== 200) {
+        this.logger.error(
+          `Failed to fetch file from S3. Status: ${s3response.status}`,
+        );
+        return null;
+      }
+      this.logger.debug(`Successfully fetched ${fileName} from S3.`);
+    } catch (error) {
+      this.logger.error(
+        `Error fetching file ${fileName} from S3: ${error.message}`,
+        error.stack,
+      );
+      return null;
+    }
+    // 3. Save that file to /tmp/geodata/
+    // The tempDir is '/tmp/geodata' and is ensured to exist in the constructor.
+    const filePath = path.join(this.tempDir, fileName);
+
+    try {
+      // Create a write stream for the file
+      const fileStream = fs.createWriteStream(filePath);
+
+      // Pipe the s3response stream to the file
+      await new Promise<void>((resolve, reject) => {
+        s3response.data.pipe(fileStream);
+        fileStream.on("finish", () => {
+          resolve();
+        });
+        fileStream.on("error", (err) => {
+          reject(err);
+        });
+        s3response.data.on("error", (err) => {
+          reject(err);
+        });
+      });
+
+      this.logger.log(`Successfully saved ${fileName} to ${filePath}`);
+      // Return the path to the saved file & latest timestamp
+      return {
+        latestFilePath: filePath,
+        latestDateCreated: latestFileInfo.date_created,
+      };
+    } catch (error) {
+      this.logger.error(
+        `Error saving file ${fileName} to ${filePath}: ${error.message}`,
+        error.stack,
+      );
+      return null;
+    }
+  }
+
   /**
    * Fetches all sampling location entries.
    */
-  async fetchSamplingLocations(): Promise<any> {
+  async fetchSamplingLocations(latestDateCreated: Date): Promise<any> {
     let cursor = "";
     let total = 0;
     let processedCount = 0;
@@ -79,9 +235,20 @@ export class GeodataService {
       "token " + process.env.AUTH_TOKEN;
     axios.defaults.headers.common["x-api-key"] = process.env.AUTH_TOKEN;
 
+    this.logger.log("Fetching sampling locations...");
+    const start = Date.now();
     do {
-      const url = `${this.baseUrl}${this.samplingLocationsEndpoint}${cursor ? `?limit=1000&cursor=${cursor}` : "?limit=1000"}`;
-      // const url = `${baseSUrl + "v1/samplinglocations"}${cursor ? `?limit=100&cursor=${cursor}` : "?limit=100"}`;
+      const pstDate = latestDateCreated
+        ? new Date(
+            latestDateCreated.toLocaleString("en-US", {
+              timeZone: "America/Los_Angeles",
+            }),
+          ).toISOString()
+        : null;
+      const startModificationTime = pstDate
+        ? `&startModificationTime="${pstDate}"`
+        : "";
+      const url = `${this.baseUrl}${this.samplingLocationsEndpoint}${cursor ? `?limit=1000${startModificationTime}&cursor=${cursor}` : `?limit=1000${startModificationTime}`}`;
       const response = await axios.get(url);
 
       if (response.status != 200) {
@@ -94,8 +261,8 @@ export class GeodataService {
       allEntries = allEntries.concat(entries);
       cursor = response.data.cursor || null;
       total = response.data.totalCount || 0;
-      // Logging
 
+      // Logging
       this.logger.debug(
         `Fetched ${entries.length} entries from /v1/samplinglocations. Processed: ${processedCount}/${total}`,
       );
@@ -121,20 +288,12 @@ export class GeodataService {
         );
         break;
       }
-      // break; // only grab the first 100 for now
     } while (cursor); // Continue only if a cursor is provided
-
-    return allEntries;
-  }
-
-  /**
-   * Helper function to grab extended attribute values
-   */
-  getExtendedAttributeValue(extendedAttributes: any[], attributeId: string) {
-    const attribute = extendedAttributes.find(
-      (attr) => attr.attributeId === attributeId,
+    const end = Date.now();
+    this.logger.debug(
+      `Fetching sampling locations complete, time taken: ${Math.floor((end - start) / 3600000)} hours, ${Math.floor(((end - start) / 60000) % 60)} minutes ${Math.floor(((end - start) / 1000) % 60)} seconds`,
     );
-    return attribute ? attribute.text : "NA";
+    return allEntries;
   }
 
   /**
@@ -170,10 +329,32 @@ export class GeodataService {
       }
       counter++;
     }
+    const end = Date.now();
     this.logger.debug(
-      `Fetching summaries complete, time taken: ${Math.floor((Date.now() - start) / 1000)}s`,
+      `Fetching summaries complete, time taken: ${Math.floor((end - start) / 3600000)} hours, ${Math.floor(((end - start) / 60000) % 60)} minutes ${Math.floor(((end - start) / 1000) % 60)} seconds`,
     );
-    return entries;
+    const summaryMap = new Map();
+    if (Array.isArray(entries)) {
+      for (let i = 0; i < entries.length; i++) {
+        const summary = entries[i];
+        // Try to match by id, fallback to index if not present
+        const locationId = rawData[i]?.id;
+        if (locationId) {
+          summaryMap.set(locationId, summary);
+        }
+      }
+    }
+    return summaryMap;
+  }
+
+  /**
+   * Helper function to grab extended attribute values
+   */
+  getExtendedAttributeValue(extendedAttributes: any[], attributeId: string) {
+    const attribute = extendedAttributes.find(
+      (attr) => attr.attributeId === attributeId,
+    );
+    return attribute ? attribute.text : "NA";
   }
 
   /**
@@ -189,20 +370,7 @@ export class GeodataService {
     let transformedData: any;
     try {
       // Transform into GeoJSON format (now for GPKG)
-      // Fetch summaries for all locations
-      const summaries = await this.fetchSummaries(rawData);
-      // Map summaries by location id for quick lookup
-      const summaryMap = new Map();
-      if (Array.isArray(summaries)) {
-        for (let i = 0; i < summaries.length; i++) {
-          const summary = summaries[i];
-          // Try to match by id, fallback to index if not present
-          const locationId = rawData[i]?.id;
-          if (locationId) {
-            summaryMap.set(locationId, summary);
-          }
-        }
-      }
+      const summaryMap = await this.fetchSummaries(rawData);
       transformedData = {
         type: "FeatureCollection",
         features: rawData.map((location) => {
@@ -259,50 +427,7 @@ export class GeodataService {
         }),
       };
 
-      // Perform intesect & generate final files
-      const { gdbPath, csvPath } =
-        await this.intersectAndGenerate(transformedData);
-
-      // Zip the GDB directory
-      const gdbZipPath = `${gdbPath}.zip`;
-      await new Promise((resolve, reject) => {
-        const output = fs.createWriteStream(gdbZipPath);
-        const archive = archiver("zip", { zlib: { level: 9 } });
-        output.on("close", resolve);
-        archive.on("error", reject);
-        archive.pipe(output);
-        archive.directory(gdbPath, false);
-        archive.finalize();
-      });
-
-      // Create file objects for both formats
-      const csvFile: Express.Multer.File = {
-        fieldname: "file",
-        originalname: path.basename(csvPath),
-        encoding: "7bit",
-        mimetype: "text/csv",
-        buffer: fs.readFileSync(csvPath),
-        size: fs.statSync(csvPath).size,
-        stream: null,
-        destination: this.tempDir,
-        filename: path.basename(csvPath),
-        path: csvPath,
-      };
-
-      const gdbFile: Express.Multer.File = {
-        fieldname: "file",
-        originalname: path.basename(gdbZipPath),
-        encoding: "7bit",
-        mimetype: "application/zip",
-        buffer: fs.readFileSync(gdbZipPath),
-        size: fs.statSync(gdbZipPath).size,
-        stream: null,
-        destination: this.tempDir,
-        filename: path.basename(gdbZipPath),
-        path: gdbZipPath,
-      };
-
-      return { csvFile, gdbFile };
+      return transformedData;
     } catch (error) {
       console.error("Error during transformation:", error);
     }
@@ -317,13 +442,24 @@ export class GeodataService {
    * @returns
    */
   private async intersectAndGenerate(
+    latestFilePath: string,
     transformedData: any,
-  ): Promise<{ gdbPath: string; csvPath: string }> {
-    const dateString = new Date()
-      .toISOString()
-      .replaceAll(".", "")
-      .replaceAll(":", "")
-      .replaceAll("-", "_");
+    newDate: Date,
+  ): Promise<{ gdbPath: string; csvPath: string; gpkgPath: string }> {
+    const start = Date.now();
+
+    const dateString = newDate
+      .toLocaleString("en-US", {
+        timeZone: "America/Los_Angeles",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+      })
+      .replace(/[\/\s,:]/g, "_");
     const watershedGdbPath = path.resolve(
       __dirname,
       "FWA_WATERSHED_GROUPS_POLY.gdb",
@@ -338,30 +474,57 @@ export class GeodataService {
       this.tempDir,
       `sampling_locations_${dateString}.csv`,
     );
-
-    // Save GeoJSON to temp file
+    const intersectedLayerName = "sampling_locations";
+    const gpkgOutputPath = path.join(
+      this.tempDir,
+      `intersect_${dateString}.gpkg`,
+    );
     const geojsonInputPath = path.join(
       this.tempDir,
       `input_${dateString}.geojson`,
     );
     const gpkgInputPath = path.join(this.tempDir, `input_${dateString}.gpkg`);
     const gpkgLayerName = `input_${dateString}`;
-    const jsonString = JSON.stringify(transformedData);
-    fs.writeFileSync(geojsonInputPath, jsonString, "utf-8");
 
-    // Convert GeoJSON to GPKG
+    // Copy the base GPKG to the output path
+    const gpkgPath = path.join(
+      this.tempDir,
+      `sampling_locations_${dateString}.gpkg`,
+    );
     try {
-      const { stdout, stderr } = await this.execAsync(
-        `ogr2ogr -f GPKG \"${gpkgInputPath}\" \"${geojsonInputPath}\" -nln ${gpkgLayerName}`,
+      this.logger.debug(
+        `Creating combined GPKG using ${latestFilePath} as base`,
       );
-      if (stderr) this.logger.warn(`GPKG conversion warning: ${stderr}`);
-    } catch (error) {
-      this.logger.error(`Failed to convert to GPKG: ${error.message}`);
+      const { stdout, stderr } = await this.execAsync(
+        `ogr2ogr -f GPKG "${gpkgPath}" "${latestFilePath}" -nln ${intersectedLayerName}`,
+      );
+      if (stderr) {
+        this.logger.warn(`Base GPKG copy stderr: ${stderr}`);
+      }
+    } catch (error: any) {
+      this.logger.error(`Base GPKG copy failed: ${error.message}`);
       throw error;
     }
 
-    // VRT for GPKG and GDB
-    const vrtXml = `
+    // Only upsert if there is new data to add
+    if (transformedData.length > 0) {
+      // Save GeoJSON to temp file
+      const jsonString = JSON.stringify(transformedData);
+      fs.writeFileSync(geojsonInputPath, jsonString, "utf-8");
+
+      // Convert GeoJSON to GPKG
+      try {
+        const { stdout, stderr } = await this.execAsync(
+          `ogr2ogr -f GPKG \"${gpkgInputPath}\" \"${geojsonInputPath}\" -nln ${gpkgLayerName}`,
+        );
+        if (stderr) this.logger.warn(`GPKG conversion warning: ${stderr}`);
+      } catch (error) {
+        this.logger.error(`Failed to convert to GPKG: ${error.message}`);
+        throw error;
+      }
+
+      // VRT for GPKG and GDB
+      const vrtXml = `
       <OGRVRTDataSource>
         <OGRVRTLayer name="${gpkgLayerName}">
           <SrcDataSource>${gpkgInputPath}</SrcDataSource>
@@ -376,11 +539,10 @@ export class GeodataService {
           <LayerSRS>EPSG:4269</LayerSRS>
         </OGRVRTLayer>
       </OGRVRTDataSource>`;
-    fs.writeFileSync(vrtPath, vrtXml.trim());
+      fs.writeFileSync(vrtPath, vrtXml.trim());
 
-    const start = Date.now();
-    this.logger.debug("Intesecting data...");
-    const sql = `
+      this.logger.debug("Intesecting data...");
+      const sql = `
       SELECT
         p.*,
         MIN(w.WATERSHED_GROUP_CODE) AS watershedGroupCode,
@@ -391,30 +553,45 @@ export class GeodataService {
       GROUP BY p.id
     `.replace(/\s+/g, " ");
 
-    this.logger.debug("Generating Watershed Intersected GPKG");
-    // Generate GPKG as the intersection output
-    const intersectedLayerName = "sampling_locations";
-    const intersectedGpkgPath = path.join(
-      this.tempDir,
-      `output_${dateString}.gpkg`,
-    );
-    try {
-      const { stdout, stderr } = await this.execAsync(
-        `ogr2ogr -f GPKG "${intersectedGpkgPath}" "${vrtPath}" -dialect sqlite -sql "${sql}" -nln ${intersectedLayerName}`,
-      );
-      if (stderr) {
-        this.logger.warn(`Watershed join stderr: ${stderr}`);
+      this.logger.debug("Generating Watershed Intersected GPKG");
+      // Generate GPKG as the intersection output
+
+      try {
+        const { stdout, stderr } = await this.execAsync(
+          `ogr2ogr -f GPKG "${gpkgOutputPath}" "${vrtPath}" -dialect sqlite -sql "${sql}" -nln ${intersectedLayerName}`,
+        );
+        if (stderr) {
+          this.logger.warn(`Watershed join stderr: ${stderr}`);
+        }
+      } catch (error: any) {
+        this.logger.error(`Watershed join failed: ${error.message}`);
+        throw error;
       }
-    } catch (error: any) {
-      this.logger.error(`Watershed join failed: ${error.message}`);
-      throw error;
+
+      // Upsert the new data into the combined GPKG
+      try {
+        this.logger.debug(
+          `Upserting new data from ${gpkgOutputPath} into ${gpkgPath}`,
+        );
+        const { stdout, stderr } = await this.execAsync(
+          `ogr2ogr -f GPKG "${gpkgPath}" "${gpkgOutputPath}" -nln ${intersectedLayerName} -upsert`,
+        );
+        if (stderr) {
+          this.logger.warn(`New data upsert stderr: ${stderr}`);
+        }
+      } catch (error: any) {
+        this.logger.error(`New data upsert failed: ${error.message}`);
+        throw error;
+      }
+
+      this.logger.debug(`Successfully created combined GPKG at ${gpkgPath}`);
     }
 
-    this.logger.debug("Generating GDB");
     // generate gdb from GPKG
+    this.logger.debug("Generating GDB");
     try {
       const { stdout, stderr } = await this.execAsync(
-        `ogr2ogr -f "OpenFileGDB" "${gdbPath}" "${intersectedGpkgPath}" ${intersectedLayerName}`,
+        `ogr2ogr -f "OpenFileGDB" "${gdbPath}" "${gpkgPath}" ${intersectedLayerName}`,
       );
       if (stderr) {
         this.logger.warn(`GDB generate stderr: ${stderr}`);
@@ -428,7 +605,7 @@ export class GeodataService {
     // generate csv from GPKG
     try {
       const { stdout, stderr } = await this.execAsync(
-        `ogr2ogr -f "CSV" "${csvPath}" "${intersectedGpkgPath}" -lco GEOMETRY=AS_XY`,
+        `ogr2ogr -f "CSV" "${csvPath}" "${gpkgPath}" -lco GEOMETRY=AS_XY`,
       );
       if (stderr) {
         this.logger.warn(`CSV generate stderr: ${stderr}`);
@@ -440,7 +617,67 @@ export class GeodataService {
     this.logger.debug(
       `Intersect & file generation complete, time taken: ${Math.floor((Date.now() - start) / 1000)}s`,
     );
-    return { gdbPath, csvPath };
+
+    return { gdbPath, csvPath, gpkgPath };
+  }
+
+  async uploadFiles(gdbPath: string, csvPath: string, gpkgPath: string) {
+    // Zip the GDB directory
+    const gdbZipPath = `${gdbPath}.zip`;
+    await new Promise((resolve, reject) => {
+      const output = fs.createWriteStream(gdbZipPath);
+      const archive = archiver("zip", { zlib: { level: 9 } });
+      output.on("close", resolve);
+      archive.on("error", reject);
+      archive.pipe(output);
+      archive.directory(gdbPath, false);
+      archive.finalize();
+    });
+
+    const csvFile: Express.Multer.File = {
+      fieldname: "file",
+      originalname: path.basename(csvPath),
+      encoding: "7bit",
+      mimetype: "text/csv",
+      buffer: fs.readFileSync(csvPath),
+      size: fs.statSync(csvPath).size,
+      stream: null,
+      destination: this.tempDir,
+      filename: path.basename(csvPath),
+      path: csvPath,
+    };
+
+    const gdbFile: Express.Multer.File = {
+      fieldname: "file",
+      originalname: path.basename(gdbZipPath),
+      encoding: "7bit",
+      mimetype: "application/zip",
+      buffer: fs.readFileSync(gdbZipPath),
+      size: fs.statSync(gdbZipPath).size,
+      stream: null,
+      destination: this.tempDir,
+      filename: path.basename(gdbZipPath),
+      path: gdbZipPath,
+    };
+
+    const gpkgFile: Express.Multer.File = {
+      fieldname: "file",
+      originalname: path.basename(gpkgPath),
+      encoding: "7bit",
+      mimetype: "application/x-sqlite3",
+      buffer: fs.readFileSync(gpkgPath),
+      size: fs.statSync(gpkgPath).size,
+      stream: null,
+      destination: this.tempDir,
+      filename: path.basename(gpkgPath),
+      path: gpkgPath,
+    };
+
+    await this.saveToS3(csvFile);
+    await this.saveToS3(gdbFile);
+    await this.saveToS3(gpkgFile);
+
+    return;
   }
 
   /**
@@ -480,12 +717,26 @@ export class GeodataService {
     };
 
     try {
-      await axios({
-        method: "put",
-        url: requestUrl,
-        headers: headers,
-        data: file.buffer,
-      });
+      if (file.path && fs.existsSync(file.path)) {
+        const fileStream = fs.createReadStream(file.path);
+        await axios({
+          method: "put",
+          url: requestUrl,
+          headers: headers,
+          data: fileStream,
+          maxBodyLength: Infinity,
+          maxContentLength: Infinity,
+        });
+      } else {
+        await axios({
+          method: "put",
+          url: requestUrl,
+          headers: headers,
+          data: file.buffer,
+          maxBodyLength: Infinity,
+          maxContentLength: Infinity,
+        });
+      }
     } catch (error) {
       this.logger.error("Error uploading file to object store:", error);
       throw error;
@@ -508,460 +759,5 @@ export class GeodataService {
         await fs.promises.unlink(filePath);
       }
     }
-  }
-
-  async fullTest(): Promise<void> {
-    // Fetch Data
-    let cursor = "";
-    let total = 0;
-    let processedCount = 0;
-    let entries = [];
-    let marchEntries = [];
-    let aprilEntries = [];
-
-    axios.defaults.method = "GET";
-    axios.defaults.headers.common["Authorization"] =
-      "token " + process.env.AUTH_TOKEN;
-    axios.defaults.headers.common["x-api-key"] = process.env.AUTH_TOKEN;
-
-    this.logger.log("Getting March entries");
-    do {
-      const url = `${this.baseUrl}${this.samplingLocationsEndpoint}${cursor ? `?limit=1000&cursor=${cursor}&startModificationTime="2025-03-15T00:00:00.000Z"&endModificationTime="2025-04-15T00:00:00.000Z"` : `?limit=1000&startModificationTime="2025-03-15T00:00:00.000Z"&endModificationTime="2025-04-15T00:00:00.000Z"`}`;
-      const response = await axios.get(url);
-      if (response.status != 200) {
-        return;
-      }
-      entries = response.data.domainObjects;
-      marchEntries = marchEntries.concat(entries);
-      cursor = response.data.cursor || null;
-      total = response.data.totalCount || 0;
-      processedCount += entries.length;
-      if (processedCount >= total || (entries.length === 0 && cursor)) {
-        break;
-      }
-    } while (cursor);
-    this.logger.log("Total March entries: " + total);
-    entries = [];
-    cursor = "";
-    total = 0;
-    processedCount = 0;
-    this.logger.log("Getting April entries");
-    do {
-      const url = `${this.baseUrl}${this.samplingLocationsEndpoint}${cursor ? `?limit=1000&cursor=${cursor}&startModificationTime="2025-04-01T00:00:00.000Z"` : `?limit=1000&startModificationTime="2025-04-01T00:00:00.000Z"`}`;
-      const response = await axios.get(url);
-      if (response.status != 200) {
-        return;
-      }
-      entries = response.data.domainObjects;
-      aprilEntries = aprilEntries.concat(entries);
-      cursor = response.data.cursor || null;
-      total = response.data.totalCount || 0;
-      processedCount += entries.length;
-      if (processedCount >= total || (entries.length === 0 && cursor)) {
-        break;
-      }
-    } while (cursor);
-    this.logger.log("Total April entries: " + total);
-
-    // Fetch summaries to add to the data
-    let marchSummaries = [];
-    let aprilSummaries = [];
-
-    axios.defaults.method = "GET";
-    axios.defaults.headers.common["Authorization"] =
-      "token " + process.env.AUTH_TOKEN;
-    axios.defaults.headers.common["x-api-key"] = process.env.AUTH_TOKEN;
-
-    this.logger.log("Getting March summmaries");
-    for (let item of marchEntries) {
-      const url = `${this.baseUrl}${this.samplingLocationsEndpoint}/${item.id}/summary`;
-      try {
-        const response = await axios.get(url);
-        if (response.status != 200) {
-          this.logger.log("bad response status: ", response.status);
-          return;
-        }
-        marchSummaries.push(response.data);
-      } catch (err) {
-        this.logger.error(err);
-      }
-    }
-    this.logger.log("Getting April summaries");
-    for (let item of aprilEntries) {
-      const url = `${this.baseUrl}${this.samplingLocationsEndpoint}/${item.id}/summary`;
-      const response = await axios.get(url);
-      if (response.status != 200) {
-        this.logger.log("bad response status: ", response.status);
-        return;
-      }
-      aprilSummaries.push(response.data);
-    }
-
-    // Map summaries by location id for quick lookup
-    const marchSummaryMap = new Map();
-    if (Array.isArray(marchSummaries)) {
-      for (let i = 0; i < marchSummaries.length; i++) {
-        const summary = marchSummaries[i];
-        // Try to match by id, fallback to index if not present
-        const locationId = marchEntries[i]?.id;
-        if (locationId) {
-          marchSummaryMap.set(locationId, summary);
-        }
-      }
-    }
-    const aprilSummaryMap = new Map();
-    if (Array.isArray(aprilSummaries)) {
-      for (let i = 0; i < aprilSummaries.length; i++) {
-        const summary = aprilSummaries[i];
-        // Try to match by id, fallback to index if not present
-        const locationId = aprilEntries[i]?.id;
-        if (locationId) {
-          aprilSummaryMap.set(locationId, summary);
-        }
-      }
-    }
-    // Streamline data into geojson format
-    let marchTransformedData = {
-      type: "FeatureCollection",
-      features: marchEntries.map((location) => {
-        const summary = marchSummaryMap.get(location.id) || {};
-        return {
-          type: "Feature",
-          geometry: {
-            type: "Point",
-            coordinates: [
-              location.longitude ? parseFloat(location.longitude) : null,
-              location.latitude ? parseFloat(location.latitude) : null,
-            ],
-          },
-          properties: {
-            id: location.id || "NA",
-            name: location.name || "NA",
-            comments: location.description || "NA",
-            locationGroupNames:
-              (location.samplingLocationGroups &&
-                location.samplingLocationGroups.map(
-                  (group) => group.name || "NA",
-                )) ||
-              [],
-            locationType: (location.type && location.type.customId) || "NA",
-            elevation: (location.elevation && location.elevation.value) || "NA",
-            elevationUnit:
-              (location.elevation &&
-                location.elevation.unit &&
-                location.elevation.unit.customId) ||
-              "NA",
-            horizontalCollectionMethod:
-              location.horizontalCollectionMethod || "NA",
-            observationCount: summary.observationCount,
-            fieldVisitCount: summary.fieldVisitCount,
-            latestFieldVisit:
-              (summary.latestFieldVisit &&
-                summary.latestFieldVisit.startTime) ||
-              "NA",
-            closedDate: this.getExtendedAttributeValue(
-              location.extendedAttributes,
-              EXTENDED_ATTRIBUTES.closedDate,
-            ),
-            establishedDate: this.getExtendedAttributeValue(
-              location.extendedAttributes,
-              EXTENDED_ATTRIBUTES.establishedDate,
-            ),
-            wellTagNumber: this.getExtendedAttributeValue(
-              location.extendedAttributes,
-              EXTENDED_ATTRIBUTES.wellTagNumber,
-            ),
-          },
-        };
-      }),
-    };
-
-    let aprilTransformedData = {
-      type: "FeatureCollection",
-      features: aprilEntries.map((location) => {
-        const summary = aprilSummaryMap.get(location.id) || {};
-        return {
-          type: "Feature",
-          geometry: {
-            type: "Point",
-            coordinates: [
-              location.longitude ? parseFloat(location.longitude) : null,
-              location.latitude ? parseFloat(location.latitude) : null,
-            ],
-          },
-          properties: {
-            id: location.id || "NA",
-            name: location.name || "NA",
-            comments: location.description || "NA",
-            locationGroupNames:
-              (location.samplingLocationGroups &&
-                location.samplingLocationGroups.map(
-                  (group) => group.name || "NA",
-                )) ||
-              [],
-            locationType: (location.type && location.type.customId) || "NA",
-            elevation: (location.elevation && location.elevation.value) || "NA",
-            elevationUnit:
-              (location.elevation &&
-                location.elevation.unit &&
-                location.elevation.unit.customId) ||
-              "NA",
-            horizontalCollectionMethod:
-              location.horizontalCollectionMethod || "NA",
-            observationCount: summary.observationCount,
-            fieldVisitCount: summary.fieldVisitCount,
-            latestFieldVisit:
-              (summary.latestFieldVisit &&
-                summary.latestFieldVisit.startTime) ||
-              "NA",
-            closedDate: this.getExtendedAttributeValue(
-              location.extendedAttributes,
-              EXTENDED_ATTRIBUTES.closedDate,
-            ),
-            establishedDate: this.getExtendedAttributeValue(
-              location.extendedAttributes,
-              EXTENDED_ATTRIBUTES.establishedDate,
-            ),
-            wellTagNumber: this.getExtendedAttributeValue(
-              location.extendedAttributes,
-              EXTENDED_ATTRIBUTES.wellTagNumber,
-            ),
-          },
-        };
-      }),
-    };
-
-    this.logger.log("Starting file generation");
-    // generate march geojson
-    const watershedGdbPath = path.resolve(
-      __dirname,
-      "FWA_WATERSHED_GROUPS_POLY.gdb",
-    );
-    const watershedLayer = "WHSE_BASEMAPPING_FWA_WATERSHED_GROUPS_POLY";
-    const marchvrtPath = path.join(this.tempDir, `watershed_geo_march.vrt`);
-    const marchgdbPath = path.join(
-      this.tempDir,
-      `sampling_locations_march.gdb`,
-    );
-
-    // Save GeoJSON to temp file
-    const marchgeojsonInputPath = path.join(
-      this.tempDir,
-      `input_march.geojson`,
-    );
-    const marchgpkgInputPath = path.join(this.tempDir, `input_march.gpkg`);
-    const marchgpkgLayerName = `sampling_locations`;
-    const marchjsonString = JSON.stringify(marchTransformedData);
-    fs.writeFileSync(marchgeojsonInputPath, marchjsonString, "utf-8");
-
-    // Convert GeoJSON to GPKG
-    try {
-      const { stdout, stderr } = await this.execAsync(
-        `ogr2ogr -f GPKG \"${marchgpkgInputPath}\" \"${marchgeojsonInputPath}\" -nln ${marchgpkgLayerName}`,
-      );
-      if (stderr) this.logger.warn(`GPKG conversion warning: ${stderr}`);
-    } catch (error) {
-      this.logger.error(`Failed to convert to GPKG: ${error.message}`);
-      throw error;
-    }
-
-    // VRT for GPKG and GDB
-    const marchvrtXml = `
-      <OGRVRTDataSource>
-        <OGRVRTLayer name="${marchgpkgLayerName}">
-          <SrcDataSource>${marchgpkgInputPath}</SrcDataSource>
-          <SrcLayer>${marchgpkgLayerName}</SrcLayer>
-          <GeometryType>wkbPoint</GeometryType>
-          <LayerSRS>EPSG:4326</LayerSRS>
-        </OGRVRTLayer>
-        <OGRVRTLayer name="${watershedLayer}">
-          <SrcDataSource>${watershedGdbPath}</SrcDataSource>
-          <SrcLayer>${watershedLayer}</SrcLayer>
-          <GeometryType>wkbPolygon</GeometryType>
-          <LayerSRS>EPSG:4269</LayerSRS>
-        </OGRVRTLayer>
-      </OGRVRTDataSource>`;
-    fs.writeFileSync(marchvrtPath, marchvrtXml.trim());
-
-    this.logger.debug("Intesecting data...");
-    const marchsql = `
-      SELECT
-        p.*,
-        MIN(w.WATERSHED_GROUP_CODE) AS watershedGroupCode,
-        MIN(w.WATERSHED_GROUP_NAME) AS watershedGroupName
-      FROM ${marchgpkgLayerName} p
-      LEFT JOIN ${watershedLayer} w
-      ON ST_Intersects(p.geometry, w.geometry)
-      GROUP BY p.id
-    `.replace(/\s+/g, " ");
-
-    this.logger.debug("Generating Watershed Intersected GPKG");
-    // Generate GPKG as the intersection output
-    const intersectedLayerName = "sampling_locations";
-    const marchintersectedGpkgPath = path.join(
-      this.tempDir,
-      `output_march.gpkg`,
-    );
-    try {
-      const { stdout, stderr } = await this.execAsync(
-        `ogr2ogr -f GPKG "${marchintersectedGpkgPath}" "${marchvrtPath}" -dialect sqlite -sql "${marchsql}" -nln ${intersectedLayerName}`,
-      );
-      if (stderr) {
-        this.logger.warn(`Watershed join stderr: ${stderr}`);
-      }
-    } catch (error: any) {
-      this.logger.error(`Watershed join failed: ${error.message}`);
-      throw error;
-    }
-
-    // generate geojson
-    const aprilvrtPath = path.join(this.tempDir, `watershed_geo_april.vrt`);
-    const aprilgdbPath = path.join(
-      this.tempDir,
-      `sampling_locations_april.gdb`,
-    );
-
-    // Save GeoJSON to temp file
-    const aprilgeojsonInputPath = path.join(
-      this.tempDir,
-      `input_april.geojson`,
-    );
-    const aprilgpkgInputPath = path.join(this.tempDir, `input_april.gpkg`);
-    const aprilgpkgLayerName = `sampling_locations`;
-    const apriljsonString = JSON.stringify(aprilTransformedData);
-    fs.writeFileSync(aprilgeojsonInputPath, apriljsonString, "utf-8");
-
-    // Convert GeoJSON to GPKG
-    try {
-      const { stdout, stderr } = await this.execAsync(
-        `ogr2ogr -f GPKG \"${aprilgpkgInputPath}\" \"${aprilgeojsonInputPath}\" -nln ${aprilgpkgLayerName}`,
-      );
-      if (stderr) this.logger.warn(`GPKG conversion warning: ${stderr}`);
-    } catch (error) {
-      this.logger.error(`Failed to convert to GPKG: ${error.message}`);
-      throw error;
-    }
-
-    // VRT for GPKG and GDB
-    const aprilvrtXml = `
-      <OGRVRTDataSource>
-        <OGRVRTLayer name="${aprilgpkgLayerName}">
-          <SrcDataSource>${aprilgpkgInputPath}</SrcDataSource>
-          <SrcLayer>${aprilgpkgLayerName}</SrcLayer>
-          <GeometryType>wkbPoint</GeometryType>
-          <LayerSRS>EPSG:4326</LayerSRS>
-        </OGRVRTLayer>
-        <OGRVRTLayer name="${watershedLayer}">
-          <SrcDataSource>${watershedGdbPath}</SrcDataSource>
-          <SrcLayer>${watershedLayer}</SrcLayer>
-          <GeometryType>wkbPolygon</GeometryType>
-          <LayerSRS>EPSG:4269</LayerSRS>
-        </OGRVRTLayer>
-      </OGRVRTDataSource>`;
-    fs.writeFileSync(aprilvrtPath, aprilvrtXml.trim());
-
-    const start = Date.now();
-    this.logger.debug("Intesecting data...");
-    const sql = `
-      SELECT
-        p.*,
-        MIN(w.WATERSHED_GROUP_CODE) AS watershedGroupCode,
-        MIN(w.WATERSHED_GROUP_NAME) AS watershedGroupName
-      FROM ${aprilgpkgLayerName} p
-      LEFT JOIN ${watershedLayer} w
-      ON ST_Intersects(p.geometry, w.geometry)
-      GROUP BY p.id
-    `.replace(/\s+/g, " ");
-
-    this.logger.debug("Generating Watershed Intersected GPKG");
-    // Generate GPKG as the intersection output
-    const aprilintersectedGpkgPath = path.join(
-      this.tempDir,
-      `output_april.gpkg`,
-    );
-    try {
-      const { stdout, stderr } = await this.execAsync(
-        `ogr2ogr -f GPKG "${aprilintersectedGpkgPath}" "${aprilvrtPath}" -dialect sqlite -sql "${sql}" -nln ${intersectedLayerName}`,
-      );
-      if (stderr) {
-        this.logger.warn(`Watershed join stderr: ${stderr}`);
-      }
-    } catch (error: any) {
-      this.logger.error(`Watershed join failed: ${error.message}`);
-      throw error;
-    }
-
-    // we have output_april.gpkg and output_march.gpkg, append april onto march and generate a gdb file that should have both datasets
-
-    const combinedGpkgPath = path.join(this.tempDir, `output_combined.gpkg`);
-    const finalGdbPath = path.join(
-      this.tempDir,
-      `sampling_locations_combined.gdb`,
-    );
-
-    this.logger.debug("Combining march and april datasets");
-    // First, copy march data to the combined GPKG
-    try {
-      const { stdout, stderr } = await this.execAsync(
-        `ogr2ogr -f GPKG "${combinedGpkgPath}" "${marchintersectedGpkgPath}" -nln ${intersectedLayerName}`,
-      );
-      if (stderr) {
-        this.logger.warn(`Combined GPKG creation stderr: ${stderr}`);
-      }
-    } catch (error: any) {
-      this.logger.error(`Combined GPKG creation failed: ${error.message}`);
-      throw error;
-    }
-
-    // Then upsert april data to the combined GPKG
-    try {
-      const { stdout, stderr } = await this.execAsync(
-        `ogr2ogr -f GPKG "${combinedGpkgPath}" "${aprilintersectedGpkgPath}" -nln ${intersectedLayerName} -upsert`,
-      );
-      if (stderr) {
-        this.logger.warn(`april data upsert stderr: ${stderr}`);
-      }
-    } catch (error: any) {
-      this.logger.error(`april data upsert failed: ${error.message}`);
-      throw error;
-    }
-
-    this.logger.debug("Generating combined GDB");
-    // Generate GDB from combined GPKG
-    try {
-      const { stdout, stderr } = await this.execAsync(
-        `ogr2ogr -f "OpenFileGDB" "${finalGdbPath}" "${combinedGpkgPath}" ${intersectedLayerName}`,
-      );
-      if (stderr) {
-        this.logger.warn(`GDB generate stderr: ${stderr}`);
-      }
-    } catch (error: any) {
-      this.logger.error(`GDB generate failed: ${error.message}`);
-      throw error;
-    }
-    // Generate april/march gdbs for testing
-    try {
-      const { stdout, stderr } = await this.execAsync(
-        `ogr2ogr -f "OpenFileGDB" "/tmp/geodata/march.gdb" "${marchintersectedGpkgPath}" ${intersectedLayerName}`,
-      );
-      if (stderr) {
-        this.logger.warn(`GDB generate stderr: ${stderr}`);
-      }
-    } catch (error: any) {
-      this.logger.error(`GDB generate failed: ${error.message}`);
-      throw error;
-    }
-    try {
-      const { stdout, stderr } = await this.execAsync(
-        `ogr2ogr -f "OpenFileGDB" "/tmp/geodata/april.gdb" "${aprilintersectedGpkgPath}" ${intersectedLayerName}`,
-      );
-      if (stderr) {
-        this.logger.warn(`GDB generate stderr: ${stderr}`);
-      }
-    } catch (error: any) {
-      this.logger.error(`GDB generate failed: ${error.message}`);
-      throw error;
-    }
-    this.logger.log("Test complete");
   }
 }

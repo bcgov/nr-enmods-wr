@@ -9,13 +9,12 @@ import { TerminusModule } from "@nestjs/terminus";
 import { SearchModule } from "./search/search.module";
 import { GeodataModule } from "./geodata/geodata.module";
 import { ScheduleModule } from "@nestjs/schedule";
-
-function getMiddlewares() {
-  return [];
-}
+import { TypeOrmModule } from "@nestjs/typeorm";
+import ormconfig from "src/ormconfig";
 
 @Module({
   imports: [
+    TypeOrmModule.forRoot(ormconfig),
     ConfigModule.forRoot(),
     ScheduleModule.forRoot(),
     TerminusModule,

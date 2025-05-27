@@ -13,6 +13,8 @@ services:
       OBJECTSTORE_SECRET_KEY: ${OBJECTSTORE_SECRET_KEY}
       OBJECTSTORE_BUCKET: ${OBJECTSTORE_BUCKET}
       BASE_URL_BC_API: ${BASE_URL_BC_API}
+      SAMPLING_LOCATIONS_ENDPOINT: ${SAMPLING_LOCATIONS_ENDPOINT}
+      OBJECTSTORE_FOLDER: ${OBJECTSTORE_FOLDER}
       API_KEY: ${API_KEY}
       AUTH_TOKEN: ${AUTH_TOKEN}
     # image: node:22
@@ -38,6 +40,33 @@ services:
       backend:
         condition: service_healthy
 
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    restart: always
+    environment:
+      POSTGRES_USER: enmodswr_user
+      POSTGRES_PASSWORD: enmodswr_password
+      POSTGRES_DB: enmodswr
+    ports:
+      - '5432:5432'
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "enmodswr_user", "-d", "enmodswr"]
+
+  flyway:
+    image: flyway/flyway:9-alpine
+    container_name: flyway
+    command: migrate
+    volumes: ["./migrations/sql:/flyway/sql:ro"]
+    environment:
+      FLYWAY_URL: jdbc:postgresql://postgres:5432/enmodswr
+      FLYWAY_USER: enmodswr_user
+      FLYWAY_PASSWORD: enmodswr_password
+      FLYWAY_BASELINE_ON_MIGRATE: true
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   caddy:
     container_name: caddy
     profiles: ["caddy"]
@@ -54,3 +83,4 @@ services:
     depends_on:
       backend:
         condition: service_healthy
+

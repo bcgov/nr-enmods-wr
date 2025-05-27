@@ -11,6 +11,7 @@ import archiver from "archiver";
 import { InjectRepository } from "@nestjs/typeorm";
 import { FileInfo } from "./entities/file-info.entity";
 import { Repository } from "typeorm";
+import process from "process";
 
 // If these IDs are not consistent across environments, we will need to fetch them instead.
 const EXTENDED_ATTRIBUTES = {
@@ -38,18 +39,21 @@ export class GeodataService {
   private readonly samplingLocationsEndpoint =
     process.env.SAMPLING_LOCATIONS_ENDPOINT;
 
-  @Cron("30 55 21 * * *")
+  @Cron("30 46 22 * * *")
   async processAndUpload(): Promise<void> {
     try {
-      const start = Date.now();
       this.logger.debug("Starting sampling location cron job");
+      this.logger.debug(process.memoryUsage());
+      const start = Date.now();
       // Used for file names & datebase timestamp
       const newDate = new Date();
       // Fetch latest gpkg from S3
       const { latestFilePath, latestDateCreated } =
         await this.fetchLatestGpkg();
+      this.logger.debug(process.memoryUsage());
       // Fetch data that has been uploaded since the last run
       const rawData = await this.fetchSamplingLocations(latestDateCreated);
+      this.logger.debug(process.memoryUsage());
       // Transform the raw data to geojson format
       const transformedData = await this.transformData(rawData);
       // Perform intersections & write the files locally
@@ -63,6 +67,7 @@ export class GeodataService {
 
       // Save a file info entry into the database
       await this.saveNewFileInfo(path.basename(gpkgPath), newDate);
+      this.logger.debug(process.memoryUsage());
 
       // Clean up the locally generated files
       await this.cleanUpFiles();
@@ -204,7 +209,7 @@ export class GeodataService {
         });
       });
 
-      this.logger.log(`Successfully saved ${fileName} to ${filePath}`);
+      this.logger.debug(`Successfully saved ${fileName} to ${filePath}`);
       // Return the path to the saved file & latest timestamp
       return {
         latestFilePath: filePath,
@@ -235,7 +240,7 @@ export class GeodataService {
       "token " + process.env.AUTH_TOKEN;
     axios.defaults.headers.common["x-api-key"] = process.env.AUTH_TOKEN;
 
-    this.logger.log("Fetching sampling locations...");
+    this.logger.debug("Fetching sampling locations...");
     const start = Date.now();
     do {
       const pstDate = latestDateCreated
@@ -633,50 +638,24 @@ export class GeodataService {
       archive.finalize();
     });
 
-    const csvFile: Express.Multer.File = {
-      fieldname: "file",
+    // Upload each file using streams directly
+    await this.saveToS3({
       originalname: path.basename(csvPath),
-      encoding: "7bit",
       mimetype: "text/csv",
-      buffer: fs.readFileSync(csvPath),
-      size: fs.statSync(csvPath).size,
-      stream: null,
-      destination: this.tempDir,
-      filename: path.basename(csvPath),
       path: csvPath,
-    };
+    });
 
-    const gdbFile: Express.Multer.File = {
-      fieldname: "file",
+    await this.saveToS3({
       originalname: path.basename(gdbZipPath),
-      encoding: "7bit",
       mimetype: "application/zip",
-      buffer: fs.readFileSync(gdbZipPath),
-      size: fs.statSync(gdbZipPath).size,
-      stream: null,
-      destination: this.tempDir,
-      filename: path.basename(gdbZipPath),
       path: gdbZipPath,
-    };
+    });
 
-    const gpkgFile: Express.Multer.File = {
-      fieldname: "file",
+    await this.saveToS3({
       originalname: path.basename(gpkgPath),
-      encoding: "7bit",
       mimetype: "application/x-sqlite3",
-      buffer: fs.readFileSync(gpkgPath),
-      size: fs.statSync(gpkgPath).size,
-      stream: null,
-      destination: this.tempDir,
-      filename: path.basename(gpkgPath),
       path: gpkgPath,
-    };
-
-    await this.saveToS3(csvFile);
-    await this.saveToS3(gdbFile);
-    await this.saveToS3(gpkgFile);
-
-    return;
+    });
   }
 
   /**
@@ -684,7 +663,11 @@ export class GeodataService {
    * @param file
    * @returns
    */
-  async saveToS3(file: Express.Multer.File) {
+  async saveToS3(file: {
+    originalname: string;
+    mimetype: string;
+    path: string;
+  }) {
     const fileName = file.originalname;
 
     const OBJECTSTORE_URL = process.env.OBJECTSTORE_URL;
@@ -723,15 +706,6 @@ export class GeodataService {
           url: requestUrl,
           headers: headers,
           data: fileStream,
-          maxBodyLength: Infinity,
-          maxContentLength: Infinity,
-        });
-      } else {
-        await axios({
-          method: "put",
-          url: requestUrl,
-          headers: headers,
-          data: file.buffer,
           maxBodyLength: Infinity,
           maxContentLength: Infinity,
         });

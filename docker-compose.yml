@@ -1,4 +1,3 @@
-# Reusable vars
 services:
   backend:
     container_name: backend
@@ -53,9 +52,9 @@ services:
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "enmodswr_user", "-d", "enmodswr"]
 
-  flyway:
-    image: flyway/flyway:9-alpine
-    container_name: flyway
+  migrations:
+    image: flyway/flyway:10-alpine
+    container_name: migrations
     command: migrate
     volumes: ["./migrations/sql:/flyway/sql:ro"]
     environment:

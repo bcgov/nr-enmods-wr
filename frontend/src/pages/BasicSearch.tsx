@@ -300,10 +300,7 @@ const BasicSearch = () => {
             <Paper elevation={2}>
               <FilterResultsForm
                 formData={formData}
-                filterResultDrpdwns={dropdwns.filterResult}
-                //mediums={mediums}
-                //observedProperties={observedProperties}
-               // projects={projects}
+                filterResultDrpdwns={dropdwns.filterResult}                
                 handleInputChange={handleInputChange}
                 handleOnChange={handleOnChange}
                 handleOnChangeDatepicker={handleOnChangeDatepicker}

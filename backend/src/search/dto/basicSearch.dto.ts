@@ -44,4 +44,20 @@ export class BasicSearchDto {
 
   @IsOptional()
   public readonly fileFormat: string;
+
+  public readonly observedProperty: any[];
+  public readonly workedOrderNumber: any[];
+  public readonly samplingAgency: any[];
+  public readonly analyzingAgency: any[];
+  public readonly analyticalMethod: any[];
+
+  public readonly labArrivalFromDate: Date;
+  public readonly labArrivalToDate: Date;
+  public readonly collectionMethod: any[];
+  public readonly qcSampleType: any[];
+  public readonly dataClassification: any[];
+  public readonly sampleDepth: any[];
+  public readonly units: any[];
+  public readonly labBatchId : any | null;
+  public readonly specimenId: any[];
 }

@@ -19,7 +19,8 @@ import { sanitizeSortModel } from "~/@mui/x-data-grid/hooks/features/sorting/gri
 import AdditionalCriteria from "@/components/search/AdditionalCriteria"
 import { SearchAttr } from "@/enum/searchEnum"
 import apiService from "@/service/api-service"
-import { API_VERSION } from "@/util/utility"
+import { API_VERSION, extractFileName } from "@/util/utility"
+import { debounce } from "lodash"
 
 type Props = {}
 
@@ -41,6 +42,7 @@ const AdvanceSearch = (props: Props) => {
   const [dataClassifications, setDataClassifications] = useState([])
   const [sampleDepths, setSampleDepths] = useState([])
   const [specimenIds, setSpecimenIds] = useState([])
+  const [units, setUnits] = useState([])
 
   const dropdowns = {
     location: {
@@ -65,12 +67,13 @@ const AdvanceSearch = (props: Props) => {
       dataClassifications: dataClassifications,
       sampleDepths: sampleDepths,
       specimenIds: specimenIds,
+      units: units,
     },
   }
 
   const [formData, setFormData] = useState({
     locationName: [],
-    locationType: [],
+    locationType: null,
     permitNumber: [],
     media: [],
     observedPropertyGrp: [],
@@ -80,6 +83,17 @@ const AdvanceSearch = (props: Props) => {
     analyzingAgency: [],
     projects: [],
     analyticalMethod: [],
+    collectionMethod: [],
+    units: [],
+    qcSampleType: [],
+    dataClassification: [],
+    sampleDepth: [],
+    labBatchId: "",
+    specimentId: [],
+    fromDate: null,
+    toDate: null,
+    labArrivalFromDate: null,
+    labArrivalToDate: null,
   })
 
   useEffect(() => {
@@ -95,6 +109,8 @@ const AdvanceSearch = (props: Props) => {
     getDropdownOptions(SearchAttr.SamplingAgency, "")
     getDropdownOptions(SearchAttr.AnalyzingAgency, "")
     getDropdownOptions(SearchAttr.AnalyticalMethod, "")
+    getDropdownOptions(SearchAttr.CollectionMethod, "")
+    getDropdownOptions(SearchAttr.Units, "")
   }, [])
 
   const dropdwnUrl = (fieldName: string, query: string): string | undefined => {
@@ -124,6 +140,10 @@ const AdvanceSearch = (props: Props) => {
           return `${API_VERSION}/search/getWorkedOrderNos?search=${query}`
         case SearchAttr.SamplingAgency:
           return `${API_VERSION}/search/getSamplingAgencies?search=${query}`
+        case SearchAttr.CollectionMethod:
+          return `${API_VERSION}/search/getCollectionMethods?search=${query}`
+        case SearchAttr.Units:
+          return `${API_VERSION}/search/getUnits?search=${query}`
         default:
           break
       }
@@ -176,7 +196,11 @@ const AdvanceSearch = (props: Props) => {
             case SearchAttr.AnalyzingAgency:
               setAnalyzingAgencies(response)
               break
-            default:
+            case SearchAttr.CollectionMethod:              
+              setCollectionMethods(response)
+              break
+            case SearchAttr.Units:             
+              setUnits(response)
               break
           }
         }
@@ -184,6 +208,129 @@ const AdvanceSearch = (props: Props) => {
     } catch (err) {
       console.error(err)
     }
+  }
+
+  const clearForm = () => {
+    window.scroll(0, 0)
+
+    setFormData({
+      ...formData,
+      locationName: [],
+      locationType: null,
+      permitNumber: [],
+      media: [],
+      observedPropertyGrp: [],
+      observedProperty: [],
+      workedOrderNo: [],
+      samplingAgency: [],
+      analyzingAgency: [],
+      projects: [],
+      analyticalMethod: [],
+      collectionMethod: [],
+      units: [],
+      qcSampleType: [],
+      dataClassification: [],
+      sampleDepth: [],
+      labBatchId: "",
+      specimentId: [],
+      fromDate: null,
+      toDate: null,
+      labArrivalFromDate: null,
+      labArrivalToDate: null,
+    })
+  }
+
+  const handleOnChangeDatepicker = (val: any, attrName: string) => {
+    setFormData({ ...formData, [attrName]: val })
+  }
+
+  const handleOnChange = (
+    e: React.ChangeEventHandler,
+    val: any,
+    attrName: string,
+  ) => {
+    setFormData({ ...formData, [attrName]: val })
+  }
+
+  const handleInputChange = (
+    e: React.ChangeEventHandler,
+    newVal: any,
+    attrName: string,
+  ) => {
+    if (attrName) debounceSearch(newVal, attrName)
+  }
+
+  const debounceSearch = debounce(async (query, attrName) => {
+    switch (attrName) {
+      case SearchAttr.LocationName:
+        getDropdownOptions(SearchAttr.LocationName, query)
+        break
+      case SearchAttr.PermitNo:
+        getDropdownOptions(SearchAttr.PermitNo, query)
+        break
+      case SearchAttr.Media:
+        getDropdownOptions(SearchAttr.Media, query)
+        break
+      case SearchAttr.ObservedPropertyGrp:
+        getDropdownOptions(SearchAttr.ObservedPropertyGrp, query)
+        break
+      default:
+        break
+    }
+  }, 500)
+
+  const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    advanceSearch(prepareFormData(formData))
+  }
+
+  const advanceSearch = async (data: { [key: string]: any }): Promise<void> => {
+     // setIsDisabled(true)
+     // setIsLoading(true)
+      console.log(data)
+      try {
+        const res = await apiService
+          .getAxiosInstance()
+          .post("/v1/search/basicSearch2", data)
+  
+        if (res.status === 200) {
+          window.scroll(0, 0)
+          console.log(res)
+          if (res.data.message) {
+          //  setAlertMsg(res.data.message)
+          } else {
+            clearForm()
+            const url = window.URL.createObjectURL(new Blob([res.data]))
+            const link = document.createElement("a")
+            link.href = url
+            link.download = extractFileName(res.headers["content-disposition"])
+            link.click()
+            window.URL.revokeObjectURL(url)
+          }
+        } else {
+          window.scroll(0, 0)
+          console.log(res)
+        //  setErrors(res.data.error)
+        }
+       // setIsDisabled(false)
+      //  setIsLoading(false)
+      } catch (err) {
+        console.error(err)
+      }
+    }
+
+  const prepareFormData = (formData: { [key: string]: any }) => {
+    const data = { ...formData }
+    for (const key in formData) {
+      if (Array.isArray(formData[key])) {
+        const arr: string[] = []
+        formData[key].forEach((item) => {
+          arr.push(item.id)
+        })
+        data[key] = arr
+      }
+    }
+    return data
   }
 
   return (
@@ -199,7 +346,7 @@ const AdvanceSearch = (props: Props) => {
           </Link>
         </div>
 
-        <form noValidate>
+        <form noValidate onSubmit={onSubmit}>
           <div className="">
             {/* Select Location Parameter  */}
             <Accordion defaultExpanded>
@@ -227,8 +374,8 @@ const AdvanceSearch = (props: Props) => {
                   <LocationParametersForm
                     formData={formData}
                     locationDropdwns={dropdowns.location}
-                    handleInputChange={""}
-                    handleOnChange={""}
+                    handleInputChange={handleInputChange}
+                    handleOnChange={handleOnChange}
                     searchType="advance"
                   />
                 </div>
@@ -246,7 +393,7 @@ const AdvanceSearch = (props: Props) => {
                 <TitleText
                   variant="subtitle1"
                   sx={{ fontWeight: 600 }}
-                  text="Filter Results"
+                  text="Select Filter Results"
                 />
               </AccordionSummary>
               <AccordionDetails>
@@ -261,17 +408,17 @@ const AdvanceSearch = (props: Props) => {
                   <FilterResultsForm
                     formData={formData}
                     filterResultDrpdwns={dropdowns.filterResult}
-                    handleInputChange={""}
-                    handleOnChange={""}
-                    handleOnChangeDatepicker={""}
+                    handleInputChange={handleInputChange}
+                    handleOnChange={handleOnChange}
+                    handleOnChangeDatepicker={handleOnChangeDatepicker}
                     searchType="advance"
                   />
-                </div>
+                </div>                 
               </AccordionDetails>
             </Accordion>
 
             {/* Additional Criteria */}
-            <Accordion>
+            <Accordion defaultExpanded>
               <AccordionSummary
                 expandIcon={<GridExpandMoreIcon />}
                 aria-controls="additional-criteria-content"
@@ -281,7 +428,7 @@ const AdvanceSearch = (props: Props) => {
                 <TitleText
                   variant="subtitle1"
                   sx={{ fontWeight: 600 }}
-                  text="Additional Criteria"
+                  text="Select Additional Criteria"
                 />
               </AccordionSummary>
               <AccordionDetails>
@@ -292,9 +439,13 @@ const AdvanceSearch = (props: Props) => {
                   sx={{ p: 1 }}
                 />
 
-                {/* <AdditionalCriteria
+                <AdditionalCriteria
+                  handleInputChange={handleInputChange}
+                  handleOnChange={handleOnChange}
+                  handleOnChangeDatepicker={handleOnChangeDatepicker}
+                  formData={formData}
                   additionalCriteriaDrpdwns={dropdowns.additionalCriteria}
-                /> */}
+                />
               </AccordionDetails>
             </Accordion>
           </div>
@@ -303,7 +454,7 @@ const AdvanceSearch = (props: Props) => {
             <Btn
               text={"Clear Search"}
               type="button"
-              // handleClick={clearForm}
+              handleClick={clearForm}
               sx={{ background: "#fff", color: "#0B5394", fontSize: "8pt" }}
             />
             <Btn

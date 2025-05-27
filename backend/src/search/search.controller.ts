@@ -127,4 +127,16 @@ export class SearchController {
     const query: any = req.query.search;
     return this.searchService.getSamplingAgencies(query);
   }
+
+  @Get("getCollectionMethods")
+  public getCollectionMethods(@Req() req: Request) {
+    const query: any = req.query.search;
+    return this.searchService.getCollectionMethods(query);
+  }
+
+  @Get("getUnits")
+  public getUnits(@Req() req: Request) {
+    const query: any = req.query.search;
+    return this.searchService.getUnits(query);
+  }
 }

@@ -4,8 +4,14 @@ import { forwardRef } from "react"
 import TooltipInfo from "../TooltipInfo"
 import DatePicker from "react-datepicker/dist"
 import { Autocomplete, TextField } from "@mui/material"
+import { SearchAttr } from "@/enum/searchEnum"
 
-export interface props {}
+export interface props {
+  value?: any
+  onClick?: React.MouseEventHandler
+  onChange?: React.ChangeEventHandler
+  label: string
+}
 
 const CustomDatePickerInput = forwardRef<HTMLInputElement, props>(
   ({ value, onClick, onChange, label }, ref) => (
@@ -23,7 +29,14 @@ const CustomDatePickerInput = forwardRef<HTMLInputElement, props>(
 )
 
 export default function AdditionalCriteria(props: any) {
-  const { additionalCriteriaDrpdwns } = props
+  const {
+    additionalCriteriaDrpdwns,
+    formData,
+    handleInputChange,
+    handleOnChange,
+    handleOnChangeDatepicker,
+  } = props
+
   return (
     <div>
       <div className="heading-section">
@@ -33,19 +46,24 @@ export default function AdditionalCriteria(props: any) {
         <div>
           <TitleText
             sx={{ fontSize: "9pt", px: 1 }}
-            text=" Lab Arrival Date Range Format: mm-dd-yyyy"
+            text="Date Range Format: mm-dd-yyyy"
             variant="body2"
           />
         </div>
         <div className="flex flex-col lg:flex-row justify-between p-4 gap-4">
           <div className="flex">
             <DatePicker
-              customInput={<CustomDatePickerInput label={"From"} />}
-              startDate={null}
-              endDate={null}
+              customInput={
+                <CustomDatePickerInput label={"Lab Arrival From Date"} />
+              }
+              onChange={(val) =>
+                handleOnChangeDatepicker(val, SearchAttr.LabArrivalFromDate)
+              }
+              startDate={formData.labArrivalFromDate}
+              endDate={formData.labArrivalToDate}
               selectsStart
               dateFormat={"MM-dd-yyyy"}
-              selected={null}
+              selected={formData.labArrivalFromDate}
               isClearable={true}
               showYearDropdown
               showMonthDropdown
@@ -54,18 +72,23 @@ export default function AdditionalCriteria(props: any) {
           </div>
           <div className="flex ">
             <DatePicker
-              customInput={<CustomDatePickerInput label={"To"} />}
-              minDate={undefined}
-              selected={null}
+              customInput={
+                <CustomDatePickerInput label={"Lab Arrival To Date"} />
+              }
+              minDate={formData.labArrivalFromDate}
+              onChange={(val) =>
+                handleOnChangeDatepicker(val, SearchAttr.LabArrivalToDate)
+              }
+              selected={formData.labArrivalToDate}
               selectsEnd
-              endDate={null}
+              endDate={formData.labArrivalToDate}
               dateFormat={"MM-dd-yyyy"}
               isClearable={true}
               showYearDropdown
               showMonthDropdown
               useShortMonthInDropdown
             />
-            <TooltipInfo title="Date Range" />
+            <TooltipInfo title="Lab Arrival Date Range" />
           </div>
         </div>
         <div className="flex flex-col lg:flex-row gap-4 justify-between px-4 pb-4">
@@ -73,17 +96,17 @@ export default function AdditionalCriteria(props: any) {
             <Autocomplete
               multiple
               freeSolo
-              value={""}
-              //getOptionKey={(option) => option.id}
+              value={formData?.collectionMethod}
+              getOptionKey={(option) => option.id}
               options={additionalCriteriaDrpdwns.collectionMethods}
-              //  isOptionEqualToValue={(option, value) => option.id === value.id}
-              // getOptionLabel={(option) => option.name || ""}
-              //   onInputChange={(e, val) =>
-              //     handleInputChange(e, val, BasicSearchAttr.ObservedPropertyGrp)
-              //   }
-              //   onChange={(e, val) =>
-              //     handleOnChange(e, val, BasicSearchAttr.ObservedPropertyGrp)
-              //   }
+              isOptionEqualToValue={(option, value) => option.id === value.id}
+              getOptionLabel={(option) => option.customId || ""}
+              onInputChange={(e, val) =>
+                handleInputChange(e, val, SearchAttr.CollectionMethod)
+              }
+              onChange={(e, val) =>
+                handleOnChange(e, val, SearchAttr.CollectionMethod)
+              }
               sx={{ width: 300 }}
               renderInput={(params) => (
                 <TextField {...params} label="Collection Method" />
@@ -95,19 +118,24 @@ export default function AdditionalCriteria(props: any) {
             <Autocomplete
               multiple
               freeSolo
-              value={""}
-              // getOptionKey={(option) => option.id}
+              value={formData?.qcSampleType}
+              getOptionKey={(option) => option.id}
               options={additionalCriteriaDrpdwns.qcSampleTypes}
-              //isOptionEqualToValue={(option, value) => option.id === value.id}
-              // getOptionLabel={(option) => option.customId || ""}
-              //onInputChange={(e, val) =>  handleInputChange(e, val, BasicSearchAttr.Media)}
-              //onChange={(e, val) =>  handleOnChange(e, val, BasicSearchAttr.Media)   }
+              isOptionEqualToValue={(option, value) => option.id === value.id}
+              getOptionLabel={(option) => option.customId || ""}
+              onInputChange={(e, val) =>
+                handleInputChange(e, val, SearchAttr.QcSampleType)
+              }
+              onChange={(e, val) =>
+                handleOnChange(e, val, SearchAttr.QcSampleType)
+              }
               sx={{ width: 300 }}
               renderInput={(params) => (
                 <TextField {...params} label="QC Sample Type" />
               )}
             />
-            <TooltipInfo title="Sampling Agency" />
+
+            <TooltipInfo title="QC Sample Type" />
           </div>
         </div>
         <div className="flex flex-col lg:flex-row gap-4 justify-between px-4 pb-4">
@@ -115,51 +143,47 @@ export default function AdditionalCriteria(props: any) {
             <Autocomplete
               multiple
               freeSolo
-              value={""}
-              //getOptionKey={(option) => option.id}
-              options={additionalCriteriaDrpdwns.collectionMethods}
-              //  isOptionEqualToValue={(option, value) => option.id === value.id}
-              // getOptionLabel={(option) => option.name || ""}
-              //   onInputChange={(e, val) =>
-              //     handleInputChange(e, val, BasicSearchAttr.ObservedPropertyGrp)
-              //   }
-              //   onChange={(e, val) =>
-              //     handleOnChange(e, val, BasicSearchAttr.ObservedPropertyGrp)
-              //   }
+              value={formData?.dataClassification}
+              getOptionKey={(option) => option.id}
+              options={additionalCriteriaDrpdwns.dataClassifications}
+              isOptionEqualToValue={(option, value) => option.id === value.id}
+              getOptionLabel={(option) => option.customId || ""}
+              onInputChange={(e, val) =>
+                handleInputChange(e, val, SearchAttr.DataClassification)
+              }
+              onChange={(e, val) =>
+                handleOnChange(e, val, SearchAttr.DataClassification)
+              }
               sx={{ width: 300 }}
               renderInput={(params) => (
                 <TextField {...params} label="Data Classification" />
               )}
             />
-            <TooltipInfo title="Collection Method" />
+
+            <TooltipInfo title="Data Classification" />
           </div>
           <div className="flex items-center">
             <Autocomplete
               multiple
               freeSolo
-              value={""}
-              // getOptionKey={(option) => option.id}
-              options={additionalCriteriaDrpdwns.qcSampleTypes}
-              //isOptionEqualToValue={(option, value) => option.id === value.id}
-              // getOptionLabel={(option) => option.customId || ""}
-              //onInputChange={(e, val) =>  handleInputChange(e, val, BasicSearchAttr.Media)}
-              //onChange={(e, val) =>  handleOnChange(e, val, BasicSearchAttr.Media)   }
+              value={formData?.sampleDepth}
+              getOptionKey={(option) => option.id}
+              options={additionalCriteriaDrpdwns.sampleDepths}
+              isOptionEqualToValue={(option, value) => option.id === value.id}
+              getOptionLabel={(option) => option.customId || ""}
+              onInputChange={(e, val) =>
+                handleInputChange(e, val, SearchAttr.SampleDepth)
+              }
+              onChange={(e, val) =>
+                handleOnChange(e, val, SearchAttr.SampleDepth)
+              }
               sx={{ width: 300 }}
               renderInput={(params) => (
                 <TextField {...params} label="Sample Depth (m)" />
               )}
             />
+
             <TooltipInfo title="Sample Depth (m)" />
-          </div>
-        </div>
-        <div className="flex flex-col lg:flex-row gap-4 justify-between px-4 pb-4">
-          <div className="flex items-center">
-            <TextField value={""} label="Units" sx={{ width: 300 }} />
-            <TooltipInfo title="Units" />
-          </div>
-          <div className="flex items-center">
-            <TextField value={""} label="Lab Batch ID" sx={{ width: 300 }} />
-            <TooltipInfo title="Lab Batch ID" />
           </div>
         </div>
         <div className="flex flex-col lg:flex-row gap-4 justify-between px-4 pb-4">
@@ -167,19 +191,49 @@ export default function AdditionalCriteria(props: any) {
             <Autocomplete
               multiple
               freeSolo
-              value={""}
-              // getOptionKey={(option) => option.id}
-              options={additionalCriteriaDrpdwns.qcSampleTypes}
-              //isOptionEqualToValue={(option, value) => option.id === value.id}
-              // getOptionLabel={(option) => option.customId || ""}
-              //onInputChange={(e, val) =>  handleInputChange(e, val, BasicSearchAttr.Media)}
-              //onChange={(e, val) =>  handleOnChange(e, val, BasicSearchAttr.Media)   }
+              value={formData?.units}
+              getOptionKey={(option) => option.id}
+              options={additionalCriteriaDrpdwns.units}
+              isOptionEqualToValue={(option, value) => option.id === value.id}
+              getOptionLabel={(option) => option.customId || ""}
+              onInputChange={(e, val) =>
+                handleInputChange(e, val, SearchAttr.Units)
+              }
+              onChange={(e, val) => handleOnChange(e, val, SearchAttr.Units)}
               sx={{ width: 300 }}
-              renderInput={(params) => (
-                <TextField {...params} label="Specimen ID" />
-              )}
+              renderInput={(params) => <TextField {...params} label="Units" />}
             />
-            <TooltipInfo title="Sample Depth (m)" />
+
+            <TooltipInfo title="Units" />
+          </div>
+          <div className="flex items-center">
+            <TextField
+              value={formData.labBatchId}
+              onChange={(e, val) => handleOnChange(e, val, SearchAttr.LabBatchId)}
+              label="Lab Batch ID"
+              sx={{ width: 300 }}
+            />
+            <TooltipInfo title="Lab Batch ID" />
+          </div>
+        </div>
+        <div className="flex flex-col lg:flex-row gap-4 justify-between px-4 pb-4">
+          <div className="flex items-center">
+          <Autocomplete
+              multiple
+              freeSolo
+              value={formData?.specimentId}
+              getOptionKey={(option) => option.id}
+              options={additionalCriteriaDrpdwns.specimenIds}
+              isOptionEqualToValue={(option, value) => option.id === value.id}
+              getOptionLabel={(option) => option.customId || ""}
+              onInputChange={(e, val) =>
+                handleInputChange(e, val, SearchAttr.SpecimenId)
+              }
+              onChange={(e, val) => handleOnChange(e, val, SearchAttr.SpecimenId)}
+              sx={{ width: 300 }}
+              renderInput={(params) => <TextField {...params} label="Specimen ID" />}
+            />
+            <TooltipInfo title="Specimen ID" />
           </div>
         </div>
       </div>

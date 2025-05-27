@@ -13,4 +13,13 @@ export enum SearchAttr {
   Projects = "projects",
   FromDate = "fromDate",
   ToDate = "toDate",
+  CollectionMethod = "collectionMethod",
+  QcSampleType = "qcSampleType",
+  DataClassification = "dataClassification",
+  SampleDepth = "sampleDepth",
+  Units = "units",
+  SpecimenId = "specimenId",
+  LabBatchId = "labBatchId",
+  LabArrivalFromDate = "labArrivalFromDate",
+  LabArrivalToDate = "labArrivalToDate"
 }

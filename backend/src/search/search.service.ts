@@ -128,12 +128,16 @@ export class SearchService {
       samplingLocationIds: basicSearchDto.locationName.toString(),
       samplingLocationGroupIds: basicSearchDto.permitNumber.toString(),
       media: basicSearchDto.media.toString(),
-      observedPropertyIds: basicSearchDto.observedPropertyGrp.toString(),
+      analyticalGroupIds: basicSearchDto.observedPropertyGrp.toString(),
       projectIds: basicSearchDto.projects.toString(),
       "start-observedTime": basicSearchDto.fromDate,
       "end-observedTime": basicSearchDto.toDate,
       limit: this.MAX_API_DATA_LIMIT,
       cursor: cursor,
+
+      observedPropertyIds: basicSearchDto.observedProperty,
+      analysisMethodIds: basicSearchDto.analyticalMethod,
+      collectionMethodIds: basicSearchDto.collectionMethod
     };
   }
 
@@ -389,6 +393,18 @@ export class SearchService {
       search: query,
     };
     return this.getDropdwnOptions(this.getAbsoluteUrl(process.env.SAMPLING_AGENCY_CODE_TABLE_API), params, null);
+  }
+
+  public getCollectionMethods(query: string): Promise<AxiosResponse<any>> {
+    const params = {
+      limit: this.MAX_DROPDWN_OPTIONS_LIMIT,
+      search: query,
+    };
+    return this.getDropdwnOptions(this.getAbsoluteUrl(process.env.COLLECTION_METHOD_CODE_TABLE_API), params, null);
+  }
+
+  public getUnits(query: string): Promise<AxiosResponse<any>> {     
+    return this.getDropdwnOptions(this.getAbsoluteUrl(process.env.UNITS_CODE_TABLE_API), null, null);
   }
 
 

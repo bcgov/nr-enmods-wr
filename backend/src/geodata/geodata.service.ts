@@ -38,7 +38,7 @@ export class GeodataService {
   private readonly samplingLocationsEndpoint =
     process.env.SAMPLING_LOCATIONS_ENDPOINT;
 
-  @Cron("30 38 21 * * *")
+  @Cron("30 55 21 * * *")
   async processAndUpload(): Promise<void> {
     try {
       const start = Date.now();
@@ -277,7 +277,6 @@ export class GeodataService {
 
       // Break if we've processed all expected entries
       if (processedCount >= total) {
-        this.logger.debug(`Completed fetching data for /v1/samplinglocations`);
         break;
       }
 

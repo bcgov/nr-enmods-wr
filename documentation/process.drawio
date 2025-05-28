@@ -73,11 +73,31 @@
         <mxCell id="baqCoUqVgwDe4w2ZhGsL-10" value="&lt;div&gt;ENMODS WR (Nightly Job)&lt;/div&gt;" style="swimlane;html=1;startSize=20;horizontal=0;" vertex="1" parent="1">
           <mxGeometry x="-100" y="490" width="900" height="230" as="geometry" />
         </mxCell>
+        <mxCell id="baqCoUqVgwDe4w2ZhGsL-20" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="baqCoUqVgwDe4w2ZhGsL-10" source="baqCoUqVgwDe4w2ZhGsL-15" target="baqCoUqVgwDe4w2ZhGsL-19">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
         <mxCell id="baqCoUqVgwDe4w2ZhGsL-15" value="Retrieve Spatial Data from AQI API" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="baqCoUqVgwDe4w2ZhGsL-10">
           <mxGeometry x="220" y="85" width="120" height="60" as="geometry" />
         </mxCell>
+        <mxCell id="baqCoUqVgwDe4w2ZhGsL-19" value="Generate  csv and gdb files" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="baqCoUqVgwDe4w2ZhGsL-10">
+          <mxGeometry x="394" y="85" width="119" height="60" as="geometry" />
+        </mxCell>
         <mxCell id="baqCoUqVgwDe4w2ZhGsL-16" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="baqCoUqVgwDe4w2ZhGsL-15" target="dNxyNK7c78bLwvsdeMH5-26">
           <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="baqCoUqVgwDe4w2ZhGsL-21" value="NRS Objectstore" style="swimlane;html=1;startSize=20;horizontal=0;" vertex="1" parent="1">
+          <mxGeometry x="-100" y="720" width="900" height="230" as="geometry" />
+        </mxCell>
+        <mxCell id="baqCoUqVgwDe4w2ZhGsL-23" value="Objectstore Bucket" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="baqCoUqVgwDe4w2ZhGsL-21">
+          <mxGeometry x="393" y="85" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="baqCoUqVgwDe4w2ZhGsL-25" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="baqCoUqVgwDe4w2ZhGsL-19" target="baqCoUqVgwDe4w2ZhGsL-23">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="baqCoUqVgwDe4w2ZhGsL-26" value="Upload to objectstore" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="baqCoUqVgwDe4w2ZhGsL-25">
+          <mxGeometry x="-0.2258" y="1" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
         </mxCell>
       </root>
     </mxGraphModel>

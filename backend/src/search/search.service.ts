@@ -5,11 +5,11 @@ import { BasicSearchDto } from "./dto/basicSearch.dto";
 import { join } from "path";
 import { AxiosResponse } from "axios";
 import { sortArr } from "src/util/utility";
+import csv from "csvtojson";
 import { ObsExportCsvHeader } from "src/enum/obsExportCsvHeader.enum";
 import * as fs from "fs";
 import * as fastcsv from "@fast-csv/format";
 import { parse } from "csv-parse";
-import { Readable } from "stream";
 
 @Injectable()
 export class SearchService {
@@ -33,7 +33,7 @@ export class SearchService {
         const obsExport = res[0].data;
         const observations = await this.getObsFromPagination(JSON.parse(res[1].data), basicSearchDto);
 
-        if (obsExport && observations.length > 0) return this.prepareCsvExportDataStream(obsExport, observations);
+        if (obsExport && observations.length > 0) return this.prepareCsvExportData(obsExport, observations);
 
         return { data: "", status: HttpStatus.OK };
       }
@@ -73,32 +73,53 @@ export class SearchService {
     return currentObsData;
   }
 
-  async prepareCsvExportDataStream(obsExportStream: Readable, observationFetcher: (obsId: string) => Promise<any>) {
-    const csvStream = fastcsv.format({ headers: true });
-    const filePath = join(process.cwd(), `${this.DIR_NAME}streamed_${Date.now()}.csv`);
-    const writeStream = fs.createWriteStream(filePath);
+  private async prepareCsvExportData(obsExport: string, observations: any[]) {
+    try {
+      const fileName = `tmp${Date.now()}.csv`;
+      const filePath = join(process.cwd(), `${this.DIR_NAME}${fileName}`);
 
-    csvStream.pipe(writeStream);
-
-    const parser = parse({ columns: true });
-
-    parser.on("data", async (row: any) => {
-      const obsId = row[ObsExportCsvHeader.ObservationId];
-      const matchingObs = await observationFetcher(obsId);
-      if (matchingObs) {
-        this.writeToCsv(matchingObs, row, csvStream);
+      const observationMap = new Map<string, any>();
+      for (const obs of observations) {
+        observationMap.set(obs.id, obs);
       }
-    });
 
-    parser.on("end", () => csvStream.end());
-    parser.on("error", (err) => this.logger.error("Stream parser error", err));
+      const csvStream = fastcsv.format({ headers: true });
+      const writeStream = fs.createWriteStream(filePath);
 
-    obsExportStream.pipe(parser);
+      csvStream.pipe(writeStream).on("error", (err) => this.logger.error(err));
 
-    return {
-      data: fs.createReadStream(filePath),
-      status: HttpStatus.OK,
-    };
+      const parser = parse({ columns: true });
+      parser.on("data", (row: any) => {
+        const obsId = row[ObsExportCsvHeader.ObservationId];
+        const matchingObs = observationMap.get(obsId);
+        if (matchingObs) {
+          this.writeToCsv(matchingObs, row, csvStream);
+        }
+      });
+
+      parser.on("end", () => {
+        csvStream.end();
+      });
+
+      parser.on("error", (err) => {
+        this.logger.error("CSV parsing error:", err);
+      });
+
+      // Stream the original obsExport string into parser
+      const exportStream = require("stream").Readable.from([obsExport]);
+      exportStream.pipe(parser);
+
+      return {
+        data: fs.createReadStream(filePath),
+        status: HttpStatus.OK,
+      };
+    } catch (err) {
+      this.logger.error(err);
+      throw new BadRequestException({
+        status: HttpStatus.BAD_REQUEST,
+        error: err?.message || "Failed to prepare CSV export data",
+      });
+    }
   }
 
   private getUserSearchInputs(basicSearchDto: BasicSearchDto, cursor: string) {

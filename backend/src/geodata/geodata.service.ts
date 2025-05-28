@@ -438,10 +438,11 @@ export class GeodataService {
   }
 
   /**
-   * 1. Receives transformed data from transformData and creates a geojson file
-   * 2. Converts geojson into a gpkg
-   * 3. Performs intersection between watershed gdb & sampling locations gpkg
-   * 4. Generates gdb and csv, returning their paths
+   * 1. Receives new entries from aqi that have been transformed into a geojson format
+   * 2. Write the geojson to disk and convert it into a gpkg
+   * 3. Performs intersection between watershed gdb & new sampling locations gpkg
+   * 4. Upserts intersected new sampling locations gpkg into the previous gpkg that we loaded from s3
+   * 5. Generates new gpkg, gdb and csv, returning their paths
    * @param transformedData
    * @returns
    */
@@ -452,6 +453,7 @@ export class GeodataService {
   ): Promise<{ gdbPath: string; csvPath: string; gpkgPath: string }> {
     const start = Date.now();
 
+    // used to in file names
     const dateString = newDate
       .toLocaleString("en-US", {
         timeZone: "America/Los_Angeles",
@@ -464,37 +466,47 @@ export class GeodataService {
         hour12: false,
       })
       .replace(/[\/\s,:]/g, "_");
+    // Watershed GDB variables
     const watershedGdbPath = path.resolve(
       __dirname,
       "FWA_WATERSHED_GROUPS_POLY.gdb",
     );
     const watershedLayer = "WHSE_BASEMAPPING_FWA_WATERSHED_GROUPS_POLY";
-    const vrtPath = path.join(this.tempDir, `watershed_geo_${dateString}.vrt`);
-    const gdbPath = path.join(
-      this.tempDir,
-      `sampling_locations_${dateString}.gdb`,
-    );
-    const csvPath = path.join(
-      this.tempDir,
-      `sampling_locations_${dateString}.csv`,
-    );
+    // Layer name
     const intersectedLayerName = "sampling_locations";
-    const gpkgOutputPath = path.join(
-      this.tempDir,
-      `intersect_${dateString}.gpkg`,
-    );
+    // geojson file location
     const geojsonInputPath = path.join(
       this.tempDir,
       `input_${dateString}.geojson`,
     );
-    const gpkgInputPath = path.join(this.tempDir, `input_${dateString}.gpkg`);
+    // gpkg default layer name (TODO: replace this with intersectedLayerName)
     const gpkgLayerName = `input_${dateString}`;
-
-    // Copy the base GPKG to the output path
+    // new transformed data gpkg path
+    const gpkgInputPath = path.join(this.tempDir, `input_${dateString}.gpkg`);
+    // new transformed data gpkg path after intersection
+    const gpkgOutputPath = path.join(
+      this.tempDir,
+      `intersect_${dateString}.gpkg`,
+    );
+    // final combined gpkg data path
     const gpkgPath = path.join(
       this.tempDir,
       `sampling_locations_${dateString}.gpkg`,
     );
+    // vrt file path, used for intersecting the watershed gdb with the transformed data gpkg
+    const vrtPath = path.join(this.tempDir, `watershed_geo_${dateString}.vrt`);
+    // gdb file path
+    const gdbPath = path.join(
+      this.tempDir,
+      `sampling_locations_${dateString}.gdb`,
+    );
+    // csv file path
+    const csvPath = path.join(
+      this.tempDir,
+      `sampling_locations_${dateString}.csv`,
+    );
+
+    // Copy the base GPKG to the output path
     try {
       this.logger.debug(
         `Creating combined GPKG using ${latestFilePath} as base`,
@@ -558,8 +570,8 @@ export class GeodataService {
     `.replace(/\s+/g, " ");
 
       this.logger.debug("Generating Watershed Intersected GPKG");
-      // Generate GPKG as the intersection output
 
+      // Generate GPKG as the intersection output
       try {
         const { stdout, stderr } = await this.execAsync(
           `ogr2ogr -f GPKG "${gpkgOutputPath}" "${vrtPath}" -dialect sqlite -sql "${sql}" -nln ${intersectedLayerName}`,
@@ -605,8 +617,8 @@ export class GeodataService {
       throw error;
     }
 
-    this.logger.debug("Generating CSV");
     // generate csv from GPKG
+    this.logger.debug("Generating CSV");
     try {
       const { stdout, stderr } = await this.execAsync(
         `ogr2ogr -f "CSV" "${csvPath}" "${gpkgPath}" -lco GEOMETRY=AS_XY`,
@@ -618,10 +630,12 @@ export class GeodataService {
       this.logger.error(`Failed to convert to CSV: ${error.message}`);
       throw error;
     }
+    const end = Date.now();
     this.logger.debug(
-      `Intersect & file generation complete, time taken: ${Math.floor((Date.now() - start) / 1000)}s`,
+      `Intersect & file generation complete, time taken: ${Math.floor((end - start) / 3600000)} hours, ${Math.floor(((end - start) / 60000) % 60)} minutes ${Math.floor(((end - start) / 1000) % 60)} seconds`,
     );
 
+    // return file paths
     return { gdbPath, csvPath, gpkgPath };
   }
 

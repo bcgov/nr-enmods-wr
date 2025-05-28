@@ -181,7 +181,7 @@ export default function FilterResultsForm(props: any) {
                     isOptionEqualToValue={(option, value) =>
                       option.id === value.id
                     }
-                    getOptionLabel={(option) => option.name || ""}
+                    getOptionLabel={(option) => option.text || ""}
                     onInputChange={(e, val) =>
                       handleInputChange(e, val, SearchAttr.WorkedOrderNo)
                     }

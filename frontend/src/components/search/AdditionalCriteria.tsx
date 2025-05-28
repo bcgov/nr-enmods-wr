@@ -122,7 +122,7 @@ export default function AdditionalCriteria(props: any) {
               getOptionKey={(option) => option.id}
               options={additionalCriteriaDrpdwns.qcSampleTypes}
               isOptionEqualToValue={(option, value) => option.id === value.id}
-              getOptionLabel={(option) => option.customId || ""}
+              getOptionLabel={(option) => option.type || ""}
               onInputChange={(e, val) =>
                 handleInputChange(e, val, SearchAttr.QcSampleType)
               }

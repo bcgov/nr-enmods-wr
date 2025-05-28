@@ -111,6 +111,7 @@ const AdvanceSearch = (props: Props) => {
     getDropdownOptions(SearchAttr.AnalyticalMethod, "")
     getDropdownOptions(SearchAttr.CollectionMethod, "")
     getDropdownOptions(SearchAttr.Units, "")
+    getDropdownOptions(SearchAttr.QcSampleType, "")
   }, [])
 
   const dropdwnUrl = (fieldName: string, query: string): string | undefined => {
@@ -144,6 +145,14 @@ const AdvanceSearch = (props: Props) => {
           return `${API_VERSION}/search/getCollectionMethods?search=${query}`
         case SearchAttr.Units:
           return `${API_VERSION}/search/getUnits?search=${query}`
+        case SearchAttr.QcSampleType:
+          return `${API_VERSION}/search/getQcSampleTypes?search=${query}`
+        case SearchAttr.DataClassification:
+          return `${API_VERSION}/search/getDataClassifications?search=${query}`
+        case SearchAttr.SampleDepth:
+          return `${API_VERSION}/search/getSampleDepths?search=${query}`
+        case SearchAttr.SpecimenId:
+          return `${API_VERSION}/search/getSpecimenIds?search=${query}`
         default:
           break
       }
@@ -193,14 +202,20 @@ const AdvanceSearch = (props: Props) => {
             case SearchAttr.AnalyticalMethod:
               setAnalyticalMethods(response)
               break
-            case SearchAttr.AnalyzingAgency:
+            case SearchAttr.AnalyzingAgency:            
               setAnalyzingAgencies(response)
               break
-            case SearchAttr.CollectionMethod:              
+            case SearchAttr.CollectionMethod:
               setCollectionMethods(response)
               break
-            case SearchAttr.Units:             
+            case SearchAttr.Units:
               setUnits(response)
+              break
+            case SearchAttr.QcSampleType:
+              console.log(response);
+              setQcSampleTypes(response)
+              break;
+            default:
               break
           }
         }
@@ -285,39 +300,39 @@ const AdvanceSearch = (props: Props) => {
   }
 
   const advanceSearch = async (data: { [key: string]: any }): Promise<void> => {
-     // setIsDisabled(true)
-     // setIsLoading(true)
-      console.log(data)
-      try {
-        const res = await apiService
-          .getAxiosInstance()
-          .post("/v1/search/basicSearch2", data)
-  
-        if (res.status === 200) {
-          window.scroll(0, 0)
-          console.log(res)
-          if (res.data.message) {
+    // setIsDisabled(true)
+    // setIsLoading(true)
+    console.log(data)
+    try {
+      const res = await apiService
+        .getAxiosInstance()
+        .post("/v1/search/basicSearch2", data)
+
+      if (res.status === 200) {
+        window.scroll(0, 0)
+        console.log(res)
+        if (res.data.message) {
           //  setAlertMsg(res.data.message)
-          } else {
-            clearForm()
-            const url = window.URL.createObjectURL(new Blob([res.data]))
-            const link = document.createElement("a")
-            link.href = url
-            link.download = extractFileName(res.headers["content-disposition"])
-            link.click()
-            window.URL.revokeObjectURL(url)
-          }
         } else {
-          window.scroll(0, 0)
-          console.log(res)
-        //  setErrors(res.data.error)
+          clearForm()
+          const url = window.URL.createObjectURL(new Blob([res.data]))
+          const link = document.createElement("a")
+          link.href = url
+          link.download = extractFileName(res.headers["content-disposition"])
+          link.click()
+          window.URL.revokeObjectURL(url)
         }
-       // setIsDisabled(false)
-      //  setIsLoading(false)
-      } catch (err) {
-        console.error(err)
+      } else {
+        window.scroll(0, 0)
+        console.log(res)
+        //  setErrors(res.data.error)
       }
+      // setIsDisabled(false)
+      //  setIsLoading(false)
+    } catch (err) {
+      console.error(err)
     }
+  }
 
   const prepareFormData = (formData: { [key: string]: any }) => {
     const data = { ...formData }
@@ -413,7 +428,7 @@ const AdvanceSearch = (props: Props) => {
                     handleOnChangeDatepicker={handleOnChangeDatepicker}
                     searchType="advance"
                   />
-                </div>                 
+                </div>
               </AccordionDetails>
             </Accordion>
 

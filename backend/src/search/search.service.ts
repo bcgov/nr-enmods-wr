@@ -1,5 +1,10 @@
 import { HttpService } from "@nestjs/axios";
-import { BadRequestException, HttpStatus, Injectable, Logger } from "@nestjs/common";
+import {
+  BadRequestException,
+  HttpStatus,
+  Injectable,
+  Logger,
+} from "@nestjs/common";
 import { firstValueFrom } from "rxjs";
 import { BasicSearchDto } from "./dto/basicSearch.dto";
 import { join } from "path";
@@ -20,21 +25,34 @@ export class SearchService {
   private readonly MAX_DROPDWN_OPTIONS_LIMIT = 100;
   private readonly MAX_API_DATA_LIMIT = 1_000;
   private readonly OBSERVATIONS_URL = process.env.OBSERVATIONS_URL;
-  private readonly OBSERVATIONS_EXPORT_URL = process.env.OBSERVATIONS_EXPORT_URL;
+  private readonly OBSERVATIONS_EXPORT_URL =
+    process.env.OBSERVATIONS_EXPORT_URL;
 
   public async exportData(basicSearchDto: BasicSearchDto): Promise<any> {
     this.logger.debug(`Observations URL: ${this.OBSERVATIONS_URL}`);
     try {
-      const obsExportPromise = this.getObservationPromise(basicSearchDto, this.OBSERVATIONS_EXPORT_URL, "");
-      const observationPromise = this.getObservationPromise(basicSearchDto, this.OBSERVATIONS_URL, "");
+      const obsExportPromise = this.getObservationPromise(
+        basicSearchDto,
+        this.OBSERVATIONS_EXPORT_URL,
+        ""
+      );
+      const observationPromise = this.getObservationPromise(
+        basicSearchDto,
+        this.OBSERVATIONS_URL,
+        ""
+      );
 
       const res = await Promise.all([obsExportPromise, observationPromise]);
 
       if (res.length > 0) {
         const obsExport = res[0].data;
-        const observations = await this.getObsFromPagination(JSON.parse(res[1].data), basicSearchDto);
+        const observations = await this.getObsFromPagination(
+          JSON.parse(res[1].data),
+          basicSearchDto
+        );
 
-        if (obsExport && observations.length > 0) return this.prepareCsvExportData(obsExport, observations);
+        if (obsExport && observations.length > 0)
+          return this.prepareCsvExportData(obsExport, observations);
 
         return { data: "", status: HttpStatus.OK };
       }
@@ -46,11 +64,21 @@ export class SearchService {
     }
   }
 
-  private getObservationPromise(basicSearchDto: BasicSearchDto, url: string, cursor: string): Promise<any> {
-    return this.bcApiCall(this.getAbsoluteUrl(url), this.getUserSearchInputs(basicSearchDto, cursor));
+  private getObservationPromise(
+    basicSearchDto: BasicSearchDto,
+    url: string,
+    cursor: string
+  ): Promise<any> {
+    return this.bcApiCall(
+      this.getAbsoluteUrl(url),
+      this.getUserSearchInputs(basicSearchDto, cursor)
+    );
   }
 
-  private async getObsFromPagination(observations: any, basicSearchDto: BasicSearchDto): Promise<any> {
+  private async getObsFromPagination(
+    observations: any,
+    basicSearchDto: BasicSearchDto
+  ): Promise<any> {
     const totalRecordCount = observations.totalCount;
     let currentObsData = observations.domainObjects;
     let cursor = observations.cursor;
@@ -61,7 +89,11 @@ export class SearchService {
 
       while (i < noOfLoop) {
         this.logger.log("Cursor for the next record: " + cursor);
-        const res = await this.getObservationPromise(basicSearchDto, this.OBSERVATIONS_URL, cursor);
+        const res = await this.getObservationPromise(
+          basicSearchDto,
+          this.OBSERVATIONS_URL,
+          cursor
+        );
         if (res.status === HttpStatus.OK) {
           const data = JSON.parse(res.data);
           currentObsData = currentObsData.concat(data.domainObjects);
@@ -137,7 +169,7 @@ export class SearchService {
 
       observedPropertyIds: basicSearchDto.observedProperty,
       analysisMethodIds: basicSearchDto.analyticalMethod,
-      collectionMethodIds: basicSearchDto.collectionMethod
+      collectionMethodIds: basicSearchDto.collectionMethod,
     };
   }
 
@@ -146,7 +178,7 @@ export class SearchService {
       const res = await firstValueFrom(
         this.httpService.get(url, {
           params: params,
-        }),
+        })
       );
       if (res.status === HttpStatus.OK) return res;
     } catch (err) {
@@ -204,7 +236,8 @@ export class SearchService {
       Observed_Property_ID: obsExport[ObsExportCsvHeader.ObservedPropertyId],
       CAS_Number: obsExport[ObsExportCsvHeader.CasNumber],
       Result_Value: obsExport[ObsExportCsvHeader.ResultValue],
-      Method_Detection_Limit: obsExport[ObsExportCsvHeader.MethodDetectionLimit],
+      Method_Detection_Limit:
+        obsExport[ObsExportCsvHeader.MethodDetectionLimit],
       Method_Reporting_Limit: obsExport[ObsExportCsvHeader.MethodReportingUnit],
       Result_Unit: obsExport[ObsExportCsvHeader.ResultUnit],
       Detection_Condition: obsExport[ObsExportCsvHeader.DetectionCondition],
@@ -219,7 +252,9 @@ export class SearchService {
       Result_Grade: obsExport[ObsExportCsvHeader.ResultGrade],
       Activity_Name: obsExport[ObsExportCsvHeader.ActivityName],
       Tissue_Type: "",
-      Lab_Arrival_Temperature: this.getLabArrivalTemp(specimen?.extendedAttributes),
+      Lab_Arrival_Temperature: this.getLabArrivalTemp(
+        specimen?.extendedAttributes
+      ),
       Specimen_Name: obsExport[ObsExportCsvHeader.SpecimenName],
       Lab_Quality_Flag: obsExport[ObsExportCsvHeader.LabQualityFlag],
       Lab_Arrival_Date_Time: obsExport[ObsExportCsvHeader.LabArrivalDateTime],
@@ -229,14 +264,15 @@ export class SearchService {
       Lab_Comment: obsExport[ObsExportCsvHeader.LabComment],
       Lab_Batch_ID: obsExport[ObsExportCsvHeader.LabBatchId],
       QC_Type: obsExport[ObsExportCsvHeader.QCType],
-      QC_Source_Activity_Name: obsExport[ObsExportCsvHeader.QCSourceActivityName],
+      QC_Source_Activity_Name:
+        obsExport[ObsExportCsvHeader.QCSourceActivityName],
       Validation_Warnings: obsExport[ObsExportCsvHeader.ValidationWarnings],
       Standards_Violation: obsExport[ObsExportCsvHeader.StandardsViolation],
     });
   }
 
   private getDataFromObj(arr: any[], attr: string) {
-    if (arr) {
+    if (arr.length > 0) {
       for (let i = 0; i < arr.length; i++) {
         if (Object.hasOwn(arr[i], attr)) {
           switch (attr) {
@@ -276,12 +312,16 @@ export class SearchService {
     return this.getDataFromObj(arr, "text");
   }
 
-  private async getDropdwnOptions(url: string, params: any, sortBy: string | null): Promise<any> {
+  private async getDropdwnOptions(
+    url: string,
+    params: any,
+    sortBy: string | null
+  ): Promise<any> {
     try {
       const res = await firstValueFrom(
         this.httpService.get(url, {
           params: params,
-        }),
+        })
       );
       if (res.status === HttpStatus.OK) {
         const dataArr = JSON.parse(res.data).domainObjects;
@@ -302,7 +342,11 @@ export class SearchService {
   }
 
   public getLocationTypes(): Promise<AxiosResponse<any>> {
-    return this.getDropdwnOptions(this.getAbsoluteUrl(process.env.LOCATION_TYPE_CODE_TABLE_API), null, "customId");
+    return this.getDropdwnOptions(
+      this.getAbsoluteUrl(process.env.LOCATION_TYPE_CODE_TABLE_API),
+      null,
+      "customId"
+    );
   }
 
   public getLocationNames(query: string): Promise<AxiosResponse<any>> {
@@ -312,7 +356,11 @@ export class SearchService {
       search: query,
       sort: "asc",
     };
-    return this.getDropdwnOptions(this.getAbsoluteUrl(process.env.LOCATION_NAME_CODE_TABLE_API), params, "name");
+    return this.getDropdwnOptions(
+      this.getAbsoluteUrl(process.env.LOCATION_NAME_CODE_TABLE_API),
+      params,
+      "name"
+    );
   }
 
   public getLocationGroups(query: string): Promise<AxiosResponse<any>> {
@@ -320,7 +368,11 @@ export class SearchService {
       limit: this.MAX_DROPDWN_OPTIONS_LIMIT,
       search: query,
     };
-    return this.getDropdwnOptions(this.getAbsoluteUrl(process.env.LOCATION_GROUP_CODE_TABLE_API), params, "name");
+    return this.getDropdwnOptions(
+      this.getAbsoluteUrl(process.env.LOCATION_GROUP_CODE_TABLE_API),
+      params,
+      "name"
+    );
   }
 
   public getPermitNumbers(query: string): Promise<AxiosResponse<any>> {
@@ -328,7 +380,11 @@ export class SearchService {
       limit: this.MAX_DROPDWN_OPTIONS_LIMIT,
       search: query,
     };
-    return this.getDropdwnOptions(this.getAbsoluteUrl(process.env.PERMIT_NUMBER_CODE_TABLE_API), params, null);
+    return this.getDropdwnOptions(
+      this.getAbsoluteUrl(process.env.PERMIT_NUMBER_CODE_TABLE_API),
+      params,
+      null
+    );
   }
 
   public getMediums(query: string): Promise<AxiosResponse<any>> {
@@ -336,7 +392,11 @@ export class SearchService {
       limit: this.MAX_DROPDWN_OPTIONS_LIMIT,
       search: query,
     };
-    return this.getDropdwnOptions(this.getAbsoluteUrl(process.env.MEDIA_CODE_TABLE_API), params, null);
+    return this.getDropdwnOptions(
+      this.getAbsoluteUrl(process.env.MEDIA_CODE_TABLE_API),
+      params,
+      null
+    );
   }
 
   public getObservedPropertyGroups(query: string): Promise<AxiosResponse<any>> {
@@ -344,7 +404,11 @@ export class SearchService {
       limit: this.MAX_DROPDWN_OPTIONS_LIMIT,
       search: query,
     };
-    return this.getDropdwnOptions(this.getAbsoluteUrl(process.env.OBSERVED_PROPERTIES_GROUP_CODE_TABLE_API), params, null);
+    return this.getDropdwnOptions(
+      this.getAbsoluteUrl(process.env.OBSERVED_PROPERTIES_GROUP_CODE_TABLE_API),
+      params,
+      null
+    );
   }
 
   public getProjects(query: string): Promise<AxiosResponse<any>> {
@@ -352,7 +416,11 @@ export class SearchService {
       limit: this.MAX_DROPDWN_OPTIONS_LIMIT,
       search: query,
     };
-    return this.getDropdwnOptions(this.getAbsoluteUrl(process.env.PROJECTS_CODE_TABLE_API), params, null);
+    return this.getDropdwnOptions(
+      this.getAbsoluteUrl(process.env.PROJECTS_CODE_TABLE_API),
+      params,
+      null
+    );
   }
 
   public getAnalyticalMethods(query: string): Promise<AxiosResponse<any>> {
@@ -360,15 +428,24 @@ export class SearchService {
       limit: this.MAX_DROPDWN_OPTIONS_LIMIT,
       search: query,
     };
-    return this.getDropdwnOptions(this.getAbsoluteUrl(process.env.ANALYTICAL_METHOD_CODE_TABLE_API), params, null);
+    return this.getDropdwnOptions(
+      this.getAbsoluteUrl(process.env.ANALYTICAL_METHOD_CODE_TABLE_API),
+      params,
+      null
+    );
   }
 
   public getAnalyzingAgencies(query: string): Promise<AxiosResponse<any>> {
+    console.log("AA");
     const params = {
       limit: this.MAX_DROPDWN_OPTIONS_LIMIT,
       search: query,
     };
-    return this.getDropdwnOptions(this.getAbsoluteUrl(process.env.ANALYZING_AGENCY_CODE_TABLE_API), params, null);
+    return this.getDropdwnOptions(
+      this.getAbsoluteUrl(process.env.ANALYZING_AGENCY_CODE_TABLE_API),
+      params,
+      null
+    );
   }
 
   public getObservedProperties(query: string): Promise<AxiosResponse<any>> {
@@ -376,23 +453,68 @@ export class SearchService {
       limit: this.MAX_DROPDWN_OPTIONS_LIMIT,
       search: query,
     };
-    return this.getDropdwnOptions(this.getAbsoluteUrl(process.env.OBSERVED_PROPERTIES_CODE_TABLE_API), params, null);
+    return this.getDropdwnOptions(
+      this.getAbsoluteUrl(process.env.OBSERVED_PROPERTIES_CODE_TABLE_API),
+      params,
+      null
+    );
   }
 
-  public getWorkedOrderNos(query: string): Promise<AxiosResponse<any>> {
+  public async getWorkedOrderNos(query: string): Promise<any[]> {
     const params = {
       limit: this.MAX_DROPDWN_OPTIONS_LIMIT,
-      search: query,
+      search: null,
     };
-    return this.getDropdwnOptions(this.getAbsoluteUrl(process.env.WORKED_ORDER_NO_CODE_TABLE_API), params, null);
+
+    const specimens = this.getDropdwnOptions(
+      this.getAbsoluteUrl(process.env.WORKED_ORDER_NO_CODE_TABLE_API),
+      params,
+      null
+    );
+
+    const data = await specimens;
+    let arr = [];
+    if (data.length > 0) {
+      data.forEach((item: any) => {
+        if (item.extendedAttributes.length > 0) {
+          item.extendedAttributes.forEach((obj: any) => {
+            if (Object.hasOwn(obj, "text")) {
+              arr.push(obj);
+            }
+          });
+        }
+      });
+    }
+    return arr;
   }
 
-  public getSamplingAgencies(query: string): Promise<AxiosResponse<any>> {
+  public async getSamplingAgencies(query: string): Promise<any[]> {
     const params = {
-      limit: this.MAX_DROPDWN_OPTIONS_LIMIT,
+      // limit: this.MAX_DROPDWN_OPTIONS_LIMIT,
       search: query,
     };
-    return this.getDropdwnOptions(this.getAbsoluteUrl(process.env.SAMPLING_AGENCY_CODE_TABLE_API), params, null);
+    const fieldVisits = this.getDropdwnOptions(
+      this.getAbsoluteUrl(process.env.SAMPLING_AGENCY_CODE_TABLE_API),
+      params,
+      null
+    );
+
+    const data = await fieldVisits;
+    let arr = [];
+    let samplingAgencies = new Set();
+    if (data.length > 0) {
+      data.forEach((item: any) => {
+        if (item.extendedAttributes.length > 0) {
+          item.extendedAttributes.forEach((obj: any) => {
+            if (Object.hasOwn(obj, "dropDownListItem")) {
+              arr.push(obj?.dropDownListItem);
+            }
+          });
+        }
+      });
+    }
+
+    return [...new Map(arr.map((item) => [item["id"], item])).values()];
   }
 
   public getCollectionMethods(query: string): Promise<AxiosResponse<any>> {
@@ -400,12 +522,33 @@ export class SearchService {
       limit: this.MAX_DROPDWN_OPTIONS_LIMIT,
       search: query,
     };
-    return this.getDropdwnOptions(this.getAbsoluteUrl(process.env.COLLECTION_METHOD_CODE_TABLE_API), params, null);
+    return this.getDropdwnOptions(
+      this.getAbsoluteUrl(process.env.COLLECTION_METHOD_CODE_TABLE_API),
+      params,
+      null
+    );
   }
 
-  public getUnits(query: string): Promise<AxiosResponse<any>> {     
-    return this.getDropdwnOptions(this.getAbsoluteUrl(process.env.UNITS_CODE_TABLE_API), null, null);
+  public getUnits(query: string): Promise<AxiosResponse<any>> {
+    return this.getDropdwnOptions(
+      this.getAbsoluteUrl(process.env.UNITS_CODE_TABLE_API),
+      null,
+      null
+    );
   }
 
+  public async getQcSampleTypes(query: string): Promise<any[]> {
+    const params = {
+      limit: this.MAX_DROPDWN_OPTIONS_LIMIT,
+    };
+    const activities = await this.getDropdwnOptions(
+      this.getAbsoluteUrl(process.env.QC_SAMPLE_TYPE_CODE_TABLE_API),
+      params,
+      null
+    );
 
+    return [
+      ...new Map(activities.map((item) => [item["type"], item])).values(),
+    ];
+  }
 }

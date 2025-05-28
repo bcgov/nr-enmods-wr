@@ -139,4 +139,29 @@ export class SearchController {
     const query: any = req.query.search;
     return this.searchService.getUnits(query);
   }
+
+  @Get("getQcSampleTypes")
+  public getQcSampleTypes(@Req() req: Request) {
+    const query: any = req.query.search;
+    return this.searchService.getQcSampleTypes(query);
+  }
+
+  // @Get("getDataClassifications")
+  // public getDataClassifications(@Req() req: Request) {
+  //   const query: any = req.query.search;
+  //   return this.searchService.getDataClassifications(query);
+  // }
+
+  // @Get("getSampleDepths")
+  // public getSampleDepths(@Req() req: Request) {
+  //   const query: any = req.query.search;
+  //   return this.searchService.getSampleDepths(query);
+  // }
+
+  // @Get("getSpecimenIds")
+  // public getSpecimenIds(@Req() req: Request) {
+  //   const query: any = req.query.search;
+  //   return this.searchService.getSpecimenIds(query);
+  // }
+
 }

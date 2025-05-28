@@ -66,7 +66,7 @@ const BasicSearch = () => {
       if (url) {
         const apiData = await apiService.getAxiosInstance().get(url)
         if (apiData.status === 200) {
-          console.log(apiData);
+          //console.log(apiData);
           const response = apiData.data
           switch (fieldName) {
             case SearchAttr.ObservedPropertyGrp:

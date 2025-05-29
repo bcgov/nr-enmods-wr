@@ -186,7 +186,7 @@ export class SearchService {
       Field_Filtered_Comment: specimen?.filtrationComment,
       Field_Preservative: "",
       Field_Device_ID: obsExport[ObsExportCsvHeader.FieldDeviceId],
-      Field_Device_Type: [ObsExportCsvHeader.FieldDeviceType],
+      Field_Device_Type: obsExport[ObsExportCsvHeader.FieldDeviceType],
       Sampling_Context_Tag: "",
       Collection_Method: obsExport[ObsExportCsvHeader.CollectionMethod],
       Medium: obsExport[ObsExportCsvHeader.Medium],

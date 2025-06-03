@@ -41,7 +41,7 @@ export class GeodataService {
   private readonly samplingLocationGroupsEndpoint =
     process.env.SAMPLING_LOCATION_GROUPS_ENDPOINT;
 
-  @Cron("40 15 16 * * *")
+  @Cron("0 0 0 * * *")
   async processAndUpload(): Promise<void> {
     try {
       this.logger.debug("Starting sampling location cron job");
@@ -1101,66 +1101,6 @@ export class GeodataService {
       } else {
         await fs.promises.unlink(filePath);
       }
-    }
-  }
-
-  /**
-   * Debug method to list all files in the S3 bucket
-   */
-  private async listS3BucketContents(): Promise<void> {
-    const OBJECTSTORE_URL = process.env.OBJECTSTORE_URL;
-    const OBJECTSTORE_ACCESS_KEY2 = process.env.OBJECTSTORE_ACCESS_KEY2;
-    const OBJECTSTORE_SECRET_KEY2 = process.env.OBJECTSTORE_SECRET_KEY2;
-    const OBJECTSTORE_BUCKET2 = process.env.OBJECTSTORE_BUCKET2;
-    const OBJECTSTORE_FOLDER = process.env.OBJECTSTORE_FOLDER;
-
-    if (
-      !OBJECTSTORE_URL ||
-      !OBJECTSTORE_ACCESS_KEY2 ||
-      !OBJECTSTORE_SECRET_KEY2 ||
-      !OBJECTSTORE_BUCKET2 ||
-      !OBJECTSTORE_FOLDER
-    ) {
-      this.logger.error(
-        "S3 object store configuration is incomplete. Cannot list bucket contents.",
-      );
-      return;
-    }
-
-    const dateValue = new Date().toUTCString();
-    const stringToSign = `GET\n\n\n${dateValue}\n/${OBJECTSTORE_BUCKET2}/${OBJECTSTORE_FOLDER}/`;
-
-    const signature = crypto
-      .createHmac("sha1", OBJECTSTORE_SECRET_KEY2)
-      .update(stringToSign)
-      .digest("base64");
-
-    const requestUrl = `${OBJECTSTORE_URL}/${OBJECTSTORE_BUCKET2}/${OBJECTSTORE_FOLDER}/`;
-
-    const headers = {
-      Authorization: `AWS ${OBJECTSTORE_ACCESS_KEY2}:${signature}`,
-      Date: dateValue,
-    };
-
-    try {
-      this.logger.debug(`Listing S3 bucket contents at: ${requestUrl}`);
-      const response = await axios({
-        method: "get",
-        url: requestUrl,
-        headers: headers,
-      });
-
-      if (response.status === 200) {
-        this.logger.debug(
-          `S3 bucket listing response: ${JSON.stringify(response.data, null, 2)}`,
-        );
-      } else {
-        this.logger.error(
-          `Failed to list S3 bucket contents. Status: ${response.status}`,
-        );
-      }
-    } catch (error) {
-      this.logger.error(`Error listing S3 bucket contents: ${error.message}`);
     }
   }
 }

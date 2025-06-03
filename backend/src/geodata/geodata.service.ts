@@ -455,6 +455,9 @@ export class GeodataService {
     const attribute = extendedAttributes.find(
       (attr) => attr.attributeId === attributeId,
     );
+    if (attribute && attribute.text === "NA") {
+      return "";
+    }
     return attribute ? attribute.text : "";
   }
 
@@ -603,7 +606,10 @@ export class GeodataService {
                 watershedGroupCode: feature.properties.watershedGroupCode,
                 watershedGroupName: feature.properties.watershedGroupName,
                 groupName: group.name,
-                groupDescription: group.description || "",
+                groupDescription:
+                  group.description && group.description !== "NA"
+                    ? group.description
+                    : "",
                 groupType: group.locationGroupType?.customId || "",
                 latitude: feature.properties.latitude || "",
                 longitude: feature.properties.longitude || "",

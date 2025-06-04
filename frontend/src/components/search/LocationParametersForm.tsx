@@ -38,7 +38,7 @@ export default function LocationParametersForm(props: any) {
               onChange={(e, val) =>
                 handleOnChange(e, val, SearchAttr.LocationType)
               }
-              sx={{ width: 300 }}
+              sx={{ width: 380 }}
               renderInput={(params) => (
                 <TextField {...params} label="Location Types" />
               )}
@@ -63,7 +63,7 @@ export default function LocationParametersForm(props: any) {
               onChange={(e, val) =>
                 handleOnChange(e, val, SearchAttr.LocationName)
               }
-              sx={{ width: 300 }}
+              sx={{ width: 380 }}
               renderInput={(params) => (
                 <TextField {...params} label="Location Name" />
               )}
@@ -87,7 +87,7 @@ export default function LocationParametersForm(props: any) {
               onChange={(e, val) =>
                 handleOnChange(e, val, SearchAttr.PermitNo)
               }
-              sx={{ width: 300 }}
+              sx={{ width: 380 }}
               renderInput={(params) => (
                 <TextField {...params} label="Permit ID or Location Group" />
               )}
@@ -112,7 +112,7 @@ export default function LocationParametersForm(props: any) {
               onChange={(e, val) =>
                 handleOnChange(e, val, SearchAttr.LocationName)
               }
-              sx={{ width: 300 }}
+              sx={{ width: 380 }}
               renderInput={(params) => (
                 <TextField {...params} label="Location ID" />
               )}

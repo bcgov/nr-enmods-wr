@@ -28,7 +28,7 @@ export default function FilterResultsForm(props: any) {
       <div className="flex-row">
         <TextField
           label={label}
-          sx={{ minWidth: 300 }}
+          sx={{ minWidth: 380 }}
           onClick={onClick}
           onChange={onChange}
           ref={ref}
@@ -62,7 +62,7 @@ export default function FilterResultsForm(props: any) {
             />
           </div>
           <div className="flex flex-col lg:flex-row justify-between p-4 gap-4">
-            <div className="flex">
+            <div className="flex items-center">
               <DatePicker
                 customInput={<CustomDatePickerInput label={"From"} />}
                 onChange={(val) =>
@@ -79,7 +79,7 @@ export default function FilterResultsForm(props: any) {
                 useShortMonthInDropdown
               />
             </div>
-            <div className="flex ">
+            <div className="flex items-center">
               <DatePicker
                 customInput={<CustomDatePickerInput label={"To"} />}
                 minDate={formData.fromDate}
@@ -112,7 +112,7 @@ export default function FilterResultsForm(props: any) {
                   handleInputChange(e, val, SearchAttr.Media)
                 }
                 onChange={(e, val) => handleOnChange(e, val, SearchAttr.Media)}
-                sx={{ width: 300 }}
+                sx={{ width: 380 }}
                 renderInput={(params) => (
                   <TextField {...params} label="Media" />
                 )}
@@ -134,7 +134,7 @@ export default function FilterResultsForm(props: any) {
                 onChange={(e, val) =>
                   handleOnChange(e, val, SearchAttr.ObservedPropertyGrp)
                 }
-                sx={{ width: 300 }}
+                sx={{ width: 380 }}
                 renderInput={(params) => (
                   <TextField {...params} label="Observed Property Group" />
                 )}
@@ -163,7 +163,7 @@ export default function FilterResultsForm(props: any) {
                     onChange={(e, val) =>
                       handleOnChange(e, val, SearchAttr.ObservedProperty)
                     }
-                    sx={{ width: 300 }}
+                    sx={{ width: 380 }}
                     renderInput={(params) => (
                       <TextField {...params} label="Observed Property" />
                     )}
@@ -172,7 +172,7 @@ export default function FilterResultsForm(props: any) {
                 </div>
 
                 <div className="flex items-center">
-                  <Autocomplete
+                  {/* <Autocomplete
                     multiple
                     freeSolo
                     value={formData?.workedOrderNo}
@@ -188,10 +188,18 @@ export default function FilterResultsForm(props: any) {
                     onChange={(e, val) =>
                       handleOnChange(e, val, SearchAttr.WorkedOrderNo)
                     }
-                    sx={{ width: 300 }}
+                    sx={{ width: 380 }}
                     renderInput={(params) => (
                       <TextField {...params} label="Worked Order Number" />
                     )}
+                  /> */}
+                  <TextField
+                    value={formData.workedOrderNo}
+                    onChange={(e) =>
+                      handleOnChange(e, null, SearchAttr.WorkedOrderNo)
+                    }
+                    label="Worked Order Number"
+                    sx={{ width: 380 }}
                   />
                   <TooltipInfo title="Worked Order Number" />
                 </div>
@@ -215,7 +223,7 @@ export default function FilterResultsForm(props: any) {
                     onChange={(e, val) =>
                       handleOnChange(e, val, SearchAttr.SamplingAgency)
                     }
-                    sx={{ width: 300 }}
+                    sx={{ width: 380 }}
                     renderInput={(params) => (
                       <TextField {...params} label="Sampling Agency" />
                     )}
@@ -240,7 +248,7 @@ export default function FilterResultsForm(props: any) {
                     onChange={(e, val) =>
                       handleOnChange(e, val, SearchAttr.AnalyzingAgency)
                     }
-                    sx={{ width: 300 }}
+                    sx={{ width: 380 }}
                     renderInput={(params) => (
                       <TextField {...params} label="Analyzing Agency" />
                     )}
@@ -252,7 +260,7 @@ export default function FilterResultsForm(props: any) {
           )}
 
           <div className="flex flex-col lg:flex-row gap-4 justify-between px-4 pb-4">
-            <div className="flex flex-row">
+            <div className="flex items-center">
               <Autocomplete
                 multiple
                 freeSolo
@@ -267,7 +275,7 @@ export default function FilterResultsForm(props: any) {
                 onChange={(e, val) =>
                   handleOnChange(e, val, SearchAttr.Projects)
                 }
-                sx={{ width: 300 }}
+                sx={{ width: 380 }}
                 renderInput={(params) => (
                   <TextField {...params} label="Projects" />
                 )}
@@ -293,7 +301,7 @@ export default function FilterResultsForm(props: any) {
                   onChange={(e, val) =>
                     handleOnChange(e, val, SearchAttr.AnalyticalMethod)
                   }
-                  sx={{ width: 300 }}
+                  sx={{ width: 380 }}
                   renderInput={(params) => (
                     <TextField {...params} label="Analytical Method" />
                   )}

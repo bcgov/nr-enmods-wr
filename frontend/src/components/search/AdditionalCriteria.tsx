@@ -18,7 +18,7 @@ const CustomDatePickerInput = forwardRef<HTMLInputElement, props>(
     <div className="flex-row">
       <TextField
         label={label}
-        sx={{ minWidth: 300 }}
+        sx={{ minWidth: 380 }}
         onClick={onClick}
         onChange={onChange}
         ref={ref}
@@ -45,13 +45,13 @@ export default function AdditionalCriteria(props: any) {
       <div className="py-2">
         <div>
           <TitleText
-            sx={{ fontSize: "9pt", px: 1 }}
+            sx={{ fontSize: "9pt", p: 1 }}
             text="Date Range Format: mm-dd-yyyy"
             variant="body2"
           />
         </div>
         <div className="flex flex-col lg:flex-row justify-between p-4 gap-4">
-          <div className="flex">
+          <div className="flex items-center">
             <DatePicker
               customInput={
                 <CustomDatePickerInput label={"Lab Arrival From Date"} />
@@ -70,7 +70,7 @@ export default function AdditionalCriteria(props: any) {
               useShortMonthInDropdown
             />
           </div>
-          <div className="flex ">
+          <div className="flex items-center">
             <DatePicker
               customInput={
                 <CustomDatePickerInput label={"Lab Arrival To Date"} />
@@ -95,7 +95,7 @@ export default function AdditionalCriteria(props: any) {
           <div className="flex items-center">
             <Autocomplete
               multiple
-              freeSolo
+              freeSolo                        
               value={formData?.collectionMethod}
               getOptionKey={(option) => option.id}
               options={additionalCriteriaDrpdwns.collectionMethods}
@@ -107,7 +107,7 @@ export default function AdditionalCriteria(props: any) {
               onChange={(e, val) =>
                 handleOnChange(e, val, SearchAttr.CollectionMethod)
               }
-              sx={{ width: 300 }}
+              sx={{ width: 380 }}
               renderInput={(params) => (
                 <TextField {...params} label="Collection Method" />
               )}
@@ -129,7 +129,7 @@ export default function AdditionalCriteria(props: any) {
               onChange={(e, val) =>
                 handleOnChange(e, val, SearchAttr.QcSampleType)
               }
-              sx={{ width: 300 }}
+              sx={{ width: 380 }}
               renderInput={(params) => (
                 <TextField {...params} label="QC Sample Type" />
               )}
@@ -147,14 +147,14 @@ export default function AdditionalCriteria(props: any) {
               getOptionKey={(option) => option.id}
               options={additionalCriteriaDrpdwns.dataClassifications}
               isOptionEqualToValue={(option, value) => option.id === value.id}
-              getOptionLabel={(option) => option.customId || ""}
+              getOptionLabel={(option) => option.dataClassification || ""}
               onInputChange={(e, val) =>
                 handleInputChange(e, val, SearchAttr.DataClassification)
               }
               onChange={(e, val) =>
                 handleOnChange(e, val, SearchAttr.DataClassification)
               }
-              sx={{ width: 300 }}
+              sx={{ width: 380 }}
               renderInput={(params) => (
                 <TextField {...params} label="Data Classification" />
               )}
@@ -163,21 +163,15 @@ export default function AdditionalCriteria(props: any) {
             <TooltipInfo title="Data Classification" />
           </div>
           <div className="flex items-center">
-            <Autocomplete
-              multiple
-              freeSolo
-              value={formData?.sampleDepth}
-              getOptionKey={(option) => option.id}
+            <Autocomplete                         
+              value={formData?.sampleDepth}            
               options={additionalCriteriaDrpdwns.sampleDepths}
-              isOptionEqualToValue={(option, value) => option.id === value.id}
-              getOptionLabel={(option) => option.customId || ""}
-              onInputChange={(e, val) =>
-                handleInputChange(e, val, SearchAttr.SampleDepth)
-              }
+              isOptionEqualToValue={(option, selectedValue) => option.depth?.value === selectedValue.depth?.value}
+              getOptionLabel={(option) => JSON.stringify(option?.depth?.value) || ""}            
               onChange={(e, val) =>
                 handleOnChange(e, val, SearchAttr.SampleDepth)
               }
-              sx={{ width: 300 }}
+              sx={{ width: 380 }}
               renderInput={(params) => (
                 <TextField {...params} label="Sample Depth (m)" />
               )}
@@ -188,19 +182,13 @@ export default function AdditionalCriteria(props: any) {
         </div>
         <div className="flex flex-col lg:flex-row gap-4 justify-between px-4 pb-4">
           <div className="flex items-center">
-            <Autocomplete
-              multiple
-              freeSolo
-              value={formData?.units}
-              getOptionKey={(option) => option.id}
+            <Autocomplete              
+              value={formData?.units}             
               options={additionalCriteriaDrpdwns.units}
               isOptionEqualToValue={(option, value) => option.id === value.id}
-              getOptionLabel={(option) => option.customId || ""}
-              onInputChange={(e, val) =>
-                handleInputChange(e, val, SearchAttr.Units)
-              }
+              getOptionLabel={(option) => option.customId || ""}             
               onChange={(e, val) => handleOnChange(e, val, SearchAttr.Units)}
-              sx={{ width: 300 }}
+              sx={{ width: 380 }}
               renderInput={(params) => <TextField {...params} label="Units" />}
             />
 
@@ -209,9 +197,9 @@ export default function AdditionalCriteria(props: any) {
           <div className="flex items-center">
             <TextField
               value={formData.labBatchId}
-              onChange={(e, val) => handleOnChange(e, val, SearchAttr.LabBatchId)}
+              onChange={(e) => handleOnChange(e, null, SearchAttr.LabBatchId)}
               label="Lab Batch ID"
-              sx={{ width: 300 }}
+              sx={{ width: 380 }}
             />
             <TooltipInfo title="Lab Batch ID" />
           </div>
@@ -225,12 +213,12 @@ export default function AdditionalCriteria(props: any) {
               getOptionKey={(option) => option.id}
               options={additionalCriteriaDrpdwns.specimenIds}
               isOptionEqualToValue={(option, value) => option.id === value.id}
-              getOptionLabel={(option) => option.customId || ""}
+              getOptionLabel={(option) => option.name || ""}
               onInputChange={(e, val) =>
                 handleInputChange(e, val, SearchAttr.SpecimenId)
               }
               onChange={(e, val) => handleOnChange(e, val, SearchAttr.SpecimenId)}
-              sx={{ width: 300 }}
+              sx={{ width: 380 }}
               renderInput={(params) => <TextField {...params} label="Specimen ID" />}
             />
             <TooltipInfo title="Specimen ID" />

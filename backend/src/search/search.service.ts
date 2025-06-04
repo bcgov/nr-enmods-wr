@@ -8,19 +8,16 @@ import {
 import { firstValueFrom } from "rxjs";
 import { BasicSearchDto } from "./dto/basicSearch.dto";
 import { join } from "path";
-import { AxiosResponse } from "axios";
 import { sortArr } from "src/util/utility";
-import csv from "csvtojson";
 import { ObsExportCsvHeader } from "src/enum/obsExportCsvHeader.enum";
 import * as fs from "fs";
 import * as fastcsv from "@fast-csv/format";
 import { parse } from "csv-parse";
-import { rawListeners } from "process";
 
 @Injectable()
 export class SearchService {
   constructor(private readonly httpService: HttpService) {}
-  private readonly logger = new Logger("BasicSearchService");
+  private readonly logger = new Logger("ObservationSearchService");
   private readonly DIR_NAME = "/data/";
   private readonly MAX_DROPDWN_OPTIONS_LIMIT = 100;
   private readonly MAX_API_DATA_LIMIT = 1_000;
@@ -43,7 +40,6 @@ export class SearchService {
       );
 
       const res = await Promise.all([obsExportPromise, observationPromise]);
-
       if (res.length > 0) {
         const obsExport = res[0].data;
         const observations = await this.getObsFromPagination(
@@ -54,9 +50,11 @@ export class SearchService {
         if (obsExport && observations.length > 0)
           return this.prepareCsvExportData(obsExport, observations);
 
+        this.logger.log("data");
         return { data: "", status: HttpStatus.OK };
       }
     } catch (err) {
+      console.log(err);
       throw new BadRequestException({
         status: HttpStatus.BAD_REQUEST,
         error: err.response.error,
@@ -71,7 +69,7 @@ export class SearchService {
   ): Promise<any> {
     return this.bcApiCall(
       this.getAbsoluteUrl(url),
-      this.getUserSearchInputs(basicSearchDto, cursor)
+      this.getUserSearchParams(basicSearchDto, cursor)
     );
   }
 
@@ -112,9 +110,7 @@ export class SearchService {
       const filePath = join(process.cwd(), `${this.DIR_NAME}${fileName}`);
 
       const observationMap = new Map<string, any>();
-      for (const obs of observations) {
-        observationMap.set(obs.id, obs);
-      }
+      for (const obs of observations) observationMap.set(obs.id, obs);
 
       const csvStream = fastcsv.format({ headers: true });
       const writeStream = fs.createWriteStream(filePath);
@@ -125,9 +121,7 @@ export class SearchService {
       parser.on("data", (row: any) => {
         const obsId = row[ObsExportCsvHeader.ObservationId];
         const matchingObs = observationMap.get(obsId);
-        if (matchingObs) {
-          this.writeToCsv(matchingObs, row, csvStream);
-        }
+        if (matchingObs) this.writeToCsv(matchingObs, row, csvStream);
       });
 
       parser.on("end", () => {
@@ -155,7 +149,13 @@ export class SearchService {
     }
   }
 
-  private getUserSearchInputs(basicSearchDto: BasicSearchDto, cursor: string) {
+  private getUserSearchParams(basicSearchDto: BasicSearchDto, cursor: string) {
+    let arr = [];
+    if (basicSearchDto?.labBatchId) arr.push(basicSearchDto.labBatchId);
+    if (basicSearchDto?.workedOrderNo) arr.push(basicSearchDto.workedOrderNo);
+    if (basicSearchDto?.samplingAgency.length > 0)
+      arr.push(...basicSearchDto.samplingAgency);
+
     return {
       samplingLocationIds: basicSearchDto.locationName.toString(),
       samplingLocationGroupIds: basicSearchDto.permitNumber.toString(),
@@ -166,10 +166,18 @@ export class SearchService {
       "end-observedTime": basicSearchDto.toDate,
       limit: this.MAX_API_DATA_LIMIT,
       cursor: cursor,
-
-      observedPropertyIds: basicSearchDto.observedProperty,
-      analysisMethodIds: basicSearchDto.analyticalMethod,
-      collectionMethodIds: basicSearchDto.collectionMethod,
+      observedPropertyIds: basicSearchDto?.observedProperty?.toString(),
+      labResultLaboratoryIds: basicSearchDto?.analyzingAgency?.toString(),
+      analysisMethodIds: basicSearchDto?.analyticalMethod?.toString(),
+      "start-resultTime": basicSearchDto?.labArrivalFromDate,
+      "end-resultTime": basicSearchDto?.labArrivalToDate,
+      collectionMethodIds: basicSearchDto?.collectionMethod?.toString(),
+      qualityControlTypes: basicSearchDto?.qcSampleType?.toString(),
+      dataClassifications: basicSearchDto?.dataClassification?.toString(),
+      depthValue: parseFloat(basicSearchDto?.sampleDepth?.depth?.value),
+      depthUnitId: basicSearchDto?.units?.id,
+      specimenIds: basicSearchDto?.specimenId?.toString(),
+      search: arr?.toString(),
     };
   }
 
@@ -182,7 +190,6 @@ export class SearchService {
       );
       if (res.status === HttpStatus.OK) return res;
     } catch (err) {
-      this.logger.error(err);
       if (err.response.data) {
         const errResponse = JSON.parse(err.response.data);
         let errMsg = [];
@@ -223,7 +230,7 @@ export class SearchService {
       Field_Filtered_Comment: specimen?.filtrationComment,
       Field_Preservative: "",
       Field_Device_ID: obsExport[ObsExportCsvHeader.FieldDeviceId],
-      Field_Device_Type: [ObsExportCsvHeader.FieldDeviceType],
+      Field_Device_Type: obsExport[ObsExportCsvHeader.FieldDeviceType],
       Sampling_Context_Tag: "",
       Collection_Method: obsExport[ObsExportCsvHeader.CollectionMethod],
       Medium: obsExport[ObsExportCsvHeader.Medium],
@@ -272,7 +279,7 @@ export class SearchService {
   }
 
   private getDataFromObj(arr: any[], attr: string) {
-    if (arr.length > 0) {
+    if (arr && arr.length > 0) {
       for (let i = 0; i < arr.length; i++) {
         if (Object.hasOwn(arr[i], attr)) {
           switch (attr) {
@@ -312,7 +319,7 @@ export class SearchService {
     return this.getDataFromObj(arr, "text");
   }
 
-  private async getDropdwnOptions(
+  private async getDropdwnOptionsFrmApi(
     url: string,
     params: any,
     sortBy: string | null
@@ -341,119 +348,107 @@ export class SearchService {
     return `${process.env.BASE_URL_BC_API}${relativeUrl}`;
   }
 
-  public getLocationTypes(): Promise<AxiosResponse<any>> {
-    return this.getDropdwnOptions(
+  public async getLocationTypes(): Promise<any[]> {
+    return await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.LOCATION_TYPE_CODE_TABLE_API),
       null,
       "customId"
     );
   }
 
-  public getLocationNames(query: string): Promise<AxiosResponse<any>> {
-    console.log(query);
+  public async getLocationNames(query: string): Promise<any[]> {
     const params = {
       limit: this.MAX_DROPDWN_OPTIONS_LIMIT,
       search: query,
       sort: "asc",
     };
-    return this.getDropdwnOptions(
+    return await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.LOCATION_NAME_CODE_TABLE_API),
       params,
       "name"
     );
   }
 
-  public getLocationGroups(query: string): Promise<AxiosResponse<any>> {
+  public async getPermitNumbers(query: string): Promise<any[]> {
     const params = {
       limit: this.MAX_DROPDWN_OPTIONS_LIMIT,
       search: query,
     };
-    return this.getDropdwnOptions(
-      this.getAbsoluteUrl(process.env.LOCATION_GROUP_CODE_TABLE_API),
-      params,
-      "name"
-    );
-  }
-
-  public getPermitNumbers(query: string): Promise<AxiosResponse<any>> {
-    const params = {
-      limit: this.MAX_DROPDWN_OPTIONS_LIMIT,
-      search: query,
-    };
-    return this.getDropdwnOptions(
+    return await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.PERMIT_NUMBER_CODE_TABLE_API),
       params,
       null
     );
   }
 
-  public getMediums(query: string): Promise<AxiosResponse<any>> {
+  public async getMediums(query: string): Promise<any[]> {
     const params = {
       limit: this.MAX_DROPDWN_OPTIONS_LIMIT,
       search: query,
     };
-    return this.getDropdwnOptions(
+    return await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.MEDIA_CODE_TABLE_API),
       params,
       null
     );
   }
 
-  public getObservedPropertyGroups(query: string): Promise<AxiosResponse<any>> {
+  public async getObservedPropertyGroups(query: string): Promise<any[]> {
     const params = {
       limit: this.MAX_DROPDWN_OPTIONS_LIMIT,
       search: query,
     };
-    return this.getDropdwnOptions(
+    return await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.OBSERVED_PROPERTIES_GROUP_CODE_TABLE_API),
       params,
       null
     );
   }
 
-  public getProjects(query: string): Promise<AxiosResponse<any>> {
+  public async getProjects(query: string): Promise<any[]> {
     const params = {
       limit: this.MAX_DROPDWN_OPTIONS_LIMIT,
       search: query,
     };
-    return this.getDropdwnOptions(
+    return await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.PROJECTS_CODE_TABLE_API),
       params,
       null
     );
   }
 
-  public getAnalyticalMethods(query: string): Promise<AxiosResponse<any>> {
+  public async getAnalyticalMethods(query: string): Promise<any[]> {
     const params = {
       limit: this.MAX_DROPDWN_OPTIONS_LIMIT,
       search: query,
     };
-    return this.getDropdwnOptions(
+    const analysisMethods = await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.ANALYTICAL_METHOD_CODE_TABLE_API),
       params,
       null
     );
+
+    sortArr(analysisMethods, "name");
+    return analysisMethods;
   }
 
-  public getAnalyzingAgencies(query: string): Promise<AxiosResponse<any>> {
-    console.log("AA");
-    const params = {
-      limit: this.MAX_DROPDWN_OPTIONS_LIMIT,
-      search: query,
-    };
-    return this.getDropdwnOptions(
+  public async getAnalyzingAgencies(query: string): Promise<any[]> {
+    const laboratories = await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.ANALYZING_AGENCY_CODE_TABLE_API),
-      params,
+      null,
       null
     );
+
+    sortArr(laboratories, "name");
+    return laboratories;
   }
 
-  public getObservedProperties(query: string): Promise<AxiosResponse<any>> {
+  public async getObservedProperties(query: string): Promise<any[]> {
     const params = {
       limit: this.MAX_DROPDWN_OPTIONS_LIMIT,
       search: query,
     };
-    return this.getDropdwnOptions(
+    return await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.OBSERVED_PROPERTIES_CODE_TABLE_API),
       params,
       null
@@ -461,21 +456,22 @@ export class SearchService {
   }
 
   public async getWorkedOrderNos(query: string): Promise<any[]> {
+    console.log("QUERY: ", query);
     const params = {
       limit: this.MAX_DROPDWN_OPTIONS_LIMIT,
       search: null,
+      sort: "asc",
     };
 
-    const specimens = this.getDropdwnOptions(
+    const specimens = await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.WORKED_ORDER_NO_CODE_TABLE_API),
       params,
       null
     );
 
-    const data = await specimens;
     let arr = [];
-    if (data.length > 0) {
-      data.forEach((item: any) => {
+    if (specimens.length > 0) {
+      specimens.forEach((item: any) => {
         if (item.extendedAttributes.length > 0) {
           item.extendedAttributes.forEach((obj: any) => {
             if (Object.hasOwn(obj, "text")) {
@@ -485,70 +481,127 @@ export class SearchService {
         }
       });
     }
+    sortArr(arr, "text");
     return arr;
   }
 
   public async getSamplingAgencies(query: string): Promise<any[]> {
     const params = {
-      // limit: this.MAX_DROPDWN_OPTIONS_LIMIT,
+      limit: this.MAX_DROPDWN_OPTIONS_LIMIT,
       search: query,
+      sort: "asc",
     };
-    const fieldVisits = this.getDropdwnOptions(
+
+    const fieldVisits = await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.SAMPLING_AGENCY_CODE_TABLE_API),
       params,
       null
     );
 
-    const data = await fieldVisits;
     let arr = [];
-    let samplingAgencies = new Set();
-    if (data.length > 0) {
-      data.forEach((item: any) => {
+    if (fieldVisits.length > 0) {
+      fieldVisits.forEach((item: any) => {
         if (item.extendedAttributes.length > 0) {
           item.extendedAttributes.forEach((obj: any) => {
             if (Object.hasOwn(obj, "dropDownListItem")) {
-              arr.push(obj?.dropDownListItem);
+              arr.push(obj.dropDownListItem);
             }
           });
         }
       });
     }
 
-    return [...new Map(arr.map((item) => [item["id"], item])).values()];
+    const agencies = [
+      ...new Map(arr.map((item) => [item["id"], item])).values(),
+    ];
+    sortArr(agencies, "customId");
+    return agencies;
   }
 
-  public getCollectionMethods(query: string): Promise<AxiosResponse<any>> {
-    const params = {
-      limit: this.MAX_DROPDWN_OPTIONS_LIMIT,
-      search: query,
-    };
-    return this.getDropdwnOptions(
+  public async getCollectionMethods(query: string): Promise<any[]> {
+    return await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.COLLECTION_METHOD_CODE_TABLE_API),
-      params,
+      null,
       null
     );
   }
 
-  public getUnits(query: string): Promise<AxiosResponse<any>> {
-    return this.getDropdwnOptions(
+  public async getUnits(query: string): Promise<any[]> {
+    const units = await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.UNITS_CODE_TABLE_API),
       null,
       null
     );
+    sortArr(units, "name");
+    return units;
   }
 
   public async getQcSampleTypes(query: string): Promise<any[]> {
     const params = {
       limit: this.MAX_DROPDWN_OPTIONS_LIMIT,
     };
-    const activities = await this.getDropdwnOptions(
+    const activities = await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.QC_SAMPLE_TYPE_CODE_TABLE_API),
       params,
       null
     );
 
     return [
-      ...new Map(activities.map((item) => [item["type"], item])).values(),
+      ...new Map(activities.map((item: any) => [item["type"], item])).values(),
     ];
+  }
+
+  public async getDataClassifications(query: string): Promise<any[]> {
+    const params = {
+      limit: this.MAX_DROPDWN_OPTIONS_LIMIT,
+      search: query,
+    };
+    const observations = await this.getDropdwnOptionsFrmApi(
+      this.getAbsoluteUrl(process.env.DATA_CLASSIFICATION_CODE_TABLE_API),
+      params,
+      null
+    );
+    return [
+      ...new Map(
+        observations.map((item: any) => [item["dataClassification"], item])
+      ).values(),
+    ];
+  }
+
+  public async getSampleDepths(query: string): Promise<any[]> {
+    const params = {
+      limit: this.MAX_DROPDWN_OPTIONS_LIMIT,
+    };
+    const activities = await this.getDropdwnOptionsFrmApi(
+      this.getAbsoluteUrl(process.env.SAMPLE_DEPTH_CODE_TABLE_API),
+      params,
+      null
+    );
+
+    const obsArr = activities.filter((item: any) =>
+      Object.hasOwn(item, "depth")
+    );
+    return [
+      ...new Map(
+        obsArr.map((item: any) => [item["depth"].value, item])
+      ).values(),
+    ].sort((a: any, b: any) => a.depth.value - b.depth.value);
+  }
+
+  public async getSpecimenIds(query: string): Promise<any[]> {
+    const params = {
+      limit: this.MAX_DROPDWN_OPTIONS_LIMIT,
+      search: query,
+    };
+    const specimens = await this.getDropdwnOptionsFrmApi(
+      this.getAbsoluteUrl(process.env.SPECIMEN_ID_CODE_TABLE_API),
+      params,
+      null
+    );
+    const uniqueSpecimens = [
+      ...new Map(specimens.map((item: any) => [item["name"], item])).values(),
+    ];
+    sortArr(uniqueSpecimens, "name");
+    return uniqueSpecimens;
   }
 }

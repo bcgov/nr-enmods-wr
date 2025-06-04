@@ -25,7 +25,7 @@ export class SearchController {
   private readonly logger = new Logger("SearchController");
   constructor(private searchService: SearchService) {}
 
-  @Post("basicSearch")
+  @Post("observationSearch")
   @UsePipes(new ValidationPipe({ transform: true }))
   public async basicSearch(
     @Res() response: Response,
@@ -47,7 +47,7 @@ export class SearchController {
   private sendCsvResponse(readStream: any, response: Response): void {
     readStream
       .on("open", () => {
-        response.attachment("BasicSearchResult.csv");
+        response.attachment("ObservationSearchResult.csv");
         readStream.pipe(response);
       })
       .on("close", () => {
@@ -63,16 +63,10 @@ export class SearchController {
 
   @Get("getLocationNames")
   public getLocacationNames(@Req() req: Request) {
-    console.log("HELLO");
     const query: any = req.query.search;
     return this.searchService.getLocationNames(query);
   }
 
-  @Get("getLocationGroups")
-  public getLocationGroups(@Req() req: Request) {
-    const query: any = req.query.search;
-    return this.searchService.getLocationGroups(query);
-  }
 
   @Get("getPermitNumbers")
   public getPermitNumbers(@Req() req: Request) {
@@ -146,22 +140,22 @@ export class SearchController {
     return this.searchService.getQcSampleTypes(query);
   }
 
-  // @Get("getDataClassifications")
-  // public getDataClassifications(@Req() req: Request) {
-  //   const query: any = req.query.search;
-  //   return this.searchService.getDataClassifications(query);
-  // }
+  @Get("getDataClassifications")
+  public getDataClassifications(@Req() req: Request) {
+    const query: any = req.query.search;
+    return this.searchService.getDataClassifications(query);
+  }
 
-  // @Get("getSampleDepths")
-  // public getSampleDepths(@Req() req: Request) {
-  //   const query: any = req.query.search;
-  //   return this.searchService.getSampleDepths(query);
-  // }
+  @Get("getSampleDepths")
+  public getSampleDepths(@Req() req: Request) {
+    const query: any = req.query.search;
+    return this.searchService.getSampleDepths(query);
+  }
 
-  // @Get("getSpecimenIds")
-  // public getSpecimenIds(@Req() req: Request) {
-  //   const query: any = req.query.search;
-  //   return this.searchService.getSpecimenIds(query);
-  // }
+  @Get("getSpecimenIds")
+  public getSpecimenIds(@Req() req: Request) {
+    const query: any = req.query.search;
+    return this.searchService.getSpecimenIds(query);
+  }
 
 }

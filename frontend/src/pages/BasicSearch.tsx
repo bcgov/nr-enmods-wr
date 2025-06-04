@@ -173,11 +173,11 @@ const BasicSearch = () => {
     try {
       const res = await apiService
         .getAxiosInstance()
-        .post("/v1/search/basicSearch", data)
+        .post("/v1/search/observationSearch", data)
 
       if (res.status === 200) {
         window.scroll(0, 0)
-        console.log(res)
+      //  console.log(res)
         if (res.data.message) {
           setAlertMsg(res.data.message)
         } else {
@@ -238,11 +238,11 @@ const BasicSearch = () => {
       <Loading isLoading={isLoading} />
 
       <div className="flex flex-row px-1 py-4">
-        <Link to="/search/basic" className="search-btn">
+        <Link to="/search/basic" className="bg-[#38598a] text-[#fff] border rounded-md p-2 text-sm cursor-pointer">
           Basic
         </Link>
 
-        <Link to="/search/advance" className="search-btn">
+        <Link to="/search/advance" className="bg-[#fff] text-[#38598a] border rounded-md p-2 text-sm hover:bg-[#38598a] hover:text-[#fff] cursor-pointer">
           Advance
         </Link>
       </div>

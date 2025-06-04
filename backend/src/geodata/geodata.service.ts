@@ -41,7 +41,7 @@ export class GeodataService {
   private readonly samplingLocationGroupsEndpoint =
     process.env.SAMPLING_LOCATION_GROUPS_ENDPOINT;
 
-  @Cron("0 0 0 * * *")
+  @Cron("0 3 23 * * *")
   async processAndUpload(): Promise<void> {
     try {
       this.logger.debug("Starting sampling location cron job");
@@ -94,6 +94,7 @@ export class GeodataService {
           timestamp,
           samplingLocationGroupGpkgPath,
         );
+
       await this.uploadFiles(
         locationGroupGdbPath,
         locationGroupCsvPath,
@@ -156,9 +157,6 @@ export class GeodataService {
       return { latestFilePath: null, latestDateCreated: null };
     }
     this.logger.debug(`Latest file to fetch from S3: ${fileName}`);
-
-    // Debug: List all files in the S3 bucket
-    // await this.listS3BucketContents();
 
     // 2. Fetch that file from the S3 bucket
     const OBJECTSTORE_URL = process.env.OBJECTSTORE_URL;
@@ -451,10 +449,21 @@ export class GeodataService {
   /**
    * Helper function to grab extended attribute values
    */
-  getExtendedAttributeValue(extendedAttributes: any[], attributeId: string) {
+  getExtendedAttributeValue(
+    extendedAttributes: any[],
+    attributeId: string,
+    creationTime?: string,
+  ) {
     const attribute = extendedAttributes.find(
       (attr) => attr.attributeId === attributeId,
     );
+    // if the established date is empty, return the creation time instead
+    if (
+      attributeId === EXTENDED_ATTRIBUTES.establishedDate &&
+      (!attribute || attribute === "")
+    ) {
+      return creationTime;
+    }
     if (attribute && attribute.text === "NA") {
       return "";
     }
@@ -489,57 +498,54 @@ export class GeodataService {
               ],
             },
             properties: {
-              id: location.customId || "",
-              name: location.name || "",
-              comments: location.description || "",
-              locationGroupNames: location.samplingLocationGroups
-                ? location.samplingLocationGroups
-                    .map((group) => group.name || "")
-                    .join("; ")
-                : "",
-              locationType: (location.type && location.type.customId) || "",
-              elevation: (location.elevation && location.elevation.value) || "",
-              elevationUnit:
+              ID: location.customId || "",
+              NAME: location.name || "",
+              DESCRIPTION: location.description || "",
+
+              TYPE: (location.type && location.type.customId) || "",
+              LATITUDE: location.latitude
+                ? parseFloat(location.latitude)
+                : null,
+              LONGITUDE: location.longitude
+                ? parseFloat(location.longitude)
+                : null,
+              ELEVATION: (location.elevation && location.elevation.value) || "",
+              ELEVATION_UNITS:
                 (location.elevation &&
                   location.elevation.unit &&
                   location.elevation.unit.customId) ||
                 "",
-              horizontalCollectionMethod:
-                location.horizontalCollectionMethod || "",
-              observationCount: summary.observationCount,
-              fieldVisitCount: summary.fieldVisitCount,
-              latestFieldVisit:
-                (summary.latestFieldVisit &&
-                  summary.latestFieldVisit.startTime) ||
-                "",
-              closedDate: this.getExtendedAttributeValue(
-                location.extendedAttributes,
-                EXTENDED_ATTRIBUTES.closedDate,
-              ),
-              establishedDate: this.getExtendedAttributeValue(
-                location.extendedAttributes,
-                EXTENDED_ATTRIBUTES.establishedDate,
-              ),
-              wellTagNumber: this.getExtendedAttributeValue(
+              WELL_IDENTIFICATION_TAG_NO: this.getExtendedAttributeValue(
                 location.extendedAttributes,
                 EXTENDED_ATTRIBUTES.wellTagNumber,
               ),
-              // Add original geographic coordinates as attributes
-              longitude: location.longitude
-                ? parseFloat(location.longitude)
-                : null,
-              latitude: location.latitude
-                ? parseFloat(location.latitude)
-                : null,
+              ESTABLISHED_DATE: this.getExtendedAttributeValue(
+                location.extendedAttributes,
+                EXTENDED_ATTRIBUTES.establishedDate,
+                location.auditAttributes.creationTime,
+              ),
+              CLOSED_DATE: this.getExtendedAttributeValue(
+                location.extendedAttributes,
+                EXTENDED_ATTRIBUTES.closedDate,
+              ),
+              OBSERVATION_COUNT: summary.observationCount,
+              FIELD_VISIT_COUNT: summary.fieldVisitCount,
+              LATEST_FIELD_VISIT:
+                (summary.latestFieldVisit &&
+                  summary.latestFieldVisit.startTime) ||
+                "",
+              GROUP_NAMES: location.samplingLocationGroups
+                ? location.samplingLocationGroups
+                    .map((group) => group.name || "")
+                    .join("; ")
+                : "",
+              GEOREFERENCE_SOURCE: location.horizontalCollectionMethod || "",
             },
           };
         }),
       };
 
       // Generate a geojson and then convert it to gpkg
-      this.logger.log(
-        "transformedData.features.length: " + transformedData.features.length,
-      );
       if (transformedData.features.length > 0) {
         this.logger.log("Generating new data geojson");
         const geojsonPath = path.join(
@@ -590,7 +596,7 @@ export class GeodataService {
       // Build new GeoJSON for groups
       const transformedData: any = { type: "FeatureCollection", features: [] };
       samplingGeojson.features.forEach((feature: any) => {
-        const names = (feature.properties.locationGroupNames || "")
+        const names = (feature.properties.GROUP_NAMES || "")
           .split(";")
           .map((s: string) => s.trim())
           .filter(Boolean);
@@ -601,18 +607,18 @@ export class GeodataService {
               type: "Feature",
               geometry: feature.geometry,
               properties: {
-                locationId: feature.properties.id,
-                locationName: feature.properties.name,
-                watershedGroupCode: feature.properties.watershedGroupCode,
-                watershedGroupName: feature.properties.watershedGroupName,
-                groupName: group.name,
-                groupDescription:
+                LOCATION_ID: feature.properties.ID,
+                LOCATION_NAME: feature.properties.NAME,
+                WATERSHED_GROUP_CD: feature.properties.WATERSHED_GROUP_CD,
+                WATERSHED_GROUP_NAME: feature.properties.WATERSHED_GROUP_NAME,
+                GROUP_NAME: group.name,
+                GROUP_DESCRIPTION:
                   group.description && group.description !== "NA"
                     ? group.description
                     : "",
-                groupType: group.locationGroupType?.customId || "",
-                latitude: feature.properties.latitude || "",
-                longitude: feature.properties.longitude || "",
+                GROUP_TYPE: group.locationGroupType?.customId || "",
+                LATITUDE: feature.properties.LATITUDE || "",
+                LONGITUDE: feature.properties.LONGITUDE || "",
               },
             });
           } else {
@@ -696,7 +702,7 @@ export class GeodataService {
     this.logger.debug("Generating location group CSV");
     try {
       const { stdout, stderr } = await this.execAsync(
-        `ogr2ogr -f "CSV" -lco GEOMETRY=AS_XY "${locationGroupCsvPath}" "${samplingLocationGroupGpkgPath}" ${layerName}`,
+        `ogr2ogr -f "CSV" "${locationGroupCsvPath}" "${samplingLocationGroupGpkgPath}" ${layerName}`,
       );
       if (stderr) {
         this.logger.warn(`Location group CSV generation warning: ${stderr}`);
@@ -800,8 +806,8 @@ export class GeodataService {
       const sql = `
       SELECT
         p.*,
-        MIN(w.WATERSHED_GROUP_CODE) AS watershedGroupCode,
-        MIN(w.WATERSHED_GROUP_NAME) AS watershedGroupName
+        MIN(w.WATERSHED_GROUP_CODE) AS WATERSHED_GROUP_CODE,
+        MIN(w.WATERSHED_GROUP_NAME) AS WATERSHED_GROUP_NAME
       FROM ${intersectedLayerName} p
       LEFT JOIN ${watershedLayer} w
       ON ST_Intersects(p.geometry, w.geometry)
@@ -882,8 +888,8 @@ export class GeodataService {
       const sql = `
       SELECT
         p.*,
-        MIN(w.WATERSHED_GROUP_CODE) AS watershedGroupCode,
-        MIN(w.WATERSHED_GROUP_NAME) AS watershedGroupName
+        MIN(w.WATERSHED_GROUP_CODE) AS WATERSHED_GROUP_CODE,
+        MIN(w.WATERSHED_GROUP_NAME) AS WATERSHED_GROUP_NAME
       FROM ${intersectedLayerName} p
       LEFT JOIN ${watershedLayer} w
       ON ST_Intersects(p.geometry, w.geometry)
@@ -948,7 +954,7 @@ export class GeodataService {
     this.logger.debug("Generating CSV");
     try {
       const { stdout, stderr } = await this.execAsync(
-        `ogr2ogr -f "CSV" -lco GEOMETRY=AS_XY "${csvPath}" "${gpkgPath}" ${intersectedLayerName}`,
+        `ogr2ogr -f "CSV" "${csvPath}" "${gpkgPath}" ${intersectedLayerName}`,
       );
       if (stderr) {
         this.logger.warn(`Failed to convert to CSV warning: ${stderr}`);

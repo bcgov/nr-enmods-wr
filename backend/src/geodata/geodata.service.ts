@@ -13,13 +13,6 @@ import { FileInfo } from "./entities/file-info.entity";
 import { Repository } from "typeorm";
 import process from "process";
 
-// If these IDs are not consistent across environments, we will need to fetch them instead.
-const EXTENDED_ATTRIBUTES = {
-  closedDate: "26cd4bdd-2bd3-43fa-a37b-3edeabb2a4be",
-  establishedDate: "e6d3f5b3-ccdf-4c8b-aa4e-a8a783d2db01",
-  wellTagNumber: "7ff9bea7-fc37-4c77-9c4e-fb790f5c7e3e",
-};
-
 @Injectable()
 export class GeodataService {
   constructor(
@@ -40,12 +33,20 @@ export class GeodataService {
     process.env.SAMPLING_LOCATIONS_ENDPOINT;
   private readonly samplingLocationGroupsEndpoint =
     process.env.SAMPLING_LOCATION_GROUPS_ENDPOINT;
+  private readonly extendedAttributesEndpoint =
+    process.env.EXTENDED_ATTRIBUTES_ENDPOINT;
+  private EXTENDED_ATTRIBUTES = {
+    closedDate: null,
+    establishedDate: null,
+    wellTagNumber: null,
+  };
 
-  @Cron("0 3 23 * * *")
+  @Cron("10 31 23 * * *")
   async processAndUpload(): Promise<void> {
     try {
       this.logger.debug("Starting sampling location cron job");
       const start = Date.now();
+      await this.fetchExtendedAttributes();
       // Used for file names & datebase timestamp
       const newDate = new Date();
       const timestamp = newDate
@@ -113,6 +114,32 @@ export class GeodataService {
     } catch (error) {
       this.logger.error(`Error in processAndUpload: ${error.message}`);
       throw error;
+    }
+  }
+
+  async fetchExtendedAttributes(): Promise<void> {
+    axios.defaults.method = "GET";
+    axios.defaults.headers.common["Authorization"] =
+      "token " + process.env.AUTH_TOKEN;
+    axios.defaults.headers.common["x-api-key"] = process.env.AUTH_TOKEN;
+    const url = `${this.baseUrl}${this.extendedAttributesEndpoint}`;
+    const response = await axios.get(url);
+
+    if (response.status != 200) {
+      this.logger.error(
+        `Could not ping AQI API for /${this.extendedAttributesEndpoint}. Response Code: ${response.status}`,
+      );
+      return;
+    }
+
+    for (let entry of response.data.domainObjects) {
+      if (entry.customId === "Closed Date") {
+        this.EXTENDED_ATTRIBUTES.closedDate = entry.id;
+      } else if (entry.customId === "Established Date") {
+        this.EXTENDED_ATTRIBUTES.establishedDate = entry.id;
+      } else if (entry.customId === "Well Tag ID") {
+        this.EXTENDED_ATTRIBUTES.wellTagNumber = entry.id;
+      }
     }
   }
 
@@ -459,7 +486,7 @@ export class GeodataService {
     );
     // if the established date is empty, return the creation time instead
     if (
-      attributeId === EXTENDED_ATTRIBUTES.establishedDate &&
+      attributeId === this.EXTENDED_ATTRIBUTES.establishedDate &&
       (!attribute || attribute === "")
     ) {
       return creationTime;
@@ -517,16 +544,16 @@ export class GeodataService {
                 "",
               WELL_IDENTIFICATION_TAG_NO: this.getExtendedAttributeValue(
                 location.extendedAttributes,
-                EXTENDED_ATTRIBUTES.wellTagNumber,
+                this.EXTENDED_ATTRIBUTES.wellTagNumber,
               ),
               ESTABLISHED_DATE: this.getExtendedAttributeValue(
                 location.extendedAttributes,
-                EXTENDED_ATTRIBUTES.establishedDate,
+                this.EXTENDED_ATTRIBUTES.establishedDate,
                 location.auditAttributes.creationTime,
               ),
               CLOSED_DATE: this.getExtendedAttributeValue(
                 location.extendedAttributes,
-                EXTENDED_ATTRIBUTES.closedDate,
+                this.EXTENDED_ATTRIBUTES.closedDate,
               ),
               OBSERVATION_COUNT: summary.observationCount,
               FIELD_VISIT_COUNT: summary.fieldVisitCount,

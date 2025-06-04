@@ -40,17 +40,19 @@ export class SearchService {
       );
 
       const res = await Promise.all([obsExportPromise, observationPromise]);
-      if (res.length > 0) {
+      if (res && res.length > 0) {
         const obsExport = res[0].data;
         const observations = await this.getObsFromPagination(
           JSON.parse(res[1].data),
           basicSearchDto
         );
 
-        if (obsExport && observations.length > 0)
+        this.logger.log("Observation length: ", observations.length)
+
+        if (obsExport && (observations && observations.length > 0))
           return this.prepareCsvExportData(obsExport, observations);
 
-        this.logger.log("data");
+        this.logger.log("No data found...");
         return { data: "", status: HttpStatus.OK };
       }
     } catch (err) {
@@ -111,6 +113,8 @@ export class SearchService {
 
       const observationMap = new Map<string, any>();
       for (const obs of observations) observationMap.set(obs.id, obs);
+
+      this.logger.log("ObservationMap size: ",observationMap.size);
 
       const csvStream = fastcsv.format({ headers: true });
       const writeStream = fs.createWriteStream(filePath);
@@ -207,7 +211,7 @@ export class SearchService {
     const specimen = observation?.specimen;
     const activity = observation?.activity;
     const numericResult = observation?.numericResult;
-
+    
     csvStream.write({
       Ministry_Contact: this.getMinistryContact(fieldVisit?.extendedAttributes),
       Sampling_Agency: this.getSamplingAgency(fieldVisit?.extendedAttributes),

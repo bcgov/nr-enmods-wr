@@ -209,7 +209,7 @@ export default function AdditionalCriteria(props: any) {
           <Autocomplete
               multiple
               freeSolo
-              value={formData?.specimentId}
+              value={formData?.specimenId}
               getOptionKey={(option) => option.id}
               options={additionalCriteriaDrpdwns.specimenIds}
               isOptionEqualToValue={(option, value) => option.id === value.id}

@@ -27,5 +27,5 @@ COPY --from=builder /app/src/util/watersheds_3005.gpkg ./dist/geodata/watersheds
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=3s CMD curl -f http://localhost:3000/api
 
-# limit heap size to 512 MB
+# limit heap size to 512 MB~
 CMD ["node", "--max-old-space-size=512", "/app/dist/main.js"]

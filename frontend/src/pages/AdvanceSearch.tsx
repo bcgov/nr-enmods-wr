@@ -45,7 +45,7 @@ const AdvanceSearch = (props: Props) => {
   const [sampleDepths, setSampleDepths] = useState([])
   const [specimenIds, setSpecimenIds] = useState([])
   const [units, setUnits] = useState([])
-  
+
   const [formData, setFormData] = useState<AdvanceSearchFormType>({
     locationName: [],
     locationType: null,
@@ -231,7 +231,9 @@ const AdvanceSearch = (props: Props) => {
               break
           }
         } else {
-          setErrors(["ENMODS service is currently down. Please contact the system administrator."])
+          setErrors([
+            "ENMODS service is currently down. Please contact the system administrator.",
+          ])
         }
       }
     } catch (err) {
@@ -384,7 +386,7 @@ const AdvanceSearch = (props: Props) => {
 
   return (
     <>
-      <div className="p-2">
+      <div className="p-3">
         <Loading isLoading={isLoading} />
         <div className="flex-row px-1 py-4">
           <Link
@@ -526,7 +528,14 @@ const AdvanceSearch = (props: Props) => {
               text={"Clear Search"}
               type="button"
               handleClick={clearForm}
-              sx={{ background: "#fff", color: "#0B5394", fontSize: "8pt" }}
+              sx={{
+                background: "#fff",
+                color: "#0B5394",
+                fontSize: "8pt",
+                "&:hover": {
+                  color: "#fff",
+                },
+              }}
             />
             <Btn
               disabled={isDisabled}

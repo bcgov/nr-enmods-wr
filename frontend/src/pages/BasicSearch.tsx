@@ -25,7 +25,7 @@ const BasicSearch = () => {
   const [observedPropGroups, setObservedPropGroups] = useState([])
   const [alertMsg, setAlertMsg] = useState("")
   const [isLoading, setIsLoading] = useState(false)
-  
+
   const [formData, setFormData] = useState<BasicSearchFormType>({
     locationType: null,
     locationName: [],
@@ -92,8 +92,10 @@ const BasicSearch = () => {
             default:
               break
           }
-        } else {          
-          setErrors(["ENMODS service is currently down. Please contact the system administrator."])
+        } else {
+          setErrors([
+            "ENMODS service is currently down. Please contact the system administrator.",
+          ])
         }
       }
     } catch (err) {
@@ -235,7 +237,7 @@ const BasicSearch = () => {
   }
 
   return (
-    <div className="p-2">
+    <div className="p-3">
       <Loading isLoading={isLoading} />
 
       <div className="flex flex-row px-1 py-4">
@@ -323,7 +325,14 @@ const BasicSearch = () => {
               text={"Clear Search"}
               type="button"
               handleClick={clearForm}
-              sx={{ background: "#fff", color: "#0B5394", fontSize: "8pt" }}
+              sx={{
+                background: "#fff",
+                color: "#0B5394",
+                fontSize: "8pt",
+                "&:hover": {                
+                  color: "#fff",
+                },
+              }}
             />
             <Btn
               disabled={isDisabled}

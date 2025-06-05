@@ -23,10 +23,11 @@ spec:
         prometheus.io/path: '/api/metrics'
       labels:
         {{- include "backend.labels" . | nindent 8 }}
-    spec:      volumes:
+    spec:
+      volumes:
         - name: wr-csv-files
           persistentVolumeClaim:
-            claimName: {{ .Release.Name }}-wr-csv-files
+          claimName: {{ .Release.Name }}-wr-csv-files
       initContainers:
         - name: {{ include "backend.fullname" . }}-init
           image: "{{.Values.global.registry}}/{{.Values.global.repository}}/migrations:{{ .Values.global.tag | default .Chart.AppVersion }}"

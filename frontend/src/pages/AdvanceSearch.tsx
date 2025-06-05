@@ -18,11 +18,12 @@ import { API_VERSION, extractFileName } from "@/util/utility"
 import { debounce } from "lodash"
 import Loading from "@/components/Loading"
 import { InfoOutlined } from "@mui/icons-material"
+import AdvanceSearchFormType from "@/interfaces/AdvanceSearchFormType"
 
 type Props = {}
 
 const AdvanceSearch = (props: Props) => {
-  const [errors, setErrors] = useState([])
+  const [errors, setErrors] = useState<string[]>([])
   const [alertMsg, setAlertMsg] = useState("")
   const [isDisabled, setIsDisabled] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -44,7 +45,8 @@ const AdvanceSearch = (props: Props) => {
   const [sampleDepths, setSampleDepths] = useState([])
   const [specimenIds, setSpecimenIds] = useState([])
   const [units, setUnits] = useState([])
-  const [formData, setFormData] = useState({
+  
+  const [formData, setFormData] = useState<AdvanceSearchFormType>({
     locationName: [],
     locationType: null,
     permitNumber: [],
@@ -168,6 +170,7 @@ const AdvanceSearch = (props: Props) => {
       if (url) {
         const apiData = await apiService.getAxiosInstance().get(url)
         if (apiData.status === 200) {
+          setErrors([])
           const response = apiData.data
           switch (fieldName) {
             case SearchAttr.ObservedPropertyGrp:
@@ -227,6 +230,8 @@ const AdvanceSearch = (props: Props) => {
             default:
               break
           }
+        } else {
+          setErrors(["ENMODS service is currently down. Please contact the system administrator."])
         }
       }
     } catch (err) {

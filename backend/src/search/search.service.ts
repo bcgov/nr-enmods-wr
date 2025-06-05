@@ -30,8 +30,14 @@ export class SearchService {
     try {
       const obsExportPromise = this.getObservationPromise(basicSearchDto, this.OBSERVATIONS_EXPORT_URL, "");
       const observationPromise = this.getObservationPromise(basicSearchDto, this.OBSERVATIONS_URL, "");
-
+      
+      const startTime = Date.now();
+      this.logger.log("Start time: ", startTime)
       const res = await Promise.all([obsExportPromise, observationPromise]);
+      const endTime = Date.now();
+      const totalTime = (endTime - startTime) / 1000;
+      this.logger.log("Total time elapsed calling BC API only in seconds: ", totalTime)
+
       if (res && res.length > 0) {
         const obsExport = res[0].data;
         const observations = await this.getObsFromPagination(JSON.parse(res[1].data), basicSearchDto);
@@ -139,9 +145,13 @@ export class SearchService {
 
   private getUserSearchParams(basicSearchDto: BasicSearchDto, cursor: string) {
     let arr = [];
-    if (basicSearchDto?.labBatchId) arr.push(basicSearchDto.labBatchId);
+    
+    if (basicSearchDto?.labBatchId) 
+      arr.push(basicSearchDto.labBatchId);
+
     if (basicSearchDto?.workedOrderNo)
       arr.push(basicSearchDto.workedOrderNo.text);
+
     if (basicSearchDto.samplingAgency && basicSearchDto.samplingAgency.length > 0)
       arr.push(...basicSearchDto.samplingAgency);
 
@@ -312,17 +322,17 @@ export class SearchService {
     try {   
       const params = {};
       if (hasParams) {
-        params['limit'] = this.MAX_DROPDWN_OPTIONS_LIMIT;
-        if (query) params['search'] = query;
+        Object.defineProperty(params, "limit", {value: this.MAX_DROPDWN_OPTIONS_LIMIT})      
+        if (query) Object.defineProperty(params, "search", {value: query});
       }
   
-      const res = await firstValueFrom(this.httpService.get(url, { params: params}));
+      const res = await firstValueFrom(this.httpService.get(url, {params: params}));
       if (res.status === HttpStatus.OK) {
         const dataArr = JSON.parse(res.data).domainObjects;
         if (sortBy) sortArr(dataArr, sortBy);
         return dataArr;
       }
-    } catch (err) {      
+    } catch (err) {   
       throw new BadRequestException({
         status: HttpStatus.BAD_REQUEST,
         error: err.response,

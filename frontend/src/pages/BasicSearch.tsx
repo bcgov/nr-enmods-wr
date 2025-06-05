@@ -21,10 +21,11 @@ const BasicSearch = () => {
   const [permitNumbers, setPermitNumbers] = useState([])
   const [projects, setProjects] = useState([])
   const [mediums, setMediums] = useState([])
-  const [errors, setErrors] = useState([])
+  const [errors, setErrors] = useState<string[]>([])
   const [observedPropGroups, setObservedPropGroups] = useState([])
   const [alertMsg, setAlertMsg] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  
   const [formData, setFormData] = useState<BasicSearchFormType>({
     locationType: null,
     locationName: [],
@@ -57,6 +58,7 @@ const BasicSearch = () => {
       }
     }
   }
+
   const getDropdownOptions = async (
     fieldName: string,
     query: string,
@@ -66,6 +68,7 @@ const BasicSearch = () => {
       if (url) {
         const apiData = await apiService.getAxiosInstance().get(url)
         if (apiData.status === 200) {
+          setErrors([])
           const response = apiData.data
           switch (fieldName) {
             case SearchAttr.ObservedPropertyGrp:
@@ -89,6 +92,8 @@ const BasicSearch = () => {
             default:
               break
           }
+        } else {          
+          setErrors(["ENMODS service is currently down. Please contact the system administrator."])
         }
       }
     } catch (err) {
@@ -166,7 +171,6 @@ const BasicSearch = () => {
   }
 
   const basicSearch = async (data: { [key: string]: any }): Promise<void> => {
-    
     try {
       setIsDisabled(true)
       setIsLoading(true)
@@ -221,13 +225,13 @@ const BasicSearch = () => {
     location: {
       locationTypes: locationTypes,
       locationNames: locationNames,
-      permitNumbers: permitNumbers
+      permitNumbers: permitNumbers,
     },
     filterResult: {
       mediums: mediums,
       projects: projects,
       observedPropGroups: observedPropGroups,
-    }
+    },
   }
 
   return (
@@ -235,21 +239,19 @@ const BasicSearch = () => {
       <Loading isLoading={isLoading} />
 
       <div className="flex flex-row px-1 py-4">
-        <Link to="/search/basic" className="bg-[#38598a] text-[#fff] border rounded-md p-2 text-sm cursor-pointer">
+        <Link
+          to="/search/basic"
+          className="bg-[#38598a] text-[#fff] border rounded-md p-2 text-sm cursor-pointer"
+        >
           Basic
         </Link>
 
-        <Link to="/search/advance" className="bg-[#fff] text-[#38598a] border rounded-md p-2 text-sm hover:bg-[#38598a] hover:text-[#fff] cursor-pointer">
+        <Link
+          to="/search/advance"
+          className="bg-[#fff] text-[#38598a] border rounded-md p-2 text-sm hover:bg-[#38598a] hover:text-[#fff] cursor-pointer"
+        >
           Advance
         </Link>
-      </div>
-
-      <div className="py-4">
-        <TitleText
-          variant="subtitle1"
-          text="Download Water Quality Data"
-          sx={{ fontWeight: 700 }}
-        />
       </div>
 
       {alertMsg && (
@@ -283,10 +285,17 @@ const BasicSearch = () => {
               </Alert>
             )}
           </div>
+          <div className="py-4">
+            <TitleText
+              variant="subtitle1"
+              text="Download Water Quality Data"
+              sx={{ fontWeight: 700 }}
+            />
+          </div>
           <div className="mb-5">
             <Paper elevation={2}>
               <LocationParametersForm
-                formData={formData}                
+                formData={formData}
                 handleInputChange={handleInputChange}
                 handleOnChange={handleOnChange}
                 locationDropdwns={dropdwns.location}
@@ -297,7 +306,7 @@ const BasicSearch = () => {
             <Paper elevation={2}>
               <FilterResultsForm
                 formData={formData}
-                filterResultDrpdwns={dropdwns.filterResult}                
+                filterResultDrpdwns={dropdwns.filterResult}
                 handleInputChange={handleInputChange}
                 handleOnChange={handleOnChange}
                 handleOnChangeDatepicker={handleOnChangeDatepicker}

@@ -172,9 +172,7 @@ export default function FilterResultsForm(props: any) {
                 </div>
 
                 <div className="flex items-center">
-                  {/* <Autocomplete
-                    multiple
-                    freeSolo
+                   <Autocomplete                   
                     value={formData?.workedOrderNo}
                     getOptionKey={(option) => option.id}
                     options={filterResultDrpdwns.workedOrderNos}
@@ -192,15 +190,15 @@ export default function FilterResultsForm(props: any) {
                     renderInput={(params) => (
                       <TextField {...params} label="Worked Order Number" />
                     )}
-                  /> */}
-                  <TextField
+                  /> 
+                  {/* <TextField
                     value={formData.workedOrderNo}
                     onChange={(e) =>
                       handleOnChange(e, null, SearchAttr.WorkedOrderNo)
                     }
                     label="Worked Order Number"
                     sx={{ width: 380 }}
-                  />
+                  /> */}
                   <TooltipInfo title="Worked Order Number" />
                 </div>
               </div>

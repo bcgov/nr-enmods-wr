@@ -51,7 +51,7 @@ const AdvanceSearch = (props: Props) => {
     media: [],
     observedPropertyGrp: [],
     observedProperty: [],
-    workedOrderNo: "",
+    workedOrderNo: null,
     samplingAgency: [],
     analyzingAgency: [],
     projects: [],
@@ -62,7 +62,7 @@ const AdvanceSearch = (props: Props) => {
     dataClassification: [],
     sampleDepth: null,
     labBatchId: "",
-    specimentId: [],
+    specimenId: [],
     fromDate: null,
     toDate: null,
     labArrivalFromDate: null,
@@ -246,7 +246,7 @@ const AdvanceSearch = (props: Props) => {
       media: [],
       observedPropertyGrp: [],
       observedProperty: [],
-      workedOrderNo: "",
+      workedOrderNo: null,
       samplingAgency: [],
       analyzingAgency: [],
       projects: [],
@@ -257,7 +257,7 @@ const AdvanceSearch = (props: Props) => {
       dataClassification: [],
       sampleDepth: null,
       labBatchId: "",
-      specimentId: [],
+      specimenId: [],
       fromDate: null,
       toDate: null,
       labArrivalFromDate: null,
@@ -274,7 +274,8 @@ const AdvanceSearch = (props: Props) => {
   const handleOnChange = (e: any, val: any, attrName: string) => {
     setErrors([])
     setAlertMsg("")
-    if (attrName === SearchAttr.LabBatchId || attrName === SearchAttr.WorkedOrderNo) val = e.target.value
+
+    if (attrName === SearchAttr.LabBatchId) val = e.target.value
 
     setFormData({ ...formData, [attrName]: val })
   }
@@ -309,6 +310,9 @@ const AdvanceSearch = (props: Props) => {
         break
       case SearchAttr.SamplingAgency:
         getDropdownOptions(SearchAttr.SamplingAgency, query)
+        break
+      case SearchAttr.WorkedOrderNo:
+        getDropdownOptions(SearchAttr.WorkedOrderNo, query)
         break
       default:
         break
@@ -362,10 +366,12 @@ const AdvanceSearch = (props: Props) => {
         const arr: string[] = []
 
         formData[key].forEach((item) => {
-          if (key === SearchAttr.DataClassification) arr.push(item.dataClassification)
+          if (key === SearchAttr.DataClassification)
+            arr.push(item.dataClassification)
           else if (key === SearchAttr.SampleDepth) arr.push(item.depth.value)
           else if (key === SearchAttr.QcSampleType) arr.push(item.type)
           else if (key === SearchAttr.SamplingAgency) arr.push(item.customId)
+         // else if (key === SearchAttr.WorkedOrderNo) arr.push(item.text)
           else arr.push(item.id)
         })
 
@@ -460,7 +466,7 @@ const AdvanceSearch = (props: Props) => {
             </Accordion>
 
             {/* Filter Results */}
-            <Accordion defaultExpanded>
+            <Accordion>
               <AccordionSummary
                 expandIcon={<GridExpandMoreIcon />}
                 aria-controls="filter-results-content"
@@ -495,7 +501,7 @@ const AdvanceSearch = (props: Props) => {
             </Accordion>
 
             {/* Additional Criteria */}
-            <Accordion defaultExpanded>
+            <Accordion>
               <AccordionSummary
                 expandIcon={<GridExpandMoreIcon />}
                 aria-controls="additional-criteria-content"

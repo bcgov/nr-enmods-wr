@@ -28,35 +28,25 @@ export class SearchService {
   public async exportData(basicSearchDto: BasicSearchDto): Promise<any> {
     this.logger.debug(`Observations URL: ${this.OBSERVATIONS_URL}`);
     try {
-      const obsExportPromise = this.getObservationPromise(
-        basicSearchDto,
-        this.OBSERVATIONS_EXPORT_URL,
-        ""
-      );
-      const observationPromise = this.getObservationPromise(
-        basicSearchDto,
-        this.OBSERVATIONS_URL,
-        ""
-      );
+      const obsExportPromise = this.getObservationPromise(basicSearchDto, this.OBSERVATIONS_EXPORT_URL, "");
+      const observationPromise = this.getObservationPromise(basicSearchDto, this.OBSERVATIONS_URL, "");
 
       const res = await Promise.all([obsExportPromise, observationPromise]);
       if (res && res.length > 0) {
         const obsExport = res[0].data;
-        const observations = await this.getObsFromPagination(
-          JSON.parse(res[1].data),
-          basicSearchDto
-        );
+        const observations = await this.getObsFromPagination(JSON.parse(res[1].data), basicSearchDto);
 
-        this.logger.log("Observation length: ", observations.length)
+        this.logger.log("Observation length: ", observations.length);
 
-        if (obsExport && (observations && observations.length > 0))
-          return this.prepareCsvExportData(obsExport, observations);
-
-        this.logger.log("No data found...");
+        if (obsExport && observations && observations.length > 0) {
+          this.logger.log("Found records to export to CSV...")
+          return await this.prepareCsvExportData(obsExport, observations);
+        }
+         
+        this.logger.log("No data found to export to CSV...");
         return { data: "", status: HttpStatus.OK };
       }
-    } catch (err) {
-      console.log(err);
+    } catch (err) {     
       throw new BadRequestException({
         status: HttpStatus.BAD_REQUEST,
         error: err.response.error,
@@ -114,7 +104,7 @@ export class SearchService {
       const observationMap = new Map<string, any>();
       for (const obs of observations) observationMap.set(obs.id, obs);
 
-      this.logger.log("ObservationMap size: ",observationMap.size);
+      this.logger.log("ObservationMap size: ", observationMap.size);
 
       const csvStream = fastcsv.format({ headers: true });
       const writeStream = fs.createWriteStream(filePath);
@@ -123,6 +113,7 @@ export class SearchService {
 
       const parser = parse({ columns: true });
       parser.on("data", (row: any) => {
+        console.log(row);
         const obsId = row[ObsExportCsvHeader.ObservationId];
         const matchingObs = observationMap.get(obsId);
         if (matchingObs) this.writeToCsv(matchingObs, row, csvStream);
@@ -140,6 +131,7 @@ export class SearchService {
       const exportStream = require("stream").Readable.from([obsExport]);
       exportStream.pipe(parser);
 
+      console.log("RETURNING...");
       return {
         data: fs.createReadStream(filePath),
         status: HttpStatus.OK,
@@ -156,7 +148,8 @@ export class SearchService {
   private getUserSearchParams(basicSearchDto: BasicSearchDto, cursor: string) {
     let arr = [];
     if (basicSearchDto?.labBatchId) arr.push(basicSearchDto.labBatchId);
-    if (basicSearchDto?.workedOrderNo) arr.push(basicSearchDto.workedOrderNo);
+    if (basicSearchDto?.workedOrderNo)
+      arr.push(basicSearchDto.workedOrderNo.text);
     if (basicSearchDto?.samplingAgency.length > 0)
       arr.push(...basicSearchDto.samplingAgency);
 
@@ -211,7 +204,7 @@ export class SearchService {
     const specimen = observation?.specimen;
     const activity = observation?.activity;
     const numericResult = observation?.numericResult;
-    
+   
     csvStream.write({
       Ministry_Contact: this.getMinistryContact(fieldVisit?.extendedAttributes),
       Sampling_Agency: this.getSamplingAgency(fieldVisit?.extendedAttributes),
@@ -460,10 +453,10 @@ export class SearchService {
   }
 
   public async getWorkedOrderNos(query: string): Promise<any[]> {
-    console.log("QUERY: ", query);
+    //console.log("QUERY: ", query);
     const params = {
       limit: this.MAX_DROPDWN_OPTIONS_LIMIT,
-      search: null,
+      search: query,
       sort: "asc",
     };
 
@@ -474,7 +467,7 @@ export class SearchService {
     );
 
     let arr = [];
-    if (specimens.length > 0) {
+    if (specimens && specimens.length > 0) {
       specimens.forEach((item: any) => {
         if (item.extendedAttributes.length > 0) {
           item.extendedAttributes.forEach((obj: any) => {
@@ -485,8 +478,11 @@ export class SearchService {
         }
       });
     }
-    sortArr(arr, "text");
-    return arr;
+    const workOrderedNos = [
+      ...new Map(arr.map((item) => [item["text"], item])).values(),
+    ];
+    sortArr(workOrderedNos, "text");
+    return workOrderedNos;
   }
 
   public async getSamplingAgencies(query: string): Promise<any[]> {

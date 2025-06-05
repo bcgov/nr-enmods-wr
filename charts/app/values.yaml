@@ -14,6 +14,32 @@ global:
   secrets:
     enabled: true
     persist: true
+    baseUrlBcApi: ~
+    observationsExportUrl: ~
+    observationsUrl: ~
+    locationTypeCodeTableApi: ~
+    locationNameCodeTableApi: ~
+    permitNumberCodeTableApi: ~
+    mediaCodeTableApi: ~
+    observedPropertiesCodeTableApi: ~
+    projectsCodeTableApi: ~
+    apiKey: ~
+    authToken: ~
+    samplingLocationsEndpoint: ~
+    samplingLocationGroupsEndpoint: ~
+    extendedAttributesEndpoint: ~
+    objectstoreUrl: ~
+    objectstoreAccessKey: ~
+    objectstoreSecretKey: ~
+    objectstoreBucket: ~
+    objectstoreFolder: ~
+    postgresPassword: ~
+    postgresUser: ~
+    postgresDatabase: ~
+    postgresHost: ~
+    apiName: ~
+    baseUrl: ~
+    reactAppApiUrl: /api
   #-- domain of the application, it is required, apps.silver.devops.gov.bc.ca for silver cluster and apps.devops.gov.bc.ca for gold cluster
   domain: "apps.silver.devops.gov.bc.ca" # it is apps.gold.devops.gov.bc.ca for gold cluster
   #-- the database Alias gives a nice way to switch to different databases, crunchy, patroni ... etc.
@@ -123,3 +149,44 @@ frontend:
   pdb:
     enabled: false # enable it in PRODUCTION for having pod disruption budget.
     minAvailable: 1 # the minimum number of pods that must be available during the disruption budget.
+
+bitnami-pg:
+  enabled: true
+  image:
+    registry: ghcr.io
+    repository: bcgov/nr-containers/bitnami/postgresql
+    tag: 15.10.0
+  auth:
+    existingSecret: "{{ .Release.Name }}-database"
+    username: "postgres"
+    database: postgres
+  shmVolume:
+    enabled: false
+  backup:
+    enabled: false
+    cronjob:
+      containerSecurityContext: {}
+      podSecurityContext:
+        enabled: false
+      storage:
+        size: 200Mi
+  primary:
+    persistence:
+      enabled: true
+      storageClass: netapp-block-standard
+      accessModes:
+        - ReadWriteOnce
+      size: 512Mi
+    containerSecurityContext:
+      enabled: false
+    podSecurityContext:
+      enabled: false
+    initdb:
+      scripts: # remove the below script, if POSTGIS is not required.
+        postgis.sh: |
+          #!/bin/sh
+          PGPASSWORD=$POSTGRES_PASSWORD psql -U postgres -d postgres -c "CREATE EXTENSION postgis;"
+    resources:
+      requests:
+        cpu: 100m
+        memory: 250Mi

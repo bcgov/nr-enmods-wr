@@ -6,7 +6,7 @@ const ormconfig: TypeOrmModuleOptions = {
   type: "postgres",
   host: process.env.POSTGRES_HOST || "postgres",
   port: 5432,
-  database: process.env.POSTGRES_DATABASE || "enmodswr",
+  database: process.env.POSTGRES_DATABASE || "enmodswr_db",
   username: process.env.POSTGRES_USER || "enmodswr_user",
   password: process.env.POSTGRES_PASSWORD || "enmodswr_password",
   entities: [FileInfo],

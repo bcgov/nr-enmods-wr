@@ -66,7 +66,6 @@ const BasicSearch = () => {
       if (url) {
         const apiData = await apiService.getAxiosInstance().get(url)
         if (apiData.status === 200) {
-          //console.log(apiData);
           const response = apiData.data
           switch (fieldName) {
             case SearchAttr.ObservedPropertyGrp:
@@ -167,17 +166,16 @@ const BasicSearch = () => {
   }
 
   const basicSearch = async (data: { [key: string]: any }): Promise<void> => {
-    setIsDisabled(true)
-    setIsLoading(true)
-    console.log(data)
+    
     try {
+      setIsDisabled(true)
+      setIsLoading(true)
       const res = await apiService
         .getAxiosInstance()
         .post("/v1/search/observationSearch", data)
 
       if (res.status === 200) {
         window.scroll(0, 0)
-      //  console.log(res)
         if (res.data.message) {
           setAlertMsg(res.data.message)
         } else {
@@ -191,7 +189,6 @@ const BasicSearch = () => {
         }
       } else {
         window.scroll(0, 0)
-        console.log(res)
         setErrors(res.data.error)
       }
       setIsDisabled(false)

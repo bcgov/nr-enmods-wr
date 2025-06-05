@@ -11,7 +11,6 @@ import {
   ValidationPipe,
 } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
-import { Public } from "src/auth/decorators/public.decorator";
 import { SearchService } from "./search.service";
 import { Response, Request } from "express";
 import { BasicSearchDto } from "./dto/basicSearch.dto";
@@ -19,7 +18,6 @@ import { validateDto } from "src/validation/validateDto";
 import { unlinkSync } from "fs";
 
 @ApiTags("search")
-@Public() //TODO: secure endpoints
 @Controller({ path: "search", version: "1" })
 export class SearchController {
   private readonly logger = new Logger("SearchController");
@@ -27,10 +25,7 @@ export class SearchController {
 
   @Post("observationSearch")
   @UsePipes(new ValidationPipe({ transform: true }))
-  public async basicSearch(
-    @Res() response: Response,
-    @Body() basicSearchDto: BasicSearchDto
-  ) {
+  public async basicSearch(@Res() response: Response, @Body() basicSearchDto: BasicSearchDto) {
     try {
       validateDto(basicSearchDto);
       const res = await this.searchService.exportData(basicSearchDto);
@@ -48,12 +43,10 @@ export class SearchController {
     readStream
       .on("open", () => {
         response.attachment("ObservationSearchResult.csv");
-        readStream.pipe(response);
-      })
+        readStream.pipe(response);})
       .on("close", () => {
         this.logger.log("Deleting tmp file: " + readStream.path);
-        unlinkSync(readStream.path);
-      });
+        unlinkSync(readStream.path);});
   }
 
   @Get("getLocationTypes")
@@ -66,7 +59,6 @@ export class SearchController {
     const query: any = req.query.search;
     return this.searchService.getLocationNames(query);
   }
-
 
   @Get("getPermitNumbers")
   public getPermitNumbers(@Req() req: Request) {

@@ -327,7 +327,6 @@ const AdvanceSearch = (props: Props) => {
   const advanceSearch = async (data: { [key: string]: any }): Promise<void> => {
     setIsDisabled(true)
     setIsLoading(true)
-    console.log(data)
     try {
       const res = await apiService
         .getAxiosInstance()
@@ -335,7 +334,6 @@ const AdvanceSearch = (props: Props) => {
 
       if (res.status === 200) {
         window.scroll(0, 0)
-        console.log(res)
         if (res.data.message) {
           setAlertMsg(res.data.message)
         } else {
@@ -349,7 +347,6 @@ const AdvanceSearch = (props: Props) => {
         }
       } else {
         window.scroll(0, 0)
-        console.log(res)
         setErrors(res.data.error)
       }
       setIsDisabled(false)
@@ -371,7 +368,6 @@ const AdvanceSearch = (props: Props) => {
           else if (key === SearchAttr.SampleDepth) arr.push(item.depth.value)
           else if (key === SearchAttr.QcSampleType) arr.push(item.type)
           else if (key === SearchAttr.SamplingAgency) arr.push(item.customId)
-         // else if (key === SearchAttr.WorkedOrderNo) arr.push(item.text)
           else arr.push(item.id)
         })
 
@@ -431,6 +427,14 @@ const AdvanceSearch = (props: Props) => {
                 </Alert>
               )}
             </div>
+            <div>
+              <TitleText
+                text="Specify location paramerters, data source, date range, and sampling filters to to apply
+                  to the desired dataset. All fields are optional."
+                variant="subtitle1"
+                sx={{ p: 1 }}
+              />
+            </div>
             {/* Select Location Parameter  */}
             <Accordion defaultExpanded>
               <AccordionSummary
@@ -446,13 +450,6 @@ const AdvanceSearch = (props: Props) => {
                 />
               </AccordionSummary>
               <AccordionDetails>
-                <TitleText
-                  text="Specify location paramerters to describe the spatial extent of
-                  the desired dataset. All fields are optional."
-                  variant="subtitle1"
-                  sx={{ p: 1 }}
-                />
-
                 <div className="mb-0">
                   <LocationParametersForm
                     formData={formData}
@@ -480,13 +477,6 @@ const AdvanceSearch = (props: Props) => {
                 />
               </AccordionSummary>
               <AccordionDetails>
-                <TitleText
-                  text="Specify data source, date range, and sampling filters to apply
-                  to the desired dataset. All fields are optional."
-                  variant="subtitle1"
-                  sx={{ p: 1 }}
-                />
-
                 <div className="mb-5">
                   <FilterResultsForm
                     formData={formData}
@@ -515,13 +505,6 @@ const AdvanceSearch = (props: Props) => {
                 />
               </AccordionSummary>
               <AccordionDetails>
-                <TitleText
-                  text="Specify data source, date range, and sampling filters to apply
-                  to the desired dataset. All fields are optional."
-                  variant="subtitle1"
-                  sx={{ p: 1 }}
-                />
-
                 <AdditionalCriteria
                   handleInputChange={handleInputChange}
                   handleOnChange={handleOnChange}

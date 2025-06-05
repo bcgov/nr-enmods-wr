@@ -41,7 +41,7 @@ export class GeodataService {
     wellTagNumber: null,
   };
 
-  @Cron("10 31 23 * * *")
+  @Cron("0 17 17 * * *")
   async processAndUpload(): Promise<void> {
     try {
       this.logger.debug("Starting sampling location cron job");
@@ -833,7 +833,7 @@ export class GeodataService {
       const sql = `
       SELECT
         p.*,
-        MIN(w.WATERSHED_GROUP_CODE) AS WATERSHED_GROUP_CODE,
+        MIN(w.WATERSHED_GROUP_CODE) AS WATERSHED_GROUP_CD,
         MIN(w.WATERSHED_GROUP_NAME) AS WATERSHED_GROUP_NAME
       FROM ${intersectedLayerName} p
       LEFT JOIN ${watershedLayer} w
@@ -915,7 +915,7 @@ export class GeodataService {
       const sql = `
       SELECT
         p.*,
-        MIN(w.WATERSHED_GROUP_CODE) AS WATERSHED_GROUP_CODE,
+        MIN(w.WATERSHED_GROUP_CODE) AS WATERSHED_GROUP_CD,
         MIN(w.WATERSHED_GROUP_NAME) AS WATERSHED_GROUP_NAME
       FROM ${intersectedLayerName} p
       LEFT JOIN ${watershedLayer} w

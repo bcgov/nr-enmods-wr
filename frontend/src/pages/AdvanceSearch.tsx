@@ -18,7 +18,7 @@ import { API_VERSION, extractFileName } from "@/util/utility"
 import { debounce } from "lodash"
 import Loading from "@/components/Loading"
 import { InfoOutlined } from "@mui/icons-material"
-import AdvanceSearchFormType from "@/interfaces/AdvanceSearchFormType"
+import type AdvanceSearchFormType from "@/interfaces/AdvanceSearchFormType"
 
 type Props = {}
 
@@ -172,6 +172,8 @@ const AdvanceSearch = (props: Props) => {
         if (apiData.status === 200) {
           setErrors([])
           let response = apiData.data
+          // Log the API response for debugging
+          console.log(`API response for ${fieldName}:`, response)
           // Defensive: ensure response is always an array
           if (!Array.isArray(response)) {
             response = []

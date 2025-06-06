@@ -21,12 +21,12 @@ export class BasicSearchDto {
   public readonly permitNumber: any[];
 
   @ValidateIf((obj) => obj.fromDate !== null)
-  @IsDate({ message: "Please enter valid From date" })
+  @IsDate({ message: "Please enter valid 'From' date" })
   @Type(() => Date)
   public readonly fromDate: Date;
 
   @ValidateIf((obj) => obj.toDate !== null)
-  @IsDate({ message: "Please enter valid To date" })
+  @IsDate({ message: "Please enter valid 'To' date" })
   @Type(() => Date)
   public readonly toDate: Date;
 
@@ -44,4 +44,38 @@ export class BasicSearchDto {
 
   @IsOptional()
   public readonly fileFormat: string;
+
+  public readonly observedProperty?: any[];
+
+  public readonly workedOrderNo?: any;
+
+  public readonly samplingAgency?: any[];
+
+  public readonly analyzingAgency?: any[];
+
+  public readonly analyticalMethod?: any[];
+
+  @ValidateIf((obj) => obj.labArrivalFromDate && obj.labArrivalFromDate !== null)
+  @IsDate({ message: "Please enter valid lab arrival 'From' date" })
+  @Type(() => Date)
+  public readonly labArrivalFromDate?: Date;
+
+  @ValidateIf((obj) => obj.labArrivalToDate && obj.labArrivalToDate !== null)
+  @IsDate({ message: "Please enter valid lab arrival 'To' date" })
+  @Type(() => Date)
+  public readonly labArrivalToDate?: Date;
+
+  public readonly collectionMethod?: any[];
+
+  public readonly qcSampleType?: any[];
+
+  public readonly dataClassification?: any[];
+
+  public readonly sampleDepth?: any;
+
+  public readonly units?: any;
+
+  public readonly labBatchId?: string;
+  
+  public readonly specimenId?: any[];
 }

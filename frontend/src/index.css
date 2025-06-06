@@ -83,15 +83,6 @@
   gap: .5rem;
 }
 
-.search-btn {
-  color: #0B5394;
-  border: 2px solid #0B5394;
-  text-decoration: none;
-  padding: .2rem;
-  font-weight: 500;
-  border-radius: 4px;
-  font-size: 10pt;
-}
 
 .search-btn:hover {
   background-color: #0B5394;

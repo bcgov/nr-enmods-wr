@@ -171,7 +171,11 @@ const AdvanceSearch = (props: Props) => {
         const apiData = await apiService.getAxiosInstance().get(url)
         if (apiData.status === 200) {
           setErrors([])
-          const response = apiData.data
+          let response = apiData.data
+          // Defensive: ensure response is always an array
+          if (!Array.isArray(response)) {
+            response = []
+          }
           switch (fieldName) {
             case SearchAttr.ObservedPropertyGrp:
               setObservedPropGroups(response)

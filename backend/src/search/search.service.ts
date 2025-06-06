@@ -313,9 +313,13 @@ export class SearchService {
         return dataArr;
       }
     } catch (err) {
+      this.logger.error(
+        `Error in getDropdwnOptionsFrmApi for url: ${url}, query: ${query}, sortBy: ${sortBy}, hasParams: ${hasParams}`,
+      );
+      this.logger.error("Exception:", err);
       throw new BadRequestException({
         status: HttpStatus.BAD_REQUEST,
-        error: err.response,
+        error: err.response || err.message || err,
       });
     }
   }

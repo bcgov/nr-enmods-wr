@@ -27,7 +27,7 @@ spec:
       volumes:
         - name: wr-csv-files
           persistentVolumeClaim:
-          claimName: {{ .Release.Name }}-wr-csv-files
+            claimName: {{ .Release.Name }}-wr-csv-files
       {{- if .Values.backend.podSecurityContext }}
       securityContext:
         {{- toYaml .Values.backend.podSecurityContext | nindent 12 }}

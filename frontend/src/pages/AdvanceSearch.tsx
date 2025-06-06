@@ -324,6 +324,21 @@ const AdvanceSearch = (props: Props) => {
       case SearchAttr.ObservedPropertyGrp:
         await getDropdownOptions(SearchAttr.ObservedPropertyGrp, query)
         break
+      case SearchAttr.ObservedProperty:
+        await getDropdownOptions(SearchAttr.ObservedProperty, query)
+        break
+      case SearchAttr.WorkedOrderNo:
+        await getDropdownOptions(SearchAttr.WorkedOrderNo, query)
+        break
+      case SearchAttr.SamplingAgency:
+        await getDropdownOptions(SearchAttr.SamplingAgency, query)
+        break
+      case SearchAttr.AnalyticalMethod:
+          await getDropdownOptions(SearchAttr.AnalyticalMethod, query)
+          break
+      case SearchAttr.SpecimenId:
+        await getDropdownOptions(SearchAttr.SpecimenId, query)
+        break
       default:
         break
     }

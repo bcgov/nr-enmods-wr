@@ -109,7 +109,7 @@ backend:
   volumes:
     - name: wr-csv-files
       persistentVolumeClaim:
-        claimName: wr-csv-files
+        claimName: wr-csv-files #
 
 frontend:
   # -- enable or disable a component deployment.

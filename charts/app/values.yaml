@@ -164,7 +164,7 @@ bitnami-pg:
   auth:
     existingSecret: "{{ .Release.Name }}-database"
     username: "postgres"
-    database: postgres
+    database: enmodswr
   shmVolume:
     enabled: false
   backup:

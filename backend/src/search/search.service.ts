@@ -325,8 +325,7 @@ export class SearchService {
       if (hasParams) {
         params["limit"] = this.MAX_DROPDWN_OPTIONS_LIMIT;  
         if (query) params["search"] = query;
-      }
-      console.log("___>",params);
+      }      
   
       const res = await firstValueFrom(this.httpService.get(url, {params: params}));
       if (res.status === HttpStatus.OK) {

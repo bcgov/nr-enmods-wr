@@ -352,52 +352,69 @@ export class SearchService {
   }
 
   public async getMediums(query: string): Promise<any[]> {
-    return await this.getDropdwnOptionsFrmApi(this.getAbsoluteUrl(process.env.MEDIA_CODE_TABLE_API), query, null, true);
+    const result = await this.getDropdwnOptionsFrmApi(
+      this.getAbsoluteUrl(process.env.MEDIA_CODE_TABLE_API),
+      query,
+      null,
+      true,
+    );
+    console.log("getMediums returning:", result);
+    return result;
   }
 
   public async getObservedPropertyGroups(query: string): Promise<any[]> {
-    return await this.getDropdwnOptionsFrmApi(
+    const result = await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.OBSERVED_PROPERTIES_GROUP_CODE_TABLE_API),
       query,
       null,
       true,
     );
+    console.log("getObservedPropertyGroups returning:", result);
+    return result;
   }
 
   public async getProjects(query: string): Promise<any[]> {
-    return await this.getDropdwnOptionsFrmApi(
+    const result = await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.PROJECTS_CODE_TABLE_API),
       query,
       null,
       true,
     );
+    console.log("getProjects returning:", result);
+    return result;
   }
 
   public async getAnalyticalMethods(query: string): Promise<any[]> {
-    return await this.getDropdwnOptionsFrmApi(
+    const result = await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.ANALYTICAL_METHOD_CODE_TABLE_API),
       query,
       "name",
       true,
     );
+    console.log("getAnalyticalMethods returning:", result);
+    return result;
   }
 
   public async getAnalyzingAgencies(query: string): Promise<any[]> {
-    return await this.getDropdwnOptionsFrmApi(
+    const result = await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.ANALYZING_AGENCY_CODE_TABLE_API),
       null,
       "name",
       false,
     );
+    console.log("getAnalyzingAgencies returning:", result);
+    return result;
   }
 
   public async getObservedProperties(query: string): Promise<any[]> {
-    return await this.getDropdwnOptionsFrmApi(
+    const result = await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.OBSERVED_PROPERTIES_CODE_TABLE_API),
       query,
       null,
       true,
     );
+    console.log("getObservedProperties returning:", result);
+    return result;
   }
 
   public async getWorkedOrderNos(query: string): Promise<any[]> {
@@ -407,10 +424,10 @@ export class SearchService {
       null,
       true,
     );
-
     const arr = this.getExtendedAttribute(specimens, "text");
     const workOrderedNos = [...new Map(arr.map((item) => [item["text"], item])).values()];
     sortArr(workOrderedNos, "text");
+    console.log("getWorkedOrderNos returning:", workOrderedNos);
     return workOrderedNos;
   }
 
@@ -421,10 +438,10 @@ export class SearchService {
       null,
       true,
     );
-
     const arr = this.getExtendedAttribute(fieldVisits, "dropDownListItem");
     const agencies = [...new Map(arr.map((item) => [item["id"], item])).values()];
     sortArr(agencies, "customId");
+    console.log("getSamplingAgencies returning:", agencies);
     return agencies;
   }
 
@@ -445,21 +462,25 @@ export class SearchService {
   }
 
   public async getCollectionMethods(query: string): Promise<any[]> {
-    return await this.getDropdwnOptionsFrmApi(
+    const result = await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.COLLECTION_METHOD_CODE_TABLE_API),
       null,
       null,
       false,
     );
+    console.log("getCollectionMethods returning:", result);
+    return result;
   }
 
   public async getUnits(query: string): Promise<any[]> {
-    return await this.getDropdwnOptionsFrmApi(
+    const result = await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.UNITS_CODE_TABLE_API),
       null,
       "name",
       false,
     );
+    console.log("getUnits returning:", result);
+    return result;
   }
 
   public async getQcSampleTypes(query: string): Promise<any[]> {
@@ -469,8 +490,9 @@ export class SearchService {
       null,
       true,
     );
-
-    return [...new Map(activities.map((item: any) => [item["type"], item])).values()];
+    const result = [...new Map(activities.map((item: any) => [item["type"], item])).values()];
+    console.log("getQcSampleTypes returning:", result);
+    return result;
   }
 
   public async getDataClassifications(query: string): Promise<any[]> {
@@ -480,7 +502,9 @@ export class SearchService {
       null,
       true,
     );
-    return [...new Map(observations.map((item: any) => [item["dataClassification"], item])).values()];
+    const result = [...new Map(observations.map((item: any) => [item["dataClassification"], item])).values()];
+    console.log("getDataClassifications returning:", result);
+    return result;
   }
 
   public async getSampleDepths(query: string): Promise<any[]> {
@@ -490,11 +514,12 @@ export class SearchService {
       null,
       true,
     );
-
     const obsArr = activities.filter((item: any) => Object.hasOwn(item, "depth"));
-    return [...new Map(obsArr.map((item: any) => [item["depth"].value, item])).values()].sort(
+    const result = [...new Map(obsArr.map((item: any) => [item["depth"].value, item])).values()].sort(
       (a: any, b: any) => a.depth.value - b.depth.value,
     );
+    console.log("getSampleDepths returning:", result);
+    return result;
   }
 
   public async getSpecimenIds(query: string): Promise<any[]> {
@@ -504,6 +529,8 @@ export class SearchService {
       "name",
       true,
     );
-    return [...new Map(specimens.map((item: any) => [item["name"], item])).values()];
+    const result = [...new Map(specimens.map((item: any) => [item["name"], item])).values()];
+    console.log("getSpecimenIds returning:", result);
+    return result;
   }
 }

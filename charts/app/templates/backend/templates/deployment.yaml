@@ -28,6 +28,10 @@ spec:
         - name: wr-csv-files
           persistentVolumeClaim:
           claimName: {{ .Release.Name }}-wr-csv-files
+      {{- if .Values.backend.podSecurityContext }}
+      securityContext:
+        {{- toYaml .Values.backend.podSecurityContext | nindent 12 }}
+      {{- end }}
       initContainers:
         - name: {{ include "backend.fullname" . }}-init
           image: "{{.Values.global.registry}}/{{.Values.global.repository}}/migrations:{{ .Values.global.tag | default .Chart.AppVersion }}"
@@ -47,10 +51,6 @@ spec:
             requests:
               cpu: 50m
               memory: 25Mi
-      {{- if .Values.backend.podSecurityContext }}
-      securityContext:
-        {{- toYaml .Values.backend.podSecurityContext | nindent 12 }}
-      {{- end }}
       containers:
         - name: {{ include "backend.fullname" . }}
           {{- if .Values.backend.securityContext }}

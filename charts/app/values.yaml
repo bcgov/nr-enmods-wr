@@ -163,7 +163,7 @@ bitnami-pg:
     tag: 15.10.0
   auth:
     existingSecret: "{{ .Release.Name }}-database"
-    username: "postgres"
+    username: "enmodswr"
     database: enmodswr
   shmVolume:
     enabled: false
@@ -190,7 +190,7 @@ bitnami-pg:
       scripts: # remove the below script, if POSTGIS is not required.
         postgis.sh: |
           #!/bin/sh
-          PGPASSWORD=$POSTGRES_PASSWORD psql -U $POSTGRES_USER -d $POSTGRES_DB -c "CREATE EXTENSION postgis;"
+          PGPASSWORD=$POSTGRES_PASSWORD psql -U postgres -d postgres -c "CREATE EXTENSION postgis;"
     resources:
       requests:
         cpu: 100m

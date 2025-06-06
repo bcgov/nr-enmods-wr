@@ -34,23 +34,16 @@ export class SearchService {
 
       if (res && res.length > 0) {
         const obsExport = res[0].data;
-        const observations = await this.getObsFromPagination(JSON.parse(res[1].data), basicSearchDto);
-
-        this.logger.log("Observation length: ", observations.length);
-
-        if (obsExport && observations && observations.length > 0) {
-          this.logger.log("Found records to export to CSV...");
-          return await this.prepareCsvExportData(obsExport, observations);
-        }
-
-        this.logger.log("No data found to export to CSV...");
-        return { data: "", status: HttpStatus.OK };
+        // Instead of accumulating all observations, stream them to CSV
+        return await this.prepareCsvExportDataStreaming(obsExport, basicSearchDto);
       }
+      this.logger.log("No data found to export to CSV...");
+      return { data: "", status: HttpStatus.OK };
     } catch (err) {
       this.logger.error(err);
       throw new BadRequestException({
         status: HttpStatus.BAD_REQUEST,
-        error: err.response.error,
+        error: err.response?.error || err.message || err,
       });
     }
   }
@@ -59,58 +52,65 @@ export class SearchService {
     return this.bcApiCall(this.getAbsoluteUrl(url), this.getUserSearchParams(basicSearchDto, cursor));
   }
 
-  private async getObsFromPagination(observations: any, basicSearchDto: BasicSearchDto): Promise<any> {
-    const totalRecordCount = observations.totalCount;
-    let currentObsData = observations.domainObjects;
-    let cursor = observations.cursor;
-
-    if (totalRecordCount > currentObsData.length && cursor) {
-      const noOfLoop = Math.ceil(totalRecordCount / currentObsData.length);
-      let i = 0;
-
-      while (i < noOfLoop) {
-        this.logger.log("Cursor for the next record: " + cursor);
-        const res = await this.getObservationPromise(basicSearchDto, this.OBSERVATIONS_URL, cursor);
-        if (res.status === HttpStatus.OK) {
-          const data = JSON.parse(res.data);
-          currentObsData = currentObsData.concat(data.domainObjects);
-          cursor = data.cursor;
-          i++;
+  // process each chunk as it arrives
+  private async getObsFromPaginationStreaming(
+    basicSearchDto: BasicSearchDto,
+    onChunk: (obsChunk: any[]) => Promise<void>,
+  ) {
+    let cursor = null;
+    let first = true;
+    let totalRecordCount = 0;
+    let chunkSize = 0;
+    do {
+      const res = await this.getObservationPromise(basicSearchDto, this.OBSERVATIONS_URL, cursor);
+      if (res.status === HttpStatus.OK) {
+        const data = JSON.parse(res.data);
+        if (first) {
+          totalRecordCount = data.totalCount;
+          chunkSize = data.domainObjects.length;
+          first = false;
         }
+        await onChunk(data.domainObjects);
+        cursor = data.cursor;
+        if (!cursor) break;
+      } else {
+        break;
       }
-    }
-
-    return currentObsData;
+    } while (cursor);
   }
 
-  private async prepareCsvExportData(obsExport: string, observations: any[]) {
+  // Streaming CSV export to limit accumulating all observations in memory
+  private async prepareCsvExportDataStreaming(obsExport: string, basicSearchDto: BasicSearchDto) {
     try {
       const fileName = `tmp${Date.now()}.csv`;
       const filePath = join(process.cwd(), `${this.DIR_NAME}${fileName}`);
-
-      const observationMap = new Map<string, any>();
-      for (const obs of observations) observationMap.set(obs.id, obs);
-
-      this.logger.log("ObservationMap size: ", observationMap.size);
-
       const csvStream = fastcsv.format({ headers: true });
       const writeStream = fs.createWriteStream(filePath);
-
       csvStream.pipe(writeStream).on("error", (err) => this.logger.error(err));
 
+      // Build obsExportMap as we parse obsExport, then immediately process observations
+      const obsExportMap = new Map();
       const parser = parse({ columns: true })
         .on("error", (err) => this.logger.error("CSV parsing error:", err))
         .on("data", (row: any) => {
-          const obsId = row[ObsExportCsvHeader.ObservationId];
-          const matchingObs = observationMap.get(obsId);
-          if (matchingObs) this.writeToCsv(matchingObs, row, csvStream);
+          obsExportMap.set(row[ObsExportCsvHeader.ObservationId], row);
         })
-        .on("end", () => csvStream.end());
-
+        .on("end", async () => {
+          // Now stream observations and write to CSV as we go
+          await this.getObsFromPaginationStreaming(basicSearchDto, async (obsChunk) => {
+            for (const obs of obsChunk) {
+              const obsId = obs.id;
+              const exportRow = obsExportMap.get(obsId);
+              if (exportRow) this.writeToCsv(obs, exportRow, csvStream);
+            }
+          });
+          csvStream.end();
+        });
       // Stream the original obsExport string into parser
       const exportStream = require("stream").Readable.from([obsExport]);
       exportStream.pipe(parser);
-
+      // Wait for the CSV to finish writing
+      await new Promise((resolve) => writeStream.on("finish", resolve));
       return {
         data: fs.createReadStream(filePath),
         status: HttpStatus.OK,

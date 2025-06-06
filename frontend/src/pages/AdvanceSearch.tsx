@@ -17,6 +17,7 @@ import apiService from "@/service/api-service"
 import { API_VERSION, extractFileName } from "@/util/utility"
 import { debounce } from "lodash"
 import Loading from "@/components/Loading"
+import LoadingSpinner from "../components/LoadingSpinner"
 import { InfoOutlined } from "@mui/icons-material"
 import type AdvanceSearchFormType from "@/interfaces/AdvanceSearchFormType"
 
@@ -27,6 +28,7 @@ const AdvanceSearch = (props: Props) => {
   const [alertMsg, setAlertMsg] = useState("")
   const [isDisabled, setIsDisabled] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [isApiLoading, setIsApiLoading] = useState(false)
   const [locationTypes, setLocationTypes] = useState([])
   const [locationNames, setLocationNames] = useState([])
   const [permitNumbers, setPermitNumbers] = useState([])
@@ -72,24 +74,27 @@ const AdvanceSearch = (props: Props) => {
   })
 
   useEffect(() => {
-    getDropdownOptions(SearchAttr.ObservedPropertyGrp, "")
-    getDropdownOptions(SearchAttr.Media, "")
-    getDropdownOptions(SearchAttr.PermitNo, "")
-    getDropdownOptions(SearchAttr.LocationName, "")
-    getDropdownOptions(SearchAttr.LocationType, "")
-    getDropdownOptions(SearchAttr.Projects, "")
-    getDropdownOptions(SearchAttr.LocationGroup, "")
-    getDropdownOptions(SearchAttr.WorkedOrderNo, "")
-    getDropdownOptions(SearchAttr.ObservedProperty, "")
-    getDropdownOptions(SearchAttr.SamplingAgency, "")
-    getDropdownOptions(SearchAttr.AnalyzingAgency, "")
-    getDropdownOptions(SearchAttr.AnalyticalMethod, "")
-    getDropdownOptions(SearchAttr.CollectionMethod, "")
-    getDropdownOptions(SearchAttr.Units, "")
-    getDropdownOptions(SearchAttr.QcSampleType, "")
-    getDropdownOptions(SearchAttr.DataClassification, "")
-    getDropdownOptions(SearchAttr.SampleDepth, "")
-    getDropdownOptions(SearchAttr.SpecimenId, "")
+    setIsApiLoading(true)
+    Promise.all([
+      getDropdownOptions(SearchAttr.ObservedPropertyGrp, ""),
+      getDropdownOptions(SearchAttr.Media, ""),
+      getDropdownOptions(SearchAttr.PermitNo, ""),
+      getDropdownOptions(SearchAttr.LocationName, ""),
+      getDropdownOptions(SearchAttr.LocationType, ""),
+      getDropdownOptions(SearchAttr.Projects, ""),
+      getDropdownOptions(SearchAttr.LocationGroup, ""),
+      getDropdownOptions(SearchAttr.WorkedOrderNo, ""),
+      getDropdownOptions(SearchAttr.ObservedProperty, ""),
+      getDropdownOptions(SearchAttr.SamplingAgency, ""),
+      getDropdownOptions(SearchAttr.AnalyzingAgency, ""),
+      getDropdownOptions(SearchAttr.AnalyticalMethod, ""),
+      getDropdownOptions(SearchAttr.CollectionMethod, ""),
+      getDropdownOptions(SearchAttr.Units, ""),
+      getDropdownOptions(SearchAttr.QcSampleType, ""),
+      getDropdownOptions(SearchAttr.DataClassification, ""),
+      getDropdownOptions(SearchAttr.SampleDepth, ""),
+      getDropdownOptions(SearchAttr.SpecimenId, ""),
+    ]).finally(() => setIsApiLoading(false))
   }, [])
 
   const dropdowns = {
@@ -166,6 +171,7 @@ const AdvanceSearch = (props: Props) => {
     query: string,
   ): Promise<void> => {
     try {
+      setIsApiLoading(true)
       const url = dropdwnUrl(fieldName, query)
       if (url) {
         const apiData = await apiService.getAxiosInstance().get(url)
@@ -194,26 +200,26 @@ const AdvanceSearch = (props: Props) => {
             case SearchAttr.LocationType:
               setLocationTypes(response)
               break
-            case SearchAttr.LocationGroup:
-              setLocationGroups(response)
-              break
             case SearchAttr.Projects:
               setProjects(response)
               break
-            case SearchAttr.ObservedProperty:
-              setObservedProperties(response)
+            case SearchAttr.LocationGroup:
+              setLocationGroups(response)
               break
             case SearchAttr.WorkedOrderNo:
               setWorkedOrderNos(response)
               break
+            case SearchAttr.ObservedProperty:
+              setObservedProperties(response)
+              break
             case SearchAttr.SamplingAgency:
               setSamplingAgencies(response)
               break
-            case SearchAttr.AnalyticalMethod:
-              setAnalyticalMethods(response)
-              break
             case SearchAttr.AnalyzingAgency:
               setAnalyzingAgencies(response)
+              break
+            case SearchAttr.AnalyticalMethod:
+              setAnalyticalMethods(response)
               break
             case SearchAttr.CollectionMethod:
               setCollectionMethods(response)
@@ -244,6 +250,8 @@ const AdvanceSearch = (props: Props) => {
       }
     } catch (err) {
       console.error(err)
+    } finally {
+      setIsApiLoading(false)
     }
   }
 
@@ -302,34 +310,24 @@ const AdvanceSearch = (props: Props) => {
   }
 
   const debounceSearch = debounce(async (query, attrName) => {
+    setIsApiLoading(true)
     switch (attrName) {
       case SearchAttr.LocationName:
-        getDropdownOptions(SearchAttr.LocationName, query)
+        await getDropdownOptions(SearchAttr.LocationName, query)
         break
       case SearchAttr.PermitNo:
-        getDropdownOptions(SearchAttr.PermitNo, query)
+        await getDropdownOptions(SearchAttr.PermitNo, query)
         break
       case SearchAttr.Media:
-        getDropdownOptions(SearchAttr.Media, query)
+        await getDropdownOptions(SearchAttr.Media, query)
         break
       case SearchAttr.ObservedPropertyGrp:
-        getDropdownOptions(SearchAttr.ObservedPropertyGrp, query)
-        break
-      case SearchAttr.AnalyticalMethod:
-        getDropdownOptions(SearchAttr.AnalyticalMethod, query)
-        break
-      case SearchAttr.ObservedProperty:
-        getDropdownOptions(SearchAttr.ObservedProperty, query)
-        break
-      case SearchAttr.SamplingAgency:
-        getDropdownOptions(SearchAttr.SamplingAgency, query)
-        break
-      case SearchAttr.WorkedOrderNo:
-        getDropdownOptions(SearchAttr.WorkedOrderNo, query)
+        await getDropdownOptions(SearchAttr.ObservedPropertyGrp, query)
         break
       default:
         break
     }
+    setIsApiLoading(false)
   }, 500)
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -391,168 +389,167 @@ const AdvanceSearch = (props: Props) => {
   }
 
   return (
-    <>
-      <div className="p-3">
-        <Loading isLoading={isLoading} />
-        <div className="flex-row px-1 py-4">
-          <Link
-            to="/search/basic"
-            className="bg-[#fff] text-[#38598a] border rounded-md p-2 text-sm hover:bg-[#38598a] hover:text-[#fff] cursor-pointer"
-          >
-            Basic
-          </Link>
+    <div className="p-3">
+      <LoadingSpinner isLoading={isApiLoading} />
+      <Loading isLoading={isLoading} />
+      <div className="flex-row px-1 py-4">
+        <Link
+          to="/search/basic"
+          className="bg-[#fff] text-[#38598a] border rounded-md p-2 text-sm hover:bg-[#38598a] hover:text-[#fff] cursor-pointer"
+        >
+          Basic
+        </Link>
 
-          <Link
-            to="/search/advance"
-            className="bg-[#38598a] text-[#fff] border rounded-md p-2 text-sm cursor-pointer"
-          >
-            Advance
-          </Link>
-        </div>
-        {alertMsg && (
-          <Alert
-            sx={{ my: 1 }}
-            icon={<InfoOutlined fontSize="inherit" />}
-            severity="info"
-            onClose={() => setAlertMsg("")}
-          >
-            {alertMsg}
-          </Alert>
-        )}
+        <Link
+          to="/search/advance"
+          className="bg-[#38598a] text-[#fff] border rounded-md p-2 text-sm cursor-pointer"
+        >
+          Advance
+        </Link>
+      </div>
+      {alertMsg && (
+        <Alert
+          sx={{ my: 1 }}
+          icon={<InfoOutlined fontSize="inherit" />}
+          severity="info"
+          onClose={() => setAlertMsg("")}
+        >
+          {alertMsg}
+        </Alert>
+      )}
 
-        <form noValidate onSubmit={onSubmit}>
+      <form noValidate onSubmit={onSubmit}>
+        <div>
           <div>
-            <div>
-              {errors.length > 0 && (
-                <Alert
-                  sx={{ my: 1 }}
-                  icon={<InfoOutlined fontSize="inherit" />}
-                  severity="error"
-                  onClose={() => setErrors([])}
-                >
-                  {errors.map((item, index) => (
-                    <div key={index}>
-                      <ul>
-                        <li>{item}</li>
-                      </ul>
-                    </div>
-                  ))}
-                </Alert>
-              )}
-            </div>
-            <div>
-              <TitleText
-                text="Specify location paramerters, data source, date range, and sampling filters to to apply
+            {errors.length > 0 && (
+              <Alert
+                sx={{ my: 1 }}
+                icon={<InfoOutlined fontSize="inherit" />}
+                severity="error"
+                onClose={() => setErrors([])}
+              >
+                {errors.map((item, index) => (
+                  <div key={index}>
+                    <ul>
+                      <li>{item}</li>
+                    </ul>
+                  </div>
+                ))}
+              </Alert>
+            )}
+          </div>
+          <div>
+            <TitleText
+              text="Specify location paramerters, data source, date range, and sampling filters to to apply
                   to the desired dataset. All fields are optional."
+              variant="subtitle1"
+              sx={{ p: 1 }}
+            />
+          </div>
+          {/* Select Location Parameter  */}
+          <Accordion defaultExpanded>
+            <AccordionSummary
+              expandIcon={<GridExpandMoreIcon />}
+              aria-controls="select-location-parameter-content"
+              id="select-location-parameter"
+              sx={{ background: "#f7f7f7" }}
+            >
+              <TitleText
                 variant="subtitle1"
-                sx={{ p: 1 }}
+                sx={{ fontWeight: 600 }}
+                text="Select Location Parameters"
               />
-            </div>
-            {/* Select Location Parameter  */}
-            <Accordion defaultExpanded>
-              <AccordionSummary
-                expandIcon={<GridExpandMoreIcon />}
-                aria-controls="select-location-parameter-content"
-                id="select-location-parameter"
-                sx={{ background: "#f7f7f7" }}
-              >
-                <TitleText
-                  variant="subtitle1"
-                  sx={{ fontWeight: 600 }}
-                  text="Select Location Parameters"
+            </AccordionSummary>
+            <AccordionDetails>
+              <div className="mb-0">
+                <LocationParametersForm
+                  formData={formData}
+                  locationDropdwns={dropdowns.location}
+                  handleInputChange={handleInputChange}
+                  handleOnChange={handleOnChange}
+                  searchType="advance"
                 />
-              </AccordionSummary>
-              <AccordionDetails>
-                <div className="mb-0">
-                  <LocationParametersForm
-                    formData={formData}
-                    locationDropdwns={dropdowns.location}
-                    handleInputChange={handleInputChange}
-                    handleOnChange={handleOnChange}
-                    searchType="advance"
-                  />
-                </div>
-              </AccordionDetails>
-            </Accordion>
+              </div>
+            </AccordionDetails>
+          </Accordion>
 
-            {/* Filter Results */}
-            <Accordion>
-              <AccordionSummary
-                expandIcon={<GridExpandMoreIcon />}
-                aria-controls="filter-results-content"
-                id="filter-results"
-                sx={{ background: "#f7f7f7" }}
-              >
-                <TitleText
-                  variant="subtitle1"
-                  sx={{ fontWeight: 600 }}
-                  text="Select Filter Results"
-                />
-              </AccordionSummary>
-              <AccordionDetails>
-                <div className="mb-5">
-                  <FilterResultsForm
-                    formData={formData}
-                    filterResultDrpdwns={dropdowns.filterResult}
-                    handleInputChange={handleInputChange}
-                    handleOnChange={handleOnChange}
-                    handleOnChangeDatepicker={handleOnChangeDatepicker}
-                    searchType="advance"
-                  />
-                </div>
-              </AccordionDetails>
-            </Accordion>
-
-            {/* Additional Criteria */}
-            <Accordion>
-              <AccordionSummary
-                expandIcon={<GridExpandMoreIcon />}
-                aria-controls="additional-criteria-content"
-                id="additional-criteria"
-                sx={{ background: "#f7f7f7" }}
-              >
-                <TitleText
-                  variant="subtitle1"
-                  sx={{ fontWeight: 600 }}
-                  text="Select Additional Criteria"
-                />
-              </AccordionSummary>
-              <AccordionDetails>
-                <AdditionalCriteria
+          {/* Filter Results */}
+          <Accordion>
+            <AccordionSummary
+              expandIcon={<GridExpandMoreIcon />}
+              aria-controls="filter-results-content"
+              id="filter-results"
+              sx={{ background: "#f7f7f7" }}
+            >
+              <TitleText
+                variant="subtitle1"
+                sx={{ fontWeight: 600 }}
+                text="Select Filter Results"
+              />
+            </AccordionSummary>
+            <AccordionDetails>
+              <div className="mb-5">
+                <FilterResultsForm
+                  formData={formData}
+                  filterResultDrpdwns={dropdowns.filterResult}
                   handleInputChange={handleInputChange}
                   handleOnChange={handleOnChange}
                   handleOnChangeDatepicker={handleOnChangeDatepicker}
-                  formData={formData}
-                  additionalCriteriaDrpdwns={dropdowns.additionalCriteria}
+                  searchType="advance"
                 />
-              </AccordionDetails>
-            </Accordion>
-          </div>
+              </div>
+            </AccordionDetails>
+          </Accordion>
 
-          <div className="flex flex-row pt-6 ">
-            <Btn
-              text={"Clear Search"}
-              type="button"
-              handleClick={clearForm}
-              sx={{
-                background: "#fff",
-                color: "#0B5394",
-                fontSize: "8pt",
-                "&:hover": {
-                  color: "#fff",
-                },
-              }}
-            />
-            <Btn
-              disabled={isDisabled}
-              text={"Download"}
-              type={"submit"}
-              sx={{ fontSize: "8pt" }}
-            />
-          </div>
-        </form>
-      </div>
-    </>
+          {/* Additional Criteria */}
+          <Accordion>
+            <AccordionSummary
+              expandIcon={<GridExpandMoreIcon />}
+              aria-controls="additional-criteria-content"
+              id="additional-criteria"
+              sx={{ background: "#f7f7f7" }}
+            >
+              <TitleText
+                variant="subtitle1"
+                sx={{ fontWeight: 600 }}
+                text="Select Additional Criteria"
+              />
+            </AccordionSummary>
+            <AccordionDetails>
+              <AdditionalCriteria
+                handleInputChange={handleInputChange}
+                handleOnChange={handleOnChange}
+                handleOnChangeDatepicker={handleOnChangeDatepicker}
+                formData={formData}
+                additionalCriteriaDrpdwns={dropdowns.additionalCriteria}
+              />
+            </AccordionDetails>
+          </Accordion>
+        </div>
+
+        <div className="flex flex-row pt-6 ">
+          <Btn
+            text={"Clear Search"}
+            type="button"
+            handleClick={clearForm}
+            sx={{
+              background: "#fff",
+              color: "#0B5394",
+              fontSize: "8pt",
+              "&:hover": {
+                color: "#fff",
+              },
+            }}
+          />
+          <Btn
+            disabled={isDisabled}
+            text={"Download"}
+            type={"submit"}
+            sx={{ fontSize: "8pt" }}
+          />
+        </div>
+      </form>
+    </div>
   )
 }
 

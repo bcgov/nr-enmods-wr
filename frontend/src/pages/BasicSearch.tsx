@@ -13,6 +13,7 @@ import { SearchAttr } from "@/enum/searchEnum"
 import { API_VERSION, extractFileName } from "@/util/utility"
 import { InfoOutlined } from "@mui/icons-material"
 import Loading from "@/components/Loading"
+import LoadingSpinner from "../components/LoadingSpinner"
 
 const BasicSearch = () => {
   const [isDisabled, setIsDisabled] = useState(false)
@@ -25,6 +26,7 @@ const BasicSearch = () => {
   const [observedPropGroups, setObservedPropGroups] = useState([])
   const [alertMsg, setAlertMsg] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [isApiLoading, setIsApiLoading] = useState(false)
 
   const [formData, setFormData] = useState<BasicSearchFormType>({
     locationType: null,
@@ -64,6 +66,7 @@ const BasicSearch = () => {
     query: string,
   ): Promise<void> => {
     try {
+      setIsApiLoading(true)
       const url = dropdwnUrl(fieldName, query)
       if (url) {
         const apiData = await apiService.getAxiosInstance().get(url)
@@ -106,16 +109,21 @@ const BasicSearch = () => {
       }
     } catch (err) {
       console.error(err)
+    } finally {
+      setIsApiLoading(false)
     }
   }
 
   useEffect(() => {
-    getDropdownOptions(SearchAttr.ObservedPropertyGrp, "")
-    getDropdownOptions(SearchAttr.Media, "")
-    getDropdownOptions(SearchAttr.PermitNo, "")
-    getDropdownOptions(SearchAttr.LocationName, "")
-    getDropdownOptions(SearchAttr.LocationType, "")
-    getDropdownOptions(SearchAttr.Projects, "")
+    setIsApiLoading(true)
+    Promise.all([
+      getDropdownOptions(SearchAttr.ObservedPropertyGrp, ""),
+      getDropdownOptions(SearchAttr.Media, ""),
+      getDropdownOptions(SearchAttr.PermitNo, ""),
+      getDropdownOptions(SearchAttr.LocationName, ""),
+      getDropdownOptions(SearchAttr.LocationType, ""),
+      getDropdownOptions(SearchAttr.Projects, ""),
+    ]).finally(() => setIsApiLoading(false))
   }, [])
 
   const handleOnChange = (
@@ -134,22 +142,24 @@ const BasicSearch = () => {
   }
 
   const debounceSearch = debounce(async (query, attrName) => {
+    setIsApiLoading(true)
     switch (attrName) {
       case SearchAttr.LocationName:
-        getDropdownOptions(SearchAttr.LocationName, query)
+        await getDropdownOptions(SearchAttr.LocationName, query)
         break
       case SearchAttr.PermitNo:
-        getDropdownOptions(SearchAttr.PermitNo, query)
+        await getDropdownOptions(SearchAttr.PermitNo, query)
         break
       case SearchAttr.Media:
-        getDropdownOptions(SearchAttr.Media, query)
+        await getDropdownOptions(SearchAttr.Media, query)
         break
       case SearchAttr.ObservedPropertyGrp:
-        getDropdownOptions(SearchAttr.ObservedPropertyGrp, query)
+        await getDropdownOptions(SearchAttr.ObservedPropertyGrp, query)
         break
       default:
         break
     }
+    setIsApiLoading(false)
   }, 500)
 
   const handleInputChange = (
@@ -244,6 +254,7 @@ const BasicSearch = () => {
 
   return (
     <div className="p-3">
+      <LoadingSpinner isLoading={isApiLoading} />
       <Loading isLoading={isLoading} />
 
       <div className="flex flex-row px-1 py-4">

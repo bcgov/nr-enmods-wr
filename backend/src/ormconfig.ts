@@ -1,5 +1,6 @@
 import { TypeOrmModuleOptions } from "@nestjs/typeorm";
 import { FileInfo } from "./geodata/entities/file-info.entity";
+import { Observation } from "./observations/entities/observation.entity";
 
 const ormconfig: TypeOrmModuleOptions = {
   logging: ["error"],
@@ -9,7 +10,7 @@ const ormconfig: TypeOrmModuleOptions = {
   database: process.env.POSTGRES_DATABASE || "enmodswr",
   username: process.env.POSTGRES_USER || "enmodswr",
   password: process.env.POSTGRES_PASSWORD || "enmodswr_password",
-  entities: [FileInfo],
+  entities: [FileInfo, Observation],
   synchronize: false,
 };
 

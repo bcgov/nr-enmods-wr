@@ -320,11 +320,13 @@ export class SearchService {
 
   private async getDropdwnOptionsFrmApi(url: string, query: string, sortBy: string | null, hasParams: any): Promise<any> {    
     try {   
+      
       const params = {};
       if (hasParams) {
-        Object.defineProperty(params, "limit", {value: this.MAX_DROPDWN_OPTIONS_LIMIT})      
-        if (query) Object.defineProperty(params, "search", {value: query});
+        params["limit"] = this.MAX_DROPDWN_OPTIONS_LIMIT;  
+        if (query) params["search"] = query;
       }
+      console.log("___>",params);
   
       const res = await firstValueFrom(this.httpService.get(url, {params: params}));
       if (res.status === HttpStatus.OK) {

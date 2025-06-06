@@ -329,6 +329,7 @@ export class SearchService {
   }
 
   public async getLocationTypes(): Promise<any[]> {
+    this.logger.log("getLocationTypes called, env:", process.env.LOCATION_TYPE_CODE_TABLE_API);
     return await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.LOCATION_TYPE_CODE_TABLE_API),
       null,
@@ -338,6 +339,7 @@ export class SearchService {
   }
 
   public async getLocationNames(query: string): Promise<any[]> {
+    this.logger.log("getLocationNames called, env:", process.env.LOCATION_NAME_CODE_TABLE_API);
     return await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.LOCATION_NAME_CODE_TABLE_API),
       query,
@@ -347,6 +349,7 @@ export class SearchService {
   }
 
   public async getPermitNumbers(query: string): Promise<any[]> {
+    this.logger.log("getPermitNumbers called, env:", process.env.PERMIT_NUMBER_CODE_TABLE_API);
     return await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.PERMIT_NUMBER_CODE_TABLE_API),
       query,
@@ -356,6 +359,7 @@ export class SearchService {
   }
 
   public async getMediums(query: string): Promise<any[]> {
+    this.logger.log("getMediums called, env:", process.env.MEDIA_CODE_TABLE_API);
     const result = await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.MEDIA_CODE_TABLE_API),
       query,
@@ -367,6 +371,7 @@ export class SearchService {
   }
 
   public async getObservedPropertyGroups(query: string): Promise<any[]> {
+    this.logger.log("getObservedPropertyGroups called, env:", process.env.OBSERVED_PROPERTIES_GROUP_CODE_TABLE_API);
     const result = await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.OBSERVED_PROPERTIES_GROUP_CODE_TABLE_API),
       query,
@@ -378,6 +383,7 @@ export class SearchService {
   }
 
   public async getProjects(query: string): Promise<any[]> {
+    this.logger.log("getProjects called, env:", process.env.PROJECTS_CODE_TABLE_API);
     const result = await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.PROJECTS_CODE_TABLE_API),
       query,
@@ -389,6 +395,7 @@ export class SearchService {
   }
 
   public async getAnalyticalMethods(query: string): Promise<any[]> {
+    this.logger.log("getAnalyticalMethods called, env:", process.env.ANALYTICAL_METHOD_CODE_TABLE_API);
     const result = await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.ANALYTICAL_METHOD_CODE_TABLE_API),
       query,
@@ -400,6 +407,7 @@ export class SearchService {
   }
 
   public async getAnalyzingAgencies(query: string): Promise<any[]> {
+    this.logger.log("getAnalyzingAgencies called, env:", process.env.ANALYZING_AGENCY_CODE_TABLE_API);
     const result = await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.ANALYZING_AGENCY_CODE_TABLE_API),
       null,
@@ -411,6 +419,7 @@ export class SearchService {
   }
 
   public async getObservedProperties(query: string): Promise<any[]> {
+    this.logger.log("getObservedProperties called, env:", process.env.OBSERVED_PROPERTIES_CODE_TABLE_API);
     const result = await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.OBSERVED_PROPERTIES_CODE_TABLE_API),
       query,
@@ -422,6 +431,7 @@ export class SearchService {
   }
 
   public async getWorkedOrderNos(query: string): Promise<any[]> {
+    this.logger.log("getWorkedOrderNos called, env:", process.env.WORKED_ORDER_NO_CODE_TABLE_API);
     const specimens = await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.WORKED_ORDER_NO_CODE_TABLE_API),
       query,
@@ -436,6 +446,7 @@ export class SearchService {
   }
 
   public async getSamplingAgencies(query: string): Promise<any[]> {
+    this.logger.log("getSamplingAgencies called, env:", process.env.SAMPLING_AGENCY_CODE_TABLE_API);
     const fieldVisits = await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.SAMPLING_AGENCY_CODE_TABLE_API),
       query,
@@ -466,6 +477,7 @@ export class SearchService {
   }
 
   public async getCollectionMethods(query: string): Promise<any[]> {
+    this.logger.log("getCollectionMethods called, env:", process.env.COLLECTION_METHOD_CODE_TABLE_API);
     const result = await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.COLLECTION_METHOD_CODE_TABLE_API),
       null,
@@ -477,6 +489,7 @@ export class SearchService {
   }
 
   public async getUnits(query: string): Promise<any[]> {
+    this.logger.log("getUnits called, env:", process.env.UNITS_CODE_TABLE_API);
     const result = await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.UNITS_CODE_TABLE_API),
       null,
@@ -488,6 +501,7 @@ export class SearchService {
   }
 
   public async getQcSampleTypes(query: string): Promise<any[]> {
+    this.logger.log("getQcSampleTypes called, env:", process.env.QC_SAMPLE_TYPE_CODE_TABLE_API);
     const activities = await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.QC_SAMPLE_TYPE_CODE_TABLE_API),
       null,
@@ -500,6 +514,7 @@ export class SearchService {
   }
 
   public async getDataClassifications(query: string): Promise<any[]> {
+    this.logger.log("getDataClassifications called, env:", process.env.DATA_CLASSIFICATION_CODE_TABLE_API);
     const observations = await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.DATA_CLASSIFICATION_CODE_TABLE_API),
       query,
@@ -512,6 +527,7 @@ export class SearchService {
   }
 
   public async getSampleDepths(query: string): Promise<any[]> {
+    this.logger.log("getSampleDepths called, env:", process.env.SAMPLE_DEPTH_CODE_TABLE_API);
     const activities = await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.SAMPLE_DEPTH_CODE_TABLE_API),
       null,
@@ -527,6 +543,7 @@ export class SearchService {
   }
 
   public async getSpecimenIds(query: string): Promise<any[]> {
+    this.logger.log("getSpecimenIds called, env:", process.env.SPECIMEN_ID_CODE_TABLE_API);
     const specimens = await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.SPECIMEN_ID_CODE_TABLE_API),
       query,

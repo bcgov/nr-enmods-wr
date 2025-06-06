@@ -3,9 +3,7 @@ import { BadRequestException, HttpStatus, Injectable, Logger } from "@nestjs/com
 import { firstValueFrom } from "rxjs";
 import { BasicSearchDto } from "./dto/basicSearch.dto";
 import { join } from "path";
-import { AxiosResponse } from "axios";
 import { sortArr } from "src/util/utility";
-import csv from "csvtojson";
 import { ObsExportCsvHeader } from "src/enum/obsExportCsvHeader.enum";
 import * as fs from "fs";
 import * as fastcsv from "@fast-csv/format";
@@ -14,7 +12,7 @@ import { parse } from "csv-parse";
 @Injectable()
 export class SearchService {
   constructor(private readonly httpService: HttpService) {}
-  private readonly logger = new Logger("BasicSearchService");
+  private readonly logger = new Logger("ObservationSearchService");
   private readonly DIR_NAME = "/data/";
   private readonly MAX_DROPDWN_OPTIONS_LIMIT = 100;
   private readonly MAX_API_DATA_LIMIT = 1_000;
@@ -27,17 +25,29 @@ export class SearchService {
       const obsExportPromise = this.getObservationPromise(basicSearchDto, this.OBSERVATIONS_EXPORT_URL, "");
       const observationPromise = this.getObservationPromise(basicSearchDto, this.OBSERVATIONS_URL, "");
 
+      const startTime = Date.now();
+      this.logger.log("Start time: ", startTime);
       const res = await Promise.all([obsExportPromise, observationPromise]);
+      const endTime = Date.now();
+      const totalTime = (endTime - startTime) / 1000;
+      this.logger.log("Total time elapsed calling BC API only in seconds: ", totalTime);
 
-      if (res.length > 0) {
+      if (res && res.length > 0) {
         const obsExport = res[0].data;
         const observations = await this.getObsFromPagination(JSON.parse(res[1].data), basicSearchDto);
 
-        if (obsExport && observations.length > 0) return this.prepareCsvExportData(obsExport, observations);
+        this.logger.log("Observation length: ", observations.length);
 
+        if (obsExport && observations && observations.length > 0) {
+          this.logger.log("Found records to export to CSV...");
+          return await this.prepareCsvExportData(obsExport, observations);
+        }
+
+        this.logger.log("No data found to export to CSV...");
         return { data: "", status: HttpStatus.OK };
       }
     } catch (err) {
+      this.logger.error(err);
       throw new BadRequestException({
         status: HttpStatus.BAD_REQUEST,
         error: err.response.error,
@@ -46,7 +56,7 @@ export class SearchService {
   }
 
   private getObservationPromise(basicSearchDto: BasicSearchDto, url: string, cursor: string): Promise<any> {
-    return this.bcApiCall(this.getAbsoluteUrl(url), this.getUserSearchInputs(basicSearchDto, cursor));
+    return this.bcApiCall(this.getAbsoluteUrl(url), this.getUserSearchParams(basicSearchDto, cursor));
   }
 
   private async getObsFromPagination(observations: any, basicSearchDto: BasicSearchDto): Promise<any> {
@@ -79,31 +89,23 @@ export class SearchService {
       const filePath = join(process.cwd(), `${this.DIR_NAME}${fileName}`);
 
       const observationMap = new Map<string, any>();
-      for (const obs of observations) {
-        observationMap.set(obs.id, obs);
-      }
+      for (const obs of observations) observationMap.set(obs.id, obs);
+
+      this.logger.log("ObservationMap size: ", observationMap.size);
 
       const csvStream = fastcsv.format({ headers: true });
       const writeStream = fs.createWriteStream(filePath);
 
       csvStream.pipe(writeStream).on("error", (err) => this.logger.error(err));
 
-      const parser = parse({ columns: true });
-      parser.on("data", (row: any) => {
-        const obsId = row[ObsExportCsvHeader.ObservationId];
-        const matchingObs = observationMap.get(obsId);
-        if (matchingObs) {
-          this.writeToCsv(matchingObs, row, csvStream);
-        }
-      });
-
-      parser.on("end", () => {
-        csvStream.end();
-      });
-
-      parser.on("error", (err) => {
-        this.logger.error("CSV parsing error:", err);
-      });
+      const parser = parse({ columns: true })
+        .on("error", (err) => this.logger.error("CSV parsing error:", err))
+        .on("data", (row: any) => {
+          const obsId = row[ObsExportCsvHeader.ObservationId];
+          const matchingObs = observationMap.get(obsId);
+          if (matchingObs) this.writeToCsv(matchingObs, row, csvStream);
+        })
+        .on("end", () => csvStream.end());
 
       // Stream the original obsExport string into parser
       const exportStream = require("stream").Readable.from([obsExport]);
@@ -122,17 +124,38 @@ export class SearchService {
     }
   }
 
-  private getUserSearchInputs(basicSearchDto: BasicSearchDto, cursor: string) {
+  private getUserSearchParams(basicSearchDto: BasicSearchDto, cursor: string) {
+    let arr = [];
+
+    if (basicSearchDto?.labBatchId) arr.push(basicSearchDto.labBatchId);
+
+    if (basicSearchDto?.workedOrderNo) arr.push(basicSearchDto.workedOrderNo.text);
+
+    if (basicSearchDto.samplingAgency && basicSearchDto.samplingAgency.length > 0)
+      arr.push(...basicSearchDto.samplingAgency);
+
     return {
       samplingLocationIds: basicSearchDto.locationName.toString(),
       samplingLocationGroupIds: basicSearchDto.permitNumber.toString(),
       media: basicSearchDto.media.toString(),
-      observedPropertyIds: basicSearchDto.observedPropertyGrp.toString(),
+      analyticalGroupIds: basicSearchDto.observedPropertyGrp.toString(),
       projectIds: basicSearchDto.projects.toString(),
       "start-observedTime": basicSearchDto.fromDate,
       "end-observedTime": basicSearchDto.toDate,
       limit: this.MAX_API_DATA_LIMIT,
       cursor: cursor,
+      observedPropertyIds: basicSearchDto?.observedProperty?.toString(),
+      labResultLaboratoryIds: basicSearchDto?.analyzingAgency?.toString(),
+      analysisMethodIds: basicSearchDto?.analyticalMethod?.toString(),
+      "start-resultTime": basicSearchDto?.labArrivalFromDate,
+      "end-resultTime": basicSearchDto?.labArrivalToDate,
+      collectionMethodIds: basicSearchDto?.collectionMethod?.toString(),
+      qualityControlTypes: basicSearchDto?.qcSampleType?.toString(),
+      dataClassifications: basicSearchDto?.dataClassification?.toString(),
+      depthValue: parseFloat(basicSearchDto?.sampleDepth?.depth?.value),
+      depthUnitId: basicSearchDto?.units?.id,
+      specimenIds: basicSearchDto?.specimenId?.toString(),
+      search: arr?.toString(),
     };
   }
 
@@ -145,7 +168,6 @@ export class SearchService {
       );
       if (res.status === HttpStatus.OK) return res;
     } catch (err) {
-      this.logger.error(err);
       if (err.response.data) {
         const errResponse = JSON.parse(err.response.data);
         let errMsg = [];
@@ -186,7 +208,7 @@ export class SearchService {
       Field_Filtered_Comment: specimen?.filtrationComment,
       Field_Preservative: "",
       Field_Device_ID: obsExport[ObsExportCsvHeader.FieldDeviceId],
-      Field_Device_Type: [ObsExportCsvHeader.FieldDeviceType],
+      Field_Device_Type: obsExport[ObsExportCsvHeader.FieldDeviceType],
       Sampling_Context_Tag: "",
       Collection_Method: obsExport[ObsExportCsvHeader.CollectionMethod],
       Medium: obsExport[ObsExportCsvHeader.Medium],
@@ -231,7 +253,7 @@ export class SearchService {
   }
 
   private getDataFromObj(arr: any[], attr: string) {
-    if (arr) {
+    if (arr && arr.length > 0) {
       for (let i = 0; i < arr.length; i++) {
         if (Object.hasOwn(arr[i], attr)) {
           switch (attr) {
@@ -271,23 +293,33 @@ export class SearchService {
     return this.getDataFromObj(arr, "text");
   }
 
-  private async getDropdwnOptions(url: string, params: any, sortBy: string | null): Promise<any> {
+  private async getDropdwnOptionsFrmApi(
+    url: string,
+    query: string,
+    sortBy: string | null,
+    hasParams: any,
+  ): Promise<any> {
     try {
-      const res = await firstValueFrom(
-        this.httpService.get(url, {
-          params: params,
-        }),
-      );
+      const params = {};
+      if (hasParams) {
+        params["limit"] = this.MAX_DROPDWN_OPTIONS_LIMIT;
+        if (query) params["search"] = query;
+      }
+
+      const res = await firstValueFrom(this.httpService.get(url, { params: params }));
       if (res.status === HttpStatus.OK) {
         const dataArr = JSON.parse(res.data).domainObjects;
-        sortArr(dataArr, sortBy);
+        if (sortBy) sortArr(dataArr, sortBy);
         return dataArr;
       }
     } catch (err) {
-      this.logger.error(err);
+      this.logger.error(
+        `Error in getDropdwnOptionsFrmApi for url: ${url}, query: ${query}, sortBy: ${sortBy}, hasParams: ${hasParams}`,
+      );
+      this.logger.error("Exception:", err);
       throw new BadRequestException({
         status: HttpStatus.BAD_REQUEST,
-        error: err.response,
+        error: err.response || err.message || err,
       });
     }
   }
@@ -296,48 +328,230 @@ export class SearchService {
     return `${process.env.BASE_URL_BC_API}${relativeUrl}`;
   }
 
-  public getLocationTypes(): Promise<AxiosResponse<any>> {
-    return this.getDropdwnOptions(this.getAbsoluteUrl(process.env.LOCATION_TYPE_CODE_TABLE_API), null, "customId");
+  public async getLocationTypes(): Promise<any[]> {
+    this.logger.log("getLocationTypes called, env:", process.env.LOCATION_TYPE_CODE_TABLE_API);
+    return await this.getDropdwnOptionsFrmApi(
+      this.getAbsoluteUrl(process.env.LOCATION_TYPE_CODE_TABLE_API),
+      null,
+      "customId",
+      false,
+    );
   }
 
-  public getLocationNames(query: string): Promise<AxiosResponse<any>> {
-    const params = {
-      limit: this.MAX_DROPDWN_OPTIONS_LIMIT,
-      search: query,
-      sort: "asc",
-    };
-    return this.getDropdwnOptions(this.getAbsoluteUrl(process.env.LOCATION_NAME_CODE_TABLE_API), params, "name");
+  public async getLocationNames(query: string): Promise<any[]> {
+    this.logger.log("getLocationNames called, env:", process.env.LOCATION_NAME_CODE_TABLE_API);
+    return await this.getDropdwnOptionsFrmApi(
+      this.getAbsoluteUrl(process.env.LOCATION_NAME_CODE_TABLE_API),
+      query,
+      "name",
+      true,
+    );
   }
 
-  public getPermitNumbers(query: string): Promise<AxiosResponse<any>> {
-    const params = {
-      limit: this.MAX_DROPDWN_OPTIONS_LIMIT,
-      search: query,
-    };
-    return this.getDropdwnOptions(this.getAbsoluteUrl(process.env.PERMIT_NUMBER_CODE_TABLE_API), params, null);
+  public async getPermitNumbers(query: string): Promise<any[]> {
+    this.logger.log("getPermitNumbers called, env:", process.env.PERMIT_NUMBER_CODE_TABLE_API);
+    return await this.getDropdwnOptionsFrmApi(
+      this.getAbsoluteUrl(process.env.PERMIT_NUMBER_CODE_TABLE_API),
+      query,
+      null,
+      true,
+    );
   }
 
-  public getMediums(query: string): Promise<AxiosResponse<any>> {
-    const params = {
-      limit: this.MAX_DROPDWN_OPTIONS_LIMIT,
-      search: query,
-    };
-    return this.getDropdwnOptions(this.getAbsoluteUrl(process.env.MEDIA_CODE_TABLE_API), params, null);
+  public async getMediums(query: string): Promise<any[]> {
+    this.logger.log("getMediums called, env:", process.env.MEDIA_CODE_TABLE_API);
+    const result = await this.getDropdwnOptionsFrmApi(
+      this.getAbsoluteUrl(process.env.MEDIA_CODE_TABLE_API),
+      query,
+      null,
+      true,
+    );
+    console.log("getMediums returning:", result);
+    return result;
   }
 
-  public getObservedProperties(query: string): Promise<AxiosResponse<any>> {
-    const params = {
-      limit: this.MAX_DROPDWN_OPTIONS_LIMIT,
-      search: query,
-    };
-    return this.getDropdwnOptions(this.getAbsoluteUrl(process.env.OBSERVED_PROPERTIES_CODE_TABLE_API), params, null);
+  public async getObservedPropertyGroups(query: string): Promise<any[]> {
+    this.logger.log("getObservedPropertyGroups called, env:", process.env.OBSERVED_PROPERTIES_GROUP_CODE_TABLE_API);
+    const result = await this.getDropdwnOptionsFrmApi(
+      this.getAbsoluteUrl(process.env.OBSERVED_PROPERTIES_GROUP_CODE_TABLE_API),
+      query,
+      null,
+      true,
+    );
+    console.log("getObservedPropertyGroups returning:", result);
+    return result;
   }
 
-  public getProjects(query: string): Promise<AxiosResponse<any>> {
-    const params = {
-      limit: this.MAX_DROPDWN_OPTIONS_LIMIT,
-      search: query,
-    };
-    return this.getDropdwnOptions(this.getAbsoluteUrl(process.env.PROJECTS_CODE_TABLE_API), params, null);
+  public async getProjects(query: string): Promise<any[]> {
+    this.logger.log("getProjects called, env:", process.env.PROJECTS_CODE_TABLE_API);
+    const result = await this.getDropdwnOptionsFrmApi(
+      this.getAbsoluteUrl(process.env.PROJECTS_CODE_TABLE_API),
+      query,
+      null,
+      true,
+    );
+    console.log("getProjects returning:", result);
+    return result;
+  }
+
+  public async getAnalyticalMethods(query: string): Promise<any[]> {
+    this.logger.log("getAnalyticalMethods called, env:", process.env.ANALYTICAL_METHOD_CODE_TABLE_API);
+    const result = await this.getDropdwnOptionsFrmApi(
+      this.getAbsoluteUrl(process.env.ANALYTICAL_METHOD_CODE_TABLE_API),
+      query,
+      "name",
+      true,
+    );
+    console.log("getAnalyticalMethods returning:", result);
+    return result;
+  }
+
+  public async getAnalyzingAgencies(query: string): Promise<any[]> {
+    this.logger.log("getAnalyzingAgencies called, env:", process.env.ANALYZING_AGENCY_CODE_TABLE_API);
+    const result = await this.getDropdwnOptionsFrmApi(
+      this.getAbsoluteUrl(process.env.ANALYZING_AGENCY_CODE_TABLE_API),
+      null,
+      "name",
+      false,
+    );
+    console.log("getAnalyzingAgencies returning:", result);
+    return result;
+  }
+
+  public async getObservedProperties(query: string): Promise<any[]> {
+    this.logger.log("getObservedProperties called, env:", process.env.OBSERVED_PROPERTIES_CODE_TABLE_API);
+    const result = await this.getDropdwnOptionsFrmApi(
+      this.getAbsoluteUrl(process.env.OBSERVED_PROPERTIES_CODE_TABLE_API),
+      query,
+      null,
+      true,
+    );
+    console.log("getObservedProperties returning:", result);
+    return result;
+  }
+
+  public async getWorkedOrderNos(query: string): Promise<any[]> {
+    this.logger.log("getWorkedOrderNos called, env:", process.env.WORKED_ORDER_NO_CODE_TABLE_API);
+    const specimens = await this.getDropdwnOptionsFrmApi(
+      this.getAbsoluteUrl(process.env.WORKED_ORDER_NO_CODE_TABLE_API),
+      query,
+      null,
+      true,
+    );
+    const arr = this.getExtendedAttribute(specimens, "text");
+    const workOrderedNos = [...new Map(arr.map((item) => [item["text"], item])).values()];
+    sortArr(workOrderedNos, "text");
+    console.log("getWorkedOrderNos returning:", workOrderedNos);
+    return workOrderedNos;
+  }
+
+  public async getSamplingAgencies(query: string): Promise<any[]> {
+    this.logger.log("getSamplingAgencies called, env:", process.env.SAMPLING_AGENCY_CODE_TABLE_API);
+    const fieldVisits = await this.getDropdwnOptionsFrmApi(
+      this.getAbsoluteUrl(process.env.SAMPLING_AGENCY_CODE_TABLE_API),
+      query,
+      null,
+      true,
+    );
+    const arr = this.getExtendedAttribute(fieldVisits, "dropDownListItem");
+    const agencies = [...new Map(arr.map((item) => [item["id"], item])).values()];
+    sortArr(agencies, "customId");
+    console.log("getSamplingAgencies returning:", agencies);
+    return agencies;
+  }
+
+  private getExtendedAttribute(attributeArr: any[], name: string) {
+    let arr = [];
+    if (attributeArr && attributeArr.length > 0) {
+      attributeArr.forEach((item: any) => {
+        if (item.extendedAttributes && item.extendedAttributes.length > 0) {
+          item.extendedAttributes.forEach((obj: any) => {
+            if (Object.hasOwn(obj, name)) {
+              arr.push(name === "text" ? obj : obj.dropDownListItem);
+            }
+          });
+        }
+      });
+    }
+    return arr;
+  }
+
+  public async getCollectionMethods(query: string): Promise<any[]> {
+    this.logger.log("getCollectionMethods called, env:", process.env.COLLECTION_METHOD_CODE_TABLE_API);
+    const result = await this.getDropdwnOptionsFrmApi(
+      this.getAbsoluteUrl(process.env.COLLECTION_METHOD_CODE_TABLE_API),
+      null,
+      null,
+      false,
+    );
+    console.log("getCollectionMethods returning:", result);
+    return result;
+  }
+
+  public async getUnits(query: string): Promise<any[]> {
+    this.logger.log("getUnits called, env:", process.env.UNITS_CODE_TABLE_API);
+    const result = await this.getDropdwnOptionsFrmApi(
+      this.getAbsoluteUrl(process.env.UNITS_CODE_TABLE_API),
+      null,
+      "name",
+      false,
+    );
+    console.log("getUnits returning:", result);
+    return result;
+  }
+
+  public async getQcSampleTypes(query: string): Promise<any[]> {
+    this.logger.log("getQcSampleTypes called, env:", process.env.QC_SAMPLE_TYPE_CODE_TABLE_API);
+    const activities = await this.getDropdwnOptionsFrmApi(
+      this.getAbsoluteUrl(process.env.QC_SAMPLE_TYPE_CODE_TABLE_API),
+      null,
+      null,
+      true,
+    );
+    const result = [...new Map(activities.map((item: any) => [item["type"], item])).values()];
+    console.log("getQcSampleTypes returning:", result);
+    return result;
+  }
+
+  public async getDataClassifications(query: string): Promise<any[]> {
+    this.logger.log("getDataClassifications called, env:", process.env.DATA_CLASSIFICATION_CODE_TABLE_API);
+    const observations = await this.getDropdwnOptionsFrmApi(
+      this.getAbsoluteUrl(process.env.DATA_CLASSIFICATION_CODE_TABLE_API),
+      query,
+      null,
+      true,
+    );
+    const result = [...new Map(observations.map((item: any) => [item["dataClassification"], item])).values()];
+    console.log("getDataClassifications returning:", result);
+    return result;
+  }
+
+  public async getSampleDepths(query: string): Promise<any[]> {
+    this.logger.log("getSampleDepths called, env:", process.env.SAMPLE_DEPTH_CODE_TABLE_API);
+    const activities = await this.getDropdwnOptionsFrmApi(
+      this.getAbsoluteUrl(process.env.SAMPLE_DEPTH_CODE_TABLE_API),
+      null,
+      null,
+      true,
+    );
+    const obsArr = activities.filter((item: any) => Object.hasOwn(item, "depth"));
+    const result = [...new Map(obsArr.map((item: any) => [item["depth"].value, item])).values()].sort(
+      (a: any, b: any) => a.depth.value - b.depth.value,
+    );
+    console.log("getSampleDepths returning:", result);
+    return result;
+  }
+
+  public async getSpecimenIds(query: string): Promise<any[]> {
+    this.logger.log("getSpecimenIds called, env:", process.env.SPECIMEN_ID_CODE_TABLE_API);
+    const specimens = await this.getDropdwnOptionsFrmApi(
+      this.getAbsoluteUrl(process.env.SPECIMEN_ID_CODE_TABLE_API),
+      query,
+      "name",
+      true,
+    );
+    const result = [...new Map(specimens.map((item: any) => [item["name"], item])).values()];
+    console.log("getSpecimenIds returning:", result);
+    return result;
   }
 }

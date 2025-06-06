@@ -1,9 +1,7 @@
 import BCGovLogo from "@/assets/gov-bc-logo-horiz.png"
-import { AppBar, IconButton, Toolbar, Box, Typography } from "@mui/material"
+import { AppBar, Toolbar, Box } from "@mui/material"
 // import Typography from '@mui/material/Typography'
-import { HomeRounded } from "@mui/icons-material"
 import Navbar from "./Navbar"
-import { borderBottom, maxHeight } from "~/@mui/system"
 
 const styles = {
   toolbar: {

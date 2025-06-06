@@ -9,10 +9,11 @@ import apiService from "@/service/api-service"
 import type BasicSearchFormType from "@/interfaces/BasicSearchFormType"
 import { Link } from "react-router-dom"
 import { debounce } from "lodash"
-import { BasicSearchAttr } from "@/enum/basicSearchEnum"
+import { SearchAttr } from "@/enum/searchEnum"
 import { API_VERSION, extractFileName } from "@/util/utility"
 import { InfoOutlined } from "@mui/icons-material"
 import Loading from "@/components/Loading"
+import LoadingSpinner from "../components/LoadingSpinner"
 
 const BasicSearch = () => {
   const [isDisabled, setIsDisabled] = useState(false)
@@ -21,10 +22,12 @@ const BasicSearch = () => {
   const [permitNumbers, setPermitNumbers] = useState([])
   const [projects, setProjects] = useState([])
   const [mediums, setMediums] = useState([])
-  const [errors, setErrors] = useState([])
-  const [observedProperties, setObservedProperties] = useState([])
+  const [errors, setErrors] = useState<string[]>([])
+  const [observedPropGroups, setObservedPropGroups] = useState([])
   const [alertMsg, setAlertMsg] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [isApiLoading, setIsApiLoading] = useState(false)
+
   const [formData, setFormData] = useState<BasicSearchFormType>({
     locationType: null,
     locationName: [],
@@ -40,69 +43,87 @@ const BasicSearch = () => {
   const dropdwnUrl = (fieldName: string, query: string): string | undefined => {
     if (fieldName) {
       switch (fieldName) {
-        case BasicSearchAttr.ObservedPropertyGrp:
+        case SearchAttr.ObservedPropertyGrp:
           return `${API_VERSION}/search/getObservedProperties?search=${query}`
-        case BasicSearchAttr.Media:
+        case SearchAttr.Media:
           return `${API_VERSION}/search/getMediums?search=${query}`
-        case BasicSearchAttr.PermitNo:
+        case SearchAttr.PermitNo:
           return `${API_VERSION}/search/getPermitNumbers?search=${query}`
-        case BasicSearchAttr.LocationName:
+        case SearchAttr.LocationName:
           return `${API_VERSION}/search/getLocationNames?search=${query}`
-        case BasicSearchAttr.LocationType:
+        case SearchAttr.LocationType:
           return `${API_VERSION}/search/getLocationTypes`
-        case BasicSearchAttr.Projects:
+        case SearchAttr.Projects:
           return `${API_VERSION}/search/getProjects?search=${query}`
         default:
           break
       }
     }
   }
+
   const getDropdownOptions = async (
     fieldName: string,
     query: string,
   ): Promise<void> => {
     try {
+      setIsApiLoading(true)
       const url = dropdwnUrl(fieldName, query)
       if (url) {
         const apiData = await apiService.getAxiosInstance().get(url)
         if (apiData.status === 200) {
-          const response = apiData.data
+          setErrors([])
+          let response = apiData.data
+          // Log the API response for debugging
+          console.log(`API response for ${fieldName}:`, response)
+          // Defensive: ensure response is always an array
+          if (!Array.isArray(response)) {
+            response = []
+          }
           switch (fieldName) {
-            case BasicSearchAttr.ObservedPropertyGrp:
-              setObservedProperties(response)
+            case SearchAttr.ObservedPropertyGrp:
+              setObservedPropGroups(response)
               break
-            case BasicSearchAttr.Media:
+            case SearchAttr.Media:
               setMediums(response)
               break
-            case BasicSearchAttr.PermitNo:
+            case SearchAttr.PermitNo:
               setPermitNumbers(response)
               break
-            case BasicSearchAttr.LocationName:
+            case SearchAttr.LocationName:
               setLocationNames(response)
               break
-            case BasicSearchAttr.LocationType:
+            case SearchAttr.LocationType:
               setLocationTypes(response)
               break
-            case BasicSearchAttr.Projects:
+            case SearchAttr.Projects:
               setProjects(response)
               break
             default:
               break
           }
+        } else {
+          setErrors([
+            "ENMODS service is currently down. Please contact the system administrator.",
+          ])
         }
       }
     } catch (err) {
       console.error(err)
+    } finally {
+      setIsApiLoading(false)
     }
   }
 
   useEffect(() => {
-    getDropdownOptions(BasicSearchAttr.ObservedPropertyGrp, "")
-    getDropdownOptions(BasicSearchAttr.Media, "")
-    getDropdownOptions(BasicSearchAttr.PermitNo, "")
-    getDropdownOptions(BasicSearchAttr.LocationName, "")
-    getDropdownOptions(BasicSearchAttr.LocationType, "")
-    getDropdownOptions(BasicSearchAttr.Projects, "")
+    setIsApiLoading(true)
+    Promise.all([
+      getDropdownOptions(SearchAttr.ObservedPropertyGrp, ""),
+      getDropdownOptions(SearchAttr.Media, ""),
+      getDropdownOptions(SearchAttr.PermitNo, ""),
+      getDropdownOptions(SearchAttr.LocationName, ""),
+      getDropdownOptions(SearchAttr.LocationType, ""),
+      getDropdownOptions(SearchAttr.Projects, ""),
+    ]).finally(() => setIsApiLoading(false))
   }, [])
 
   const handleOnChange = (
@@ -121,22 +142,24 @@ const BasicSearch = () => {
   }
 
   const debounceSearch = debounce(async (query, attrName) => {
+    setIsApiLoading(true)
     switch (attrName) {
-      case BasicSearchAttr.LocationName:
-        getDropdownOptions(BasicSearchAttr.LocationName, query)
+      case SearchAttr.LocationName:
+        await getDropdownOptions(SearchAttr.LocationName, query)
         break
-      case BasicSearchAttr.PermitNo:
-        getDropdownOptions(BasicSearchAttr.PermitNo, query)
+      case SearchAttr.PermitNo:
+        await getDropdownOptions(SearchAttr.PermitNo, query)
         break
-      case BasicSearchAttr.Media:
-        getDropdownOptions(BasicSearchAttr.Media, query)
+      case SearchAttr.Media:
+        await getDropdownOptions(SearchAttr.Media, query)
         break
-      case BasicSearchAttr.ObservedPropertyGrp:
-        getDropdownOptions(BasicSearchAttr.ObservedPropertyGrp, query)
+      case SearchAttr.ObservedPropertyGrp:
+        await getDropdownOptions(SearchAttr.ObservedPropertyGrp, query)
         break
       default:
         break
     }
+    setIsApiLoading(false)
   }, 500)
 
   const handleInputChange = (
@@ -166,17 +189,15 @@ const BasicSearch = () => {
   }
 
   const basicSearch = async (data: { [key: string]: any }): Promise<void> => {
-    setIsDisabled(true)
-    setIsLoading(true)
-    console.log(data)
     try {
+      setIsDisabled(true)
+      setIsLoading(true)
       const res = await apiService
         .getAxiosInstance()
-        .post("/v1/search/basicSearch", data)
+        .post("/v1/search/observationSearch", data)
 
       if (res.status === 200) {
         window.scroll(0, 0)
-        console.log(res)
         if (res.data.message) {
           setAlertMsg(res.data.message)
         } else {
@@ -190,7 +211,6 @@ const BasicSearch = () => {
         }
       } else {
         window.scroll(0, 0)
-        console.log(res)
         setErrors(res.data.error)
       }
       setIsDisabled(false)
@@ -219,26 +239,38 @@ const BasicSearch = () => {
     basicSearch(prepareFormData(formData))
   }
 
+  const dropdwns = {
+    location: {
+      locationTypes: locationTypes,
+      locationNames: locationNames,
+      permitNumbers: permitNumbers,
+    },
+    filterResult: {
+      mediums: mediums,
+      projects: projects,
+      observedPropGroups: observedPropGroups,
+    },
+  }
+
   return (
-    <div className="p-2">
+    <div className="p-3">
+      <LoadingSpinner isLoading={isApiLoading} />
       <Loading isLoading={isLoading} />
 
-      <div className="flex flex-row">
-        <Link to="/search/basic" className="search-btn">
+      <div className="flex flex-row px-1 py-4">
+        <Link
+          to="/search/basic"
+          className="bg-[#38598a] text-[#fff] border rounded-md p-2 text-sm cursor-pointer"
+        >
           Basic
         </Link>
 
-        <Link to="/search/advance" className="search-btn">
+        <Link
+          to="/search/advance"
+          className="bg-[#fff] text-[#38598a] border rounded-md p-2 text-sm hover:bg-[#38598a] hover:text-[#fff] cursor-pointer"
+        >
           Advance
         </Link>
-      </div>
-
-      <div className="py-4">
-        <TitleText
-          variant="subtitle1"
-          text="Download Water Quality Data"
-          sx={{ fontWeight: 700 }}
-        />
       </div>
 
       {alertMsg && (
@@ -272,15 +304,20 @@ const BasicSearch = () => {
               </Alert>
             )}
           </div>
+          <div className="py-4">
+            <TitleText
+              variant="subtitle1"
+              text="Download Water Quality Data"
+              sx={{ fontWeight: 700 }}
+            />
+          </div>
           <div className="mb-5">
             <Paper elevation={2}>
               <LocationParametersForm
                 formData={formData}
-                locationTypes={locationTypes}
-                locationNames={locationNames}
                 handleInputChange={handleInputChange}
-                permitNumbers={permitNumbers}
                 handleOnChange={handleOnChange}
+                locationDropdwns={dropdwns.location}
               />
             </Paper>
           </div>
@@ -288,9 +325,7 @@ const BasicSearch = () => {
             <Paper elevation={2}>
               <FilterResultsForm
                 formData={formData}
-                mediums={mediums}
-                observedProperties={observedProperties}
-                projects={projects}
+                filterResultDrpdwns={dropdwns.filterResult}
                 handleInputChange={handleInputChange}
                 handleOnChange={handleOnChange}
                 handleOnChangeDatepicker={handleOnChangeDatepicker}
@@ -307,7 +342,14 @@ const BasicSearch = () => {
               text={"Clear Search"}
               type="button"
               handleClick={clearForm}
-              sx={{ background: "#fff", color: "#0B5394", fontSize: "8pt" }}
+              sx={{
+                background: "#fff",
+                color: "#0B5394",
+                fontSize: "8pt",
+                "&:hover": {
+                  color: "#fff",
+                },
+              }}
             />
             <Btn
               disabled={isDisabled}

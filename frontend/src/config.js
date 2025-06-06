@@ -6,7 +6,7 @@
 
 const config = {
   API_BASE_URL:
-    window.VITE_APP_API_URL || import.meta.env.VITE_APP_API_URL || "api",
+    window.VITE_APP_API_URL || import.meta.env.VITE_APP_API_URL || "/api",
 }
 
 export default config

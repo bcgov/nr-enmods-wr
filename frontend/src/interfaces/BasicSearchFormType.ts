@@ -7,5 +7,5 @@ export default interface BasicSearchFormType {
   media: string[]
   observedPropertyGrp: string[]
   projects: string[]
-  fileFormat: null
+  fileFormat?: null
 }

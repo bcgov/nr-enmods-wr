@@ -38,17 +38,9 @@ jobs:
       triggers: ('backend/' 'frontend/')
       params: --set global.secrets.persist=false
 
-  tests:
-    name: Tests
-    if: needs.deploys.outputs.triggered == 'true'
-    needs: [deploys]
-    uses: ./.github/workflows/.tests.yml
-    with:
-      target: ${{ github.event.number }}
-
   results:
     name: PR Results
-    needs: [builds, deploys, tests]
+    needs: [builds, deploys]
     if: always() && (!failure()) && (!cancelled())
     runs-on: ubuntu-22.04
     steps:

@@ -5,6 +5,7 @@ import { Observation } from "./entities/observation.entity";
 import { CreateObservationDto } from "./dto/create-observation.dto";
 import { UpdateObservationDto } from "./dto/update-observation.dto";
 import { SearchService } from "../search/search.service";
+import { Cron, CronExpression } from "@nestjs/schedule";
 
 @Injectable()
 export class ObservationsService implements OnModuleInit {
@@ -43,6 +44,7 @@ export class ObservationsService implements OnModuleInit {
   async refreshObservationsTable(): Promise<void> {
     // fetch all observations from the paginated API and upsert into DB
     const basicSearchDto = {} as any;
+    let totalCount = 0;
 
     const firstPageRes = await this.searchService.getObservationPromise(
       basicSearchDto,
@@ -58,8 +60,13 @@ export class ObservationsService implements OnModuleInit {
       data: obs,
     }));
     await this.observationRepository.save(batch);
+    totalCount += batch.length;
+    if (totalCount % 50000 === 0) {
+      console.log(
+        `refreshObservationsTable: Retrieved and upserted ${totalCount} records so far...`,
+      );
+    }
     while (cursor) {
-      console.log(`Inserting batch of observations with cursor: ${cursor}`);
       const res = await this.searchService.getObservationPromise(
         basicSearchDto,
         process.env.OBSERVATIONS_URL,
@@ -72,6 +79,12 @@ export class ObservationsService implements OnModuleInit {
           data: obs,
         }));
         await this.observationRepository.save(batch);
+        totalCount += batch.length;
+        if (totalCount % 50000 === 0) {
+          console.log(
+            `refreshObservationsTable: Retrieved and upserted ${totalCount} records so far...`,
+          );
+        }
         cursor = data.cursor;
       } else {
         break;
@@ -79,14 +92,23 @@ export class ObservationsService implements OnModuleInit {
     }
   }
 
+  @Cron(CronExpression.EVERY_DAY_AT_2AM)
+  async scheduledRefreshObservationsTable() {
+    console.log("Scheduled refreshObservationsTable running at 2AM...");
+    await this.refreshObservationsTable();
+  }
+
   async onModuleInit() {
+    const start = Date.now();
+
     console.log(
       "ObservationsService initialized, refreshing observations table...",
     );
     await this.refreshObservationsTable();
+    const end = Date.now();
 
     console.log(
-      "ObservationsService initialized, finished refreshing observations table...",
+      `ObservationsService.  Finished refreshing observations table.  Refresh took ${(end - start) / 1000} seconds.`,
     );
   }
 }

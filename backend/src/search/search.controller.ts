@@ -1,4 +1,15 @@
-import { Body, Controller, Get, HttpStatus, Logger, Post, Req, Res, UsePipes, ValidationPipe } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Get,
+  HttpStatus,
+  Logger,
+  Post,
+  Req,
+  Res,
+  UsePipes,
+  ValidationPipe,
+} from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import { SearchService } from "./search.service";
 import { Response, Request } from "express";
@@ -14,7 +25,10 @@ export class SearchController {
 
   @Post("observationSearch")
   @UsePipes(new ValidationPipe({ transform: true }))
-  public async basicSearch(@Res() response: Response, @Body() basicSearchDto: BasicSearchDto) {
+  public async basicSearch(
+    @Res() response: Response,
+    @Body() basicSearchDto: BasicSearchDto,
+  ) {
     try {
       validateDto(basicSearchDto);
       const res = await this.searchService.exportData(basicSearchDto);

@@ -32,6 +32,25 @@ spec:
       securityContext:
         {{- toYaml .Values.backend.podSecurityContext | nindent 12 }}
       {{- end }}
+      initContainers:
+        - name: {{ include "backend.fullname" . }}-init
+          image: "{{.Values.global.registry}}/{{.Values.global.repository}}/migrations:{{ .Values.global.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ default "Always" .Values.backend.imagePullPolicy }}
+          envFrom:
+            - secretRef:
+                name: {{.Release.Name}}-flyway
+          env:
+            - name: FLYWAY_BASELINE_ON_MIGRATE
+              value: "true"
+            - name: FLYWAY_CONNECT_RETRIES
+              value: "10"
+          resources:
+            limits:
+              cpu: 200m
+              memory: 100Mi
+            requests:
+              cpu: 50m
+              memory: 25Mi
       containers:
         - name: {{ include "backend.fullname" . }}
           {{- if .Values.backend.securityContext }}

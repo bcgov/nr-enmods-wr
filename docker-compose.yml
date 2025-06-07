@@ -1,16 +1,32 @@
-# Reusable vars
 services:
   backend:
     container_name: backend
-    entrypoint: sh -c "npm i && npm run start:dev"
+    # entrypoint: sh -c "npm i && npm run start:dev"
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     environment:
       NODE_ENV: development
-    image: node:22
+      OBJECTSTORE_URL: ${OBJECTSTORE_URL}
+      OBJECTSTORE_ACCESS_KEY: ${OBJECTSTORE_ACCESS_KEY}
+      OBJECTSTORE_SECRET_KEY: ${OBJECTSTORE_SECRET_KEY}
+      OBJECTSTORE_BUCKET: ${OBJECTSTORE_BUCKET}
+      BASE_URL_BC_API: ${BASE_URL_BC_API}
+      SAMPLING_LOCATIONS_ENDPOINT: ${SAMPLING_LOCATIONS_ENDPOINT}
+      SAMPLING_LOCATION_GROUPS_ENDPOINT: ${SAMPLING_LOCATION_GROUPS_ENDPOINT}
+      EXTENDED_ATTRIBUTES_ENDPOINT: ${EXTENDED_ATTRIBUTES_ENDPOINT}
+      OBJECTSTORE_FOLDER: ${OBJECTSTORE_FOLDER}
+      API_KEY: ${API_KEY}
+      AUTH_TOKEN: ${AUTH_TOKEN}
+      POSTGRES_HOST: postgres
+      POSTGRES_USER: enmodswr_user
+      POSTGRES_PASSWORD: enmodswr_password
+      POSTGRES_DATABASE: enmodswr_db
+    # image: node:22
     ports: ["3001:3000"]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/api"]
     working_dir: "/app"
-    volumes: ["./backend:/app", "/app/node_modules"]
 
   frontend:
     container_name: frontend
@@ -29,6 +45,32 @@ services:
       backend:
         condition: service_healthy
 
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    restart: always
+    environment:
+      POSTGRES_USER: enmodswr_user
+      POSTGRES_PASSWORD: enmodswr_password
+      POSTGRES_DB: enmodswr_db
+    ports:
+      - '5432:5432'
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "enmodswr_user", "-d", "enmodswr"]
+  migrations:
+    image: flyway/flyway:10-alpine
+    container_name: migrations
+    command: migrate
+    volumes: ["./migrations/sql:/flyway/sql:ro"]
+    environment:
+      FLYWAY_URL: jdbc:postgresql://postgres:5432/enmodswr_db
+      FLYWAY_USER: enmodswr_user
+      FLYWAY_PASSWORD: enmodswr_password
+      FLYWAY_BASELINE_ON_MIGRATE: true
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   caddy:
     container_name: caddy
     profiles: ["caddy"]
@@ -45,3 +87,4 @@ services:
     depends_on:
       backend:
         condition: service_healthy
+

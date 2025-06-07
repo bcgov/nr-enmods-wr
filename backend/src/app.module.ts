@@ -11,6 +11,7 @@ import { GeodataModule } from "./geodata/geodata.module";
 import { ScheduleModule } from "@nestjs/schedule";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import ormconfig from "src/ormconfig";
+import { ObservationsModule } from "./observations/observations.module";
 
 @Module({
   imports: [
@@ -20,12 +21,12 @@ import ormconfig from "src/ormconfig";
     TerminusModule,
     SearchModule,
     GeodataModule,
+    ObservationsModule,
   ],
   controllers: [AppController, MetricsController],
   providers: [AppService],
 })
 export class AppModule {
-  // let's add a middleware on all routes
   configure(consumer: MiddlewareConsumer) {
     consumer
       .apply(HTTPLoggerMiddleware)

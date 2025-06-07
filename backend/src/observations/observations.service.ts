@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, OnModuleInit } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { Observation } from "./entities/observation.entity";
@@ -7,7 +7,7 @@ import { UpdateObservationDto } from "./dto/update-observation.dto";
 import { SearchService } from "../search/search.service";
 
 @Injectable()
-export class ObservationsService {
+export class ObservationsService implements OnModuleInit {
   constructor(
     @InjectRepository(Observation)
     private readonly observationRepository: Repository<Observation>,
@@ -41,9 +41,9 @@ export class ObservationsService {
   }
 
   async refreshObservationsTable(): Promise<void> {
-    // Example: fetch all observations from the paginated API and upsert into DB
+    // fetch all observations from the paginated API and upsert into DB
     const basicSearchDto = {} as any;
-    // 1. Get the first page
+
     const firstPageRes = await this.searchService.getObservationPromise(
       basicSearchDto,
       process.env.OBSERVATIONS_URL,
@@ -51,10 +51,15 @@ export class ObservationsService {
     );
     if (!firstPageRes || firstPageRes.status !== 200) return;
     const firstPage = JSON.parse(firstPageRes.data);
-    let allObservations = firstPage.domainObjects;
     let cursor = firstPage.cursor;
-    // 2. Loop through all pages
+    // Upsert the first batch
+    let batch = firstPage.domainObjects.map((obs: any) => ({
+      id: obs.id,
+      data: obs,
+    }));
+    await this.observationRepository.save(batch);
     while (cursor) {
+      console.log(`Inserting batch of observations with cursor: ${cursor}`);
       const res = await this.searchService.getObservationPromise(
         basicSearchDto,
         process.env.OBSERVATIONS_URL,
@@ -62,17 +67,26 @@ export class ObservationsService {
       );
       if (res && res.status === 200) {
         const data = JSON.parse(res.data);
-        allObservations = allObservations.concat(data.domainObjects);
+        batch = data.domainObjects.map((obs: any) => ({
+          id: obs.id,
+          data: obs,
+        }));
+        await this.observationRepository.save(batch);
         cursor = data.cursor;
       } else {
         break;
       }
     }
-    // 3. Upsert all observations into the DB
-    const upsertData = allObservations.map((obs: any) => ({
-      id: obs.id,
-      data: obs,
-    }));
-    await this.observationRepository.save(upsertData);
+  }
+
+  async onModuleInit() {
+    console.log(
+      "ObservationsService initialized, refreshing observations table...",
+    );
+    await this.refreshObservationsTable();
+
+    console.log(
+      "ObservationsService initialized, finished refreshing observations table...",
+    );
   }
 }

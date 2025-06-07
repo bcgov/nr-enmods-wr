@@ -60,15 +60,23 @@ export class SearchService {
     }
   }
 
-  public getObservationPromise(
+  public async getObservationPromise(
     basicSearchDto: BasicSearchDto,
     url: string,
     cursor: string,
   ): Promise<any> {
-    return this.bcApiCall(
+    const response = await this.bcApiCall(
       this.getAbsoluteUrl(url),
       this.getUserSearchParams(basicSearchDto, cursor),
     );
+    if (!response || typeof response.data === "undefined") {
+      this.logger.error(
+        `No data in response from ${url}. Full response:`,
+        response,
+      );
+      throw new Error(`No data in response from ${url}`);
+    }
+    return response;
   }
 
   private async getObsFromPagination(
@@ -145,40 +153,42 @@ export class SearchService {
 
   private getUserSearchParams(basicSearchDto: BasicSearchDto, cursor: string) {
     let arr = [];
-
     if (basicSearchDto?.labBatchId) arr.push(basicSearchDto.labBatchId);
-
     if (basicSearchDto?.workedOrderNo)
       arr.push(basicSearchDto.workedOrderNo.text);
-
     if (
-      basicSearchDto.samplingAgency &&
+      basicSearchDto?.samplingAgency &&
       basicSearchDto.samplingAgency.length > 0
     )
       arr.push(...basicSearchDto.samplingAgency);
-
     return {
-      samplingLocationIds: basicSearchDto.locationName.toString(),
-      samplingLocationGroupIds: basicSearchDto.permitNumber.toString(),
-      media: basicSearchDto.media.toString(),
-      analyticalGroupIds: basicSearchDto.observedPropertyGrp.toString(),
-      projectIds: basicSearchDto.projects.toString(),
-      "start-observedTime": basicSearchDto.fromDate,
-      "end-observedTime": basicSearchDto.toDate,
+      samplingLocationIds: (basicSearchDto.locationName || []).toString(),
+      samplingLocationGroupIds: (basicSearchDto.permitNumber || []).toString(),
+      media: (basicSearchDto.media || []).toString(),
+      analyticalGroupIds: (basicSearchDto.observedPropertyGrp || []).toString(),
+      projectIds: (basicSearchDto.projects || []).toString(),
+      "start-observedTime": basicSearchDto.fromDate || "",
+      "end-observedTime": basicSearchDto.toDate || "",
       limit: this.MAX_API_DATA_LIMIT,
       cursor: cursor,
-      observedPropertyIds: basicSearchDto?.observedProperty?.toString(),
-      labResultLaboratoryIds: basicSearchDto?.analyzingAgency?.toString(),
-      analysisMethodIds: basicSearchDto?.analyticalMethod?.toString(),
-      "start-resultTime": basicSearchDto?.labArrivalFromDate,
-      "end-resultTime": basicSearchDto?.labArrivalToDate,
-      collectionMethodIds: basicSearchDto?.collectionMethod?.toString(),
-      qualityControlTypes: basicSearchDto?.qcSampleType?.toString(),
-      dataClassifications: basicSearchDto?.dataClassification?.toString(),
-      depthValue: parseFloat(basicSearchDto?.sampleDepth?.depth?.value),
-      depthUnitId: basicSearchDto?.units?.id,
-      specimenIds: basicSearchDto?.specimenId?.toString(),
-      search: arr?.toString(),
+      observedPropertyIds: (basicSearchDto?.observedProperty || []).toString(),
+      labResultLaboratoryIds: (
+        basicSearchDto?.analyzingAgency || []
+      ).toString(),
+      analysisMethodIds: (basicSearchDto?.analyticalMethod || []).toString(),
+      "start-resultTime": basicSearchDto?.labArrivalFromDate || "",
+      "end-resultTime": basicSearchDto?.labArrivalToDate || "",
+      collectionMethodIds: (basicSearchDto?.collectionMethod || []).toString(),
+      qualityControlTypes: (basicSearchDto?.qcSampleType || []).toString(),
+      dataClassifications: (
+        basicSearchDto?.dataClassification || []
+      ).toString(),
+      depthValue: basicSearchDto?.sampleDepth?.depth?.value
+        ? parseFloat(basicSearchDto.sampleDepth.depth.value)
+        : undefined,
+      depthUnitId: basicSearchDto?.units?.id || "",
+      specimenIds: (basicSearchDto?.specimenId || []).toString(),
+      search: arr?.toString() || "",
     };
   }
 

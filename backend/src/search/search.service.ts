@@ -101,7 +101,7 @@ export class SearchService {
     return currentObsData;
   }
 
-  private async prepareCsvExportData(obsExport: string) {
+  private async prepareCsvExportData(basicSearchDto: BasicSearchDto) {
     try {
       const fileName = `tmp${Date.now()}.csv`;
       const filePath = join(process.cwd(), `${this.DIR_NAME}${fileName}`);
@@ -110,10 +110,20 @@ export class SearchService {
       const writeStream = fs.createWriteStream(filePath);
       csvStream.pipe(writeStream).on("error", (err) => this.logger.error(err));
 
-      // Use async iterator to process each row
+      // Stream obsExport directly from the API
+      const apiResponse = await this.httpService.axiosRef.get(
+        this.OBSERVATIONS_EXPORT_URL,
+        {
+          params: this.getUserSearchParams(basicSearchDto, ""),
+          responseType: "stream",
+          headers: {
+            Authorization: "token " + process.env.AUTH_TOKEN,
+            "x-api-key": process.env.API_KEY,
+          },
+        },
+      );
       const parser = parse({ columns: true });
-      const exportStream = require("stream").Readable.from([obsExport]);
-      exportStream.pipe(parser);
+      apiResponse.data.pipe(parser);
 
       for await (const row of parser) {
         const obsId = row[ObsExportCsvHeader.ObservationId];

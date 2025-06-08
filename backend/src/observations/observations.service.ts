@@ -81,7 +81,7 @@ export class ObservationsService {
         const data = JSON.parse(res.data);
         batch = data.domainObjects.map((obs: any) => ({
           id: obs.id,
-          data: obs,
+          data: toMinimalObservation(obs),
         }));
         await this.observationRepository.save(batch);
         totalCount += batch.length;
@@ -110,6 +110,33 @@ export class ObservationsService {
       `ObservationsService.  Finished refreshing observations table.  Refresh took ${(end - start) / 1000} seconds.`,
     );
   }
+}
+
+function toMinimalObservation(obs: any) {
+  return {
+    id: obs.id,
+    fieldVisit: {
+      extendedAttributes: obs.fieldVisit?.extendedAttributes,
+      project: { name: obs.fieldVisit?.project?.name },
+      samplingLocation: { name: obs.fieldVisit?.samplingLocation?.name },
+      startTime: obs.fieldVisit?.startTime,
+      endTime: obs.fieldVisit?.endTime,
+      participants: obs.fieldVisit?.participants,
+    },
+    specimen: {
+      extendedAttributes: obs.specimen?.extendedAttributes,
+      filtered: obs.specimen?.filtered,
+      filtrationComment: obs.specimen?.filtrationComment,
+    },
+    activity: {
+      comment: obs.activity?.comment,
+      endTime: obs.activity?.endTime,
+      extendedAttributes: obs.activity?.extendedAttributes,
+    },
+    numericResult: {
+      sampleFraction: obs.numericResult?.sampleFraction,
+    },
+  };
 }
 
 // Memory monitor: log memory usage every 5 seconds

@@ -94,8 +94,14 @@ export class ObservationsService implements OnModuleInit {
 
   @Cron(process.env.OBS_REFRESH_CRON || CronExpression.EVERY_DAY_AT_2AM)
   async scheduledRefreshObservationsTable() {
+    const start = Date.now();
     console.log("Scheduled refreshObservationsTable running...");
     await this.refreshObservationsTable();
+    const end = Date.now();
+
+    console.log(
+      `ObservationsService.  Finished refreshing observations table.  Refresh took ${(end - start) / 1000} seconds.`,
+    );
   }
 
   async onModuleInit() {
@@ -112,15 +118,3 @@ export class ObservationsService implements OnModuleInit {
     );
   }
 }
-
-// Memory monitor: log memory usage every 5 seconds
-setInterval(() => {
-  const mem = process.memoryUsage();
-  console.log("[MEMORY USAGE]", {
-    rss: (mem.rss / 1024 / 1024).toFixed(2) + " MB",
-    heapTotal: (mem.heapTotal / 1024 / 1024).toFixed(2) + " MB",
-    heapUsed: (mem.heapUsed / 1024 / 1024).toFixed(2) + " MB",
-    external: (mem.external / 1024 / 1024).toFixed(2) + " MB",
-    arrayBuffers: (mem.arrayBuffers / 1024 / 1024).toFixed(2) + " MB",
-  });
-}, 5000);

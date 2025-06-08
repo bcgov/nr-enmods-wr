@@ -109,28 +109,20 @@ export class SearchService {
       const writeStream = fs.createWriteStream(filePath);
       csvStream.pipe(writeStream).on("error", (err) => this.logger.error(err));
 
-      // Collect all pending DB lookups
-      const pending: Promise<void>[] = [];
       const parser = parse({ columns: true })
         .on("error", (err) => this.logger.error("CSV parsing error:", err))
-        .on("data", (row: any) => {
+        .on("data", async (row: any) => {
           const obsId = row[ObsExportCsvHeader.ObservationId];
           if (obsId) {
-            pending.push(
-              this.observationRepository
-                .findOneBy({ id: obsId })
-                .then((obsRecord) => {
-                  if (obsRecord) {
-                    this.writeToCsv(obsRecord.data, row, csvStream);
-                  }
-                }),
-            );
+            const obsRecord = await this.observationRepository.findOneBy({
+              id: obsId,
+            });
+            if (obsRecord) {
+              this.writeToCsv(obsRecord.data, row, csvStream);
+            }
           }
         })
-        .on("end", async () => {
-          await Promise.all(pending);
-          csvStream.end();
-        });
+        .on("end", () => csvStream.end());
 
       // Stream the original obsExport string into parser
       const exportStream = require("stream").Readable.from([obsExport]);
@@ -170,27 +162,33 @@ export class SearchService {
       arr.push(...basicSearchDto.samplingAgency);
 
     return {
-      samplingLocationIds: basicSearchDto.locationName.toString(),
-      samplingLocationGroupIds: basicSearchDto.permitNumber.toString(),
-      media: basicSearchDto.media.toString(),
-      analyticalGroupIds: basicSearchDto.observedPropertyGrp.toString(),
-      projectIds: basicSearchDto.projects.toString(),
-      "start-observedTime": basicSearchDto.fromDate,
-      "end-observedTime": basicSearchDto.toDate,
+      samplingLocationIds: (basicSearchDto.locationName || "").toString(),
+      samplingLocationGroupIds: (basicSearchDto.permitNumber || "").toString(),
+      media: (basicSearchDto.media || "").toString(),
+      analyticalGroupIds: (basicSearchDto.observedPropertyGrp || "").toString(),
+      projectIds: (basicSearchDto.projects || "").toString(),
+      "start-observedTime": basicSearchDto.fromDate || "",
+      "end-observedTime": basicSearchDto.toDate || "",
       limit: this.MAX_API_DATA_LIMIT,
       cursor: cursor,
-      observedPropertyIds: basicSearchDto?.observedProperty?.toString(),
-      labResultLaboratoryIds: basicSearchDto?.analyzingAgency?.toString(),
-      analysisMethodIds: basicSearchDto?.analyticalMethod?.toString(),
-      "start-resultTime": basicSearchDto?.labArrivalFromDate,
-      "end-resultTime": basicSearchDto?.labArrivalToDate,
-      collectionMethodIds: basicSearchDto?.collectionMethod?.toString(),
-      qualityControlTypes: basicSearchDto?.qcSampleType?.toString(),
-      dataClassifications: basicSearchDto?.dataClassification?.toString(),
-      depthValue: parseFloat(basicSearchDto?.sampleDepth?.depth?.value),
-      depthUnitId: basicSearchDto?.units?.id,
-      specimenIds: basicSearchDto?.specimenId?.toString(),
-      search: arr?.toString(),
+      observedPropertyIds: (basicSearchDto?.observedProperty || "").toString(),
+      labResultLaboratoryIds: (
+        basicSearchDto?.analyzingAgency || ""
+      ).toString(),
+      analysisMethodIds: (basicSearchDto?.analyticalMethod || "").toString(),
+      "start-resultTime": basicSearchDto?.labArrivalFromDate || "",
+      "end-resultTime": basicSearchDto?.labArrivalToDate || "",
+      collectionMethodIds: (basicSearchDto?.collectionMethod || "").toString(),
+      qualityControlTypes: (basicSearchDto?.qcSampleType || "").toString(),
+      dataClassifications: (
+        basicSearchDto?.dataClassification || ""
+      ).toString(),
+      depthValue: basicSearchDto?.sampleDepth?.depth?.value
+        ? parseFloat(basicSearchDto.sampleDepth.depth.value)
+        : undefined,
+      depthUnitId: basicSearchDto?.units?.id || "",
+      specimenIds: (basicSearchDto?.specimenId || "").toString(),
+      search: arr?.toString() || "",
     };
   }
 
@@ -370,10 +368,6 @@ export class SearchService {
   }
 
   public async getLocationTypes(): Promise<any[]> {
-    this.logger.log(
-      "getLocationTypes called, env:",
-      process.env.LOCATION_TYPE_CODE_TABLE_API,
-    );
     return await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.LOCATION_TYPE_CODE_TABLE_API),
       null,
@@ -383,10 +377,6 @@ export class SearchService {
   }
 
   public async getLocationNames(query: string): Promise<any[]> {
-    this.logger.log(
-      "getLocationNames called, env:",
-      process.env.LOCATION_NAME_CODE_TABLE_API,
-    );
     return await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.LOCATION_NAME_CODE_TABLE_API),
       query,
@@ -396,10 +386,6 @@ export class SearchService {
   }
 
   public async getPermitNumbers(query: string): Promise<any[]> {
-    this.logger.log(
-      "getPermitNumbers called, env:",
-      process.env.PERMIT_NUMBER_CODE_TABLE_API,
-    );
     return await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.PERMIT_NUMBER_CODE_TABLE_API),
       query,
@@ -409,100 +395,66 @@ export class SearchService {
   }
 
   public async getMediums(query: string): Promise<any[]> {
-    this.logger.log(
-      "getMediums called, env:",
-      process.env.MEDIA_CODE_TABLE_API,
-    );
     const result = await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.MEDIA_CODE_TABLE_API),
       query,
       null,
       true,
     );
-    console.log("getMediums returning:", result);
     return result;
   }
 
   public async getObservedPropertyGroups(query: string): Promise<any[]> {
-    this.logger.log(
-      "getObservedPropertyGroups called, env:",
-      process.env.OBSERVED_PROPERTIES_GROUP_CODE_TABLE_API,
-    );
     const result = await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.OBSERVED_PROPERTIES_GROUP_CODE_TABLE_API),
       query,
       null,
       true,
     );
-    console.log("getObservedPropertyGroups returning:", result);
     return result;
   }
 
   public async getProjects(query: string): Promise<any[]> {
-    this.logger.log(
-      "getProjects called, env:",
-      process.env.PROJECTS_CODE_TABLE_API,
-    );
     const result = await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.PROJECTS_CODE_TABLE_API),
       query,
       null,
       true,
     );
-    console.log("getProjects returning:", result);
     return result;
   }
 
   public async getAnalyticalMethods(query: string): Promise<any[]> {
-    this.logger.log(
-      "getAnalyticalMethods called, env:",
-      process.env.ANALYTICAL_METHOD_CODE_TABLE_API,
-    );
     const result = await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.ANALYTICAL_METHOD_CODE_TABLE_API),
       query,
       "name",
       true,
     );
-    console.log("getAnalyticalMethods returning:", result);
     return result;
   }
 
   public async getAnalyzingAgencies(query: string): Promise<any[]> {
-    this.logger.log(
-      "getAnalyzingAgencies called, env:",
-      process.env.ANALYZING_AGENCY_CODE_TABLE_API,
-    );
     const result = await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.ANALYZING_AGENCY_CODE_TABLE_API),
       null,
       "name",
       false,
     );
-    console.log("getAnalyzingAgencies returning:", result);
     return result;
   }
 
   public async getObservedProperties(query: string): Promise<any[]> {
-    this.logger.log(
-      "getObservedProperties called, env:",
-      process.env.OBSERVED_PROPERTIES_CODE_TABLE_API,
-    );
     const result = await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.OBSERVED_PROPERTIES_CODE_TABLE_API),
       query,
       null,
       true,
     );
-    console.log("getObservedProperties returning:", result);
     return result;
   }
 
   public async getWorkedOrderNos(query: string): Promise<any[]> {
-    this.logger.log(
-      "getWorkedOrderNos called, env:",
-      process.env.WORKED_ORDER_NO_CODE_TABLE_API,
-    );
     const specimens = await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.WORKED_ORDER_NO_CODE_TABLE_API),
       query,
@@ -514,15 +466,10 @@ export class SearchService {
       ...new Map(arr.map((item) => [item["text"], item])).values(),
     ];
     sortArr(workOrderedNos, "text");
-    console.log("getWorkedOrderNos returning:", workOrderedNos);
     return workOrderedNos;
   }
 
   public async getSamplingAgencies(query: string): Promise<any[]> {
-    this.logger.log(
-      "getSamplingAgencies called, env:",
-      process.env.SAMPLING_AGENCY_CODE_TABLE_API,
-    );
     const fieldVisits = await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.SAMPLING_AGENCY_CODE_TABLE_API),
       query,
@@ -534,7 +481,6 @@ export class SearchService {
       ...new Map(arr.map((item) => [item["id"], item])).values(),
     ];
     sortArr(agencies, "customId");
-    console.log("getSamplingAgencies returning:", agencies);
     return agencies;
   }
 
@@ -555,37 +501,26 @@ export class SearchService {
   }
 
   public async getCollectionMethods(query: string): Promise<any[]> {
-    this.logger.log(
-      "getCollectionMethods called, env:",
-      process.env.COLLECTION_METHOD_CODE_TABLE_API,
-    );
     const result = await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.COLLECTION_METHOD_CODE_TABLE_API),
       null,
       null,
       false,
     );
-    console.log("getCollectionMethods returning:", result);
     return result;
   }
 
   public async getUnits(query: string): Promise<any[]> {
-    this.logger.log("getUnits called, env:", process.env.UNITS_CODE_TABLE_API);
     const result = await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.UNITS_CODE_TABLE_API),
       null,
       "name",
       false,
     );
-    console.log("getUnits returning:", result);
     return result;
   }
 
   public async getQcSampleTypes(query: string): Promise<any[]> {
-    this.logger.log(
-      "getQcSampleTypes called, env:",
-      process.env.QC_SAMPLE_TYPE_CODE_TABLE_API,
-    );
     const activities = await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.QC_SAMPLE_TYPE_CODE_TABLE_API),
       null,
@@ -595,15 +530,10 @@ export class SearchService {
     const result = [
       ...new Map(activities.map((item: any) => [item["type"], item])).values(),
     ];
-    console.log("getQcSampleTypes returning:", result);
     return result;
   }
 
   public async getDataClassifications(query: string): Promise<any[]> {
-    this.logger.log(
-      "getDataClassifications called, env:",
-      process.env.DATA_CLASSIFICATION_CODE_TABLE_API,
-    );
     const observations = await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.DATA_CLASSIFICATION_CODE_TABLE_API),
       query,
@@ -615,15 +545,10 @@ export class SearchService {
         observations.map((item: any) => [item["dataClassification"], item]),
       ).values(),
     ];
-    console.log("getDataClassifications returning:", result);
     return result;
   }
 
   public async getSampleDepths(query: string): Promise<any[]> {
-    this.logger.log(
-      "getSampleDepths called, env:",
-      process.env.SAMPLE_DEPTH_CODE_TABLE_API,
-    );
     const activities = await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.SAMPLE_DEPTH_CODE_TABLE_API),
       null,
@@ -638,15 +563,10 @@ export class SearchService {
         obsArr.map((item: any) => [item["depth"].value, item]),
       ).values(),
     ].sort((a: any, b: any) => a.depth.value - b.depth.value);
-    console.log("getSampleDepths returning:", result);
     return result;
   }
 
   public async getSpecimenIds(query: string): Promise<any[]> {
-    this.logger.log(
-      "getSpecimenIds called, env:",
-      process.env.SPECIMEN_ID_CODE_TABLE_API,
-    );
     const specimens = await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.SPECIMEN_ID_CODE_TABLE_API),
       query,
@@ -656,7 +576,6 @@ export class SearchService {
     const result = [
       ...new Map(specimens.map((item: any) => [item["name"], item])).values(),
     ];
-    console.log("getSpecimenIds returning:", result);
     return result;
   }
 }

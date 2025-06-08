@@ -62,7 +62,7 @@ export class ObservationsService {
     // Upsert the first batch
     let batch = firstPage.domainObjects.map((obs: any) => ({
       id: obs.id,
-      data: obs,
+      data: toMinimalObservation(obs),
     }));
     await this.observationRepository.save(batch);
     totalCount += batch.length;

@@ -1,6 +1,6 @@
 import "multer";
 import { Injectable, Logger } from "@nestjs/common";
-import { Cron } from "@nestjs/schedule";
+import { Cron, CronExpression } from "@nestjs/schedule";
 import axios from "axios";
 import * as crypto from "crypto";
 import * as fs from "fs";
@@ -41,7 +41,9 @@ export class GeodataService {
     wellTagNumber: null,
   };
 
-  @Cron("0 17 17 * * *")
+  @Cron(process.env.GEODATA_REFRESH_CRON || CronExpression.EVERY_DAY_AT_2AM, {
+    timeZone: "America/Vancouver",
+  })
   async processAndUpload(): Promise<void> {
     try {
       this.logger.debug("Starting sampling location cron job");

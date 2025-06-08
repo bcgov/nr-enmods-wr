@@ -208,7 +208,9 @@ const BasicSearch = () => {
         }
       } else {
         window.scroll(0, 0)
-        setErrors(res.data.error)
+        setErrors(
+          Array.isArray(res.data.error) ? res.data.error : [res.data.error],
+        )
       }
       setIsDisabled(false)
       setIsLoading(false)

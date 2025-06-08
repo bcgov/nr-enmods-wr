@@ -109,20 +109,28 @@ export class SearchService {
       const writeStream = fs.createWriteStream(filePath);
       csvStream.pipe(writeStream).on("error", (err) => this.logger.error(err));
 
+      // Collect all pending DB lookups
+      const pending: Promise<void>[] = [];
       const parser = parse({ columns: true })
         .on("error", (err) => this.logger.error("CSV parsing error:", err))
-        .on("data", async (row: any) => {
+        .on("data", (row: any) => {
           const obsId = row[ObsExportCsvHeader.ObservationId];
           if (obsId) {
-            const obsRecord = await this.observationRepository.findOneBy({
-              id: obsId,
-            });
-            if (obsRecord) {
-              this.writeToCsv(obsRecord.data, row, csvStream);
-            }
+            pending.push(
+              this.observationRepository
+                .findOneBy({ id: obsId })
+                .then((obsRecord) => {
+                  if (obsRecord) {
+                    this.writeToCsv(obsRecord.data, row, csvStream);
+                  }
+                }),
+            );
           }
         })
-        .on("end", () => csvStream.end());
+        .on("end", async () => {
+          await Promise.all(pending);
+          csvStream.end();
+        });
 
       // Stream the original obsExport string into parser
       const exportStream = require("stream").Readable.from([obsExport]);
@@ -368,6 +376,10 @@ export class SearchService {
   }
 
   public async getLocationTypes(): Promise<any[]> {
+    this.logger.log(
+      "getLocationTypes called, env:",
+      process.env.LOCATION_TYPE_CODE_TABLE_API,
+    );
     return await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.LOCATION_TYPE_CODE_TABLE_API),
       null,
@@ -377,6 +389,10 @@ export class SearchService {
   }
 
   public async getLocationNames(query: string): Promise<any[]> {
+    this.logger.log(
+      "getLocationNames called, env:",
+      process.env.LOCATION_NAME_CODE_TABLE_API,
+    );
     return await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.LOCATION_NAME_CODE_TABLE_API),
       query,

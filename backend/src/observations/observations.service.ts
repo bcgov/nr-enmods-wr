@@ -8,7 +8,7 @@ import { SearchService } from "../search/search.service";
 import { Cron, CronExpression } from "@nestjs/schedule";
 
 @Injectable()
-export class ObservationsService implements OnModuleInit {
+export class ObservationsService {
   constructor(
     @InjectRepository(Observation)
     private readonly observationRepository: Repository<Observation>,
@@ -103,18 +103,19 @@ export class ObservationsService implements OnModuleInit {
       `ObservationsService.  Finished refreshing observations table.  Refresh took ${(end - start) / 1000} seconds.`,
     );
   }
-
-  async onModuleInit() {
-    const start = Date.now();
-
-    console.log(
-      "ObservationsService initialized, refreshing observations table...",
-    );
-    //await this.refreshObservationsTable();
-    const end = Date.now();
-
-    console.log(
-      `ObservationsService.  Finished refreshing observations table.  Refresh took ${(end - start) / 1000} seconds.`,
-    );
-  }
 }
+
+// Memory monitor: log memory usage every 5 seconds
+setInterval(() => {
+  const mem = process.memoryUsage();
+  const rssMB = mem.rss / 1024 / 1024;
+  if (rssMB > 500) {
+    console.log("[MEMORY USAGE]", {
+      rss: rssMB.toFixed(2) + " MB",
+      heapTotal: (mem.heapTotal / 1024 / 1024).toFixed(2) + " MB",
+      heapUsed: (mem.heapUsed / 1024 / 1024).toFixed(2) + " MB",
+      external: (mem.external / 1024 / 1024).toFixed(2) + " MB",
+      arrayBuffers: (mem.arrayBuffers / 1024 / 1024).toFixed(2) + " MB",
+    });
+  }
+}, 5000);

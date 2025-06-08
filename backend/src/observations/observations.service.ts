@@ -13,7 +13,12 @@ export class ObservationsService {
     @InjectRepository(Observation)
     private readonly observationRepository: Repository<Observation>,
     private readonly searchService: SearchService,
-  ) {}
+  ) {
+    console.log(
+      "OBS_REFRESH_CRON value at startup:",
+      process.env.OBS_REFRESH_CRON,
+    );
+  }
 
   async create(createObservationDto: CreateObservationDto) {
     return this.observationRepository.save(createObservationDto);
@@ -94,9 +99,6 @@ export class ObservationsService {
 
   @Cron(process.env.OBS_REFRESH_CRON || CronExpression.EVERY_DAY_AT_2AM)
   async scheduledRefreshObservationsTable() {
-    console.log(
-      `Observations Refresh scheduled at ${process.env.OBS_REFRESH_CRON || CronExpression.EVERY_DAY_AT_2AM}`,
-    );
     const start = Date.now();
     console.log("Scheduled refreshObservationsTable running...");
     await this.refreshObservationsTable();

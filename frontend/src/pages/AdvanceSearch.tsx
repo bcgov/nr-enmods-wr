@@ -178,9 +178,6 @@ const AdvanceSearch = (props: Props) => {
         if (apiData.status === 200) {
           setErrors([])
           let response = apiData.data
-          // Log the API response for debugging
-          console.log(`API response for ${fieldName}:`, response)
-          // Defensive: ensure response is always an array
           if (!Array.isArray(response)) {
             response = []
           }

@@ -16,6 +16,7 @@ import { parse } from "csv-parse";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { Observation } from "../observations/entities/observation.entity";
+import { Transform } from "stream";
 
 @Injectable()
 export class SearchService {
@@ -109,32 +110,23 @@ export class SearchService {
       const writeStream = fs.createWriteStream(filePath);
       csvStream.pipe(writeStream).on("error", (err) => this.logger.error(err));
 
-      // Collect all pending DB lookups
-      const pending: Promise<void>[] = [];
-      const parser = parse({ columns: true })
-        .on("error", (err) => this.logger.error("CSV parsing error:", err))
-        .on("data", (row: any) => {
-          const obsId = row[ObsExportCsvHeader.ObservationId];
-          if (obsId) {
-            pending.push(
-              this.observationRepository
-                .findOneBy({ id: obsId })
-                .then((obsRecord) => {
-                  if (obsRecord) {
-                    this.writeToCsv(obsRecord.data, row, csvStream);
-                  }
-                }),
-            );
-          }
-        })
-        .on("end", async () => {
-          await Promise.all(pending);
-          csvStream.end();
-        });
-
-      // Stream the original obsExport string into parser
+      // Use async iterator to process each row
+      const parser = parse({ columns: true });
       const exportStream = require("stream").Readable.from([obsExport]);
       exportStream.pipe(parser);
+
+      for await (const row of parser) {
+        const obsId = row[ObsExportCsvHeader.ObservationId];
+        if (obsId) {
+          const obsRecord = await this.observationRepository.findOneBy({
+            id: obsId,
+          });
+          if (obsRecord) {
+            this.writeToCsv(obsRecord.data, row, csvStream);
+          }
+        }
+      }
+      csvStream.end();
 
       // Wait for the CSV to finish writing before returning the read stream
       await new Promise((resolve, reject) => {

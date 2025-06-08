@@ -94,6 +94,9 @@ export class ObservationsService {
 
   @Cron(process.env.OBS_REFRESH_CRON || CronExpression.EVERY_DAY_AT_2AM)
   async scheduledRefreshObservationsTable() {
+    console.log(
+      `Observations Refresh scheduled at ${process.env.OBS_REFRESH_CRON || CronExpression.EVERY_DAY_AT_2AM}`,
+    );
     const start = Date.now();
     console.log("Scheduled refreshObservationsTable running...");
     await this.refreshObservationsTable();

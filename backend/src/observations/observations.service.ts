@@ -144,6 +144,7 @@ setInterval(() => {
   const mem = process.memoryUsage();
   const rssMB = mem.rss / 1024 / 1024;
   if (rssMB > 250) {
+    /*
     console.log("[MEMORY USAGE]", {
       rss: rssMB.toFixed(2) + " MB",
       heapTotal: (mem.heapTotal / 1024 / 1024).toFixed(2) + " MB",
@@ -151,5 +152,6 @@ setInterval(() => {
       external: (mem.external / 1024 / 1024).toFixed(2) + " MB",
       arrayBuffers: (mem.arrayBuffers / 1024 / 1024).toFixed(2) + " MB",
     });
+    */
   }
 }, 5000);

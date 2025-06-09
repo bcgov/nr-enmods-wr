@@ -140,56 +140,42 @@ export class SearchService {
       const exportStream = require("stream").Readable.from([obsExport]);
       exportStream.pipe(parser);
 
-      // Chunked batch processing to reduce memory usage
-      const BATCH_SIZE = 1000;
-      let batchRows = [];
-      let batchObsIds = [];
-
-      this.logger.log(`Processing CSV export with batch size: ${BATCH_SIZE}`);
+      this.logger.log(
+        `Processing CSV export with NO batching (one DB fetch per row)`,
+      );
+      // Log memory usage before starting the for loop
+      const memBeforeLoop = process.memoryUsage();
+      const heapUsedMBBeforeLoop = memBeforeLoop.heapUsed / (1024 * 1024);
+      this.logger.log(
+        `[MEMORY USAGE BEFORE LOOP] heapUsed: ${heapUsedMBBeforeLoop.toFixed(2)} MB`,
+      );
+      let lastHeapUsedMB = heapUsedMBBeforeLoop;
+      let processedRows = 0;
       for await (const row of parser) {
         const obsId = row[ObsExportCsvHeader.ObservationId];
         if (obsId) {
-          batchRows.push(row);
-          batchObsIds.push(obsId);
-        }
-
-        if (batchRows.length === BATCH_SIZE) {
-          // Fetch this batch from DB
-          const obsRecords = await this.observationRepository.findBy({
-            id: In(batchObsIds),
+          // Fetch the observation for this row
+          const obsRecord = await this.observationRepository.findOneBy({
+            id: obsId,
           });
-          const obsMap = new Map(obsRecords.map((obs) => [obs.id, obs]));
-          for (const row of batchRows) {
-            const obsId = row[ObsExportCsvHeader.ObservationId];
-            const obsRecord = obsMap.get(obsId);
-            if (obsRecord) {
-              this.writeToCsv(obsRecord.data, row, csvStream);
-            }
-          }
-          batchRows = [];
-          batchObsIds = [];
-        }
-      }
-      this.logger.log(
-        `Finished processing CSV export, processed ${batchRows.length} rows`,
-      );
-      // Process any remaining rows
-      this.logger.log(
-        `Processing remaining ${batchRows.length} rows in the last batch`,
-      );
-      if (batchRows.length > 0) {
-        const obsRecords = await this.observationRepository.findBy({
-          id: In(batchObsIds),
-        });
-        const obsMap = new Map(obsRecords.map((obs) => [obs.id, obs]));
-        for (const row of batchRows) {
-          const obsId = row[ObsExportCsvHeader.ObservationId];
-          const obsRecord = obsMap.get(obsId);
           if (obsRecord) {
             this.writeToCsv(obsRecord.data, row, csvStream);
           }
         }
+        processedRows++;
+        // Optionally log memory usage per row if needed
+        const memNow = process.memoryUsage();
+        const heapUsedNow = memNow.heapUsed / (1024 * 1024);
+        if (heapUsedNow > 400 && lastHeapUsedMB <= 400) {
+          this.logger.log(
+            `[MEMORY CROSSED 400MB] at row: heapUsed: ${heapUsedNow.toFixed(2)} MB`,
+          );
+        }
+        lastHeapUsedMB = heapUsedNow;
       }
+      this.logger.log(
+        `Finished processing CSV export, processed ${processedRows} rows`,
+      );
       csvStream.end();
       this.logger.log("CSV stream ended, waiting for writeStream to finish...");
       // Wait for the CSV to finish writing before returning the read stream

@@ -35,6 +35,7 @@ export class SearchService {
 
   public async exportData(basicSearchDto: BasicSearchDto): Promise<any> {
     this.logger.debug(`Observations URL: ${this.OBSERVATIONS_URL}`);
+    const start = Date.now();
     try {
       // Only fetch obsExport from the API (not all observations)
       const obsExportPromise = this.getObservationPromise(
@@ -46,12 +47,16 @@ export class SearchService {
       const obsExport = obsExportRes.data;
       if (obsExport) {
         this.logger.log("Found records to export to CSV...");
-        return await this.prepareCsvExportData(obsExport);
+        const result = await this.prepareCsvExportData(obsExport);
+        this.logger.log(`exportData completed in ${Date.now() - start} ms`);
+        return result;
       }
       this.logger.log("No data found to export to CSV...");
+      this.logger.log(`exportData completed in ${Date.now() - start} ms`);
       return { data: "", status: HttpStatus.OK };
     } catch (err) {
       this.logger.error(err);
+      this.logger.log(`exportData failed after ${Date.now() - start} ms`);
       throw new BadRequestException({
         status: HttpStatus.BAD_REQUEST,
         error: err.response?.error || err.message || err,
@@ -102,6 +107,7 @@ export class SearchService {
   }
 
   private async prepareCsvExportData(obsExport: string) {
+    const start = Date.now();
     try {
       const fileName = `tmp${Date.now()}.csv`;
       const filePath = join(process.cwd(), `${this.DIR_NAME}${fileName}`);
@@ -112,6 +118,7 @@ export class SearchService {
 
       // Use async iterator to process each row
       const parser = parse({ columns: true });
+      // Stream the obsExport string line by line to reduce memory usage
       const exportStream = require("stream").Readable.from([obsExport]);
       exportStream.pipe(parser);
 
@@ -134,12 +141,18 @@ export class SearchService {
         writeStream.on("error", reject);
       });
 
+      this.logger.log(
+        `prepareCsvExportData completed in ${Date.now() - start} ms`,
+      );
       return {
         data: fs.createReadStream(filePath),
         status: HttpStatus.OK,
       };
     } catch (err) {
       this.logger.error(err);
+      this.logger.log(
+        `prepareCsvExportData failed after ${Date.now() - start} ms`,
+      );
       throw new BadRequestException({
         status: HttpStatus.BAD_REQUEST,
         error: err?.message || "Failed to prepare CSV export data",

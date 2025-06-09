@@ -310,7 +310,7 @@ export class GeodataService {
       const startModificationTime = pstDate
         ? `&startModificationTime="${pstDate}"`
         : "";
-      const url = `${this.baseUrl}${this.samplingLocationsEndpoint}${cursor ? `?limit=100${startModificationTime}&cursor=${cursor}` : `?limit=100${startModificationTime}`}`;
+      const url = `${this.baseUrl}${this.samplingLocationsEndpoint}${cursor ? `?limit=1000${startModificationTime}&cursor=${cursor}` : `?limit=1000${startModificationTime}`}`;
       const response = await axios.get(url);
 
       if (response.status != 200) {
@@ -349,7 +349,7 @@ export class GeodataService {
         );
         break;
       }
-      break;
+      // break;
     } while (cursor); // Continue only if a cursor is provided
     const end = Date.now();
     this.logger.debug(

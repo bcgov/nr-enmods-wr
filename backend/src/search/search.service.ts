@@ -14,7 +14,7 @@ import * as fs from "fs";
 import * as fastcsv from "@fast-csv/format";
 import { parse } from "csv-parse";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { Repository, In } from "typeorm";
 import { Observation } from "../observations/entities/observation.entity";
 import { Transform } from "stream";
 
@@ -48,15 +48,24 @@ export class SearchService {
       if (obsExport) {
         this.logger.log("Found records to export to CSV...");
         const result = await this.prepareCsvExportData(obsExport);
-        this.logger.log(`exportData completed in ${Date.now() - start} ms`);
+        const ms = Date.now() - start;
+        const min = Math.floor(ms / 60000);
+        const sec = ((ms % 60000) / 1000).toFixed(1);
+        this.logger.log(`exportData completed in ${min}m ${sec}s (${ms} ms)`);
         return result;
       }
       this.logger.log("No data found to export to CSV...");
-      this.logger.log(`exportData completed in ${Date.now() - start} ms`);
+      const ms = Date.now() - start;
+      const min = Math.floor(ms / 60000);
+      const sec = ((ms % 60000) / 1000).toFixed(1);
+      this.logger.log(`exportData completed in ${min}m ${sec}s (${ms} ms)`);
       return { data: "", status: HttpStatus.OK };
     } catch (err) {
       this.logger.error(err);
-      this.logger.log(`exportData failed after ${Date.now() - start} ms`);
+      const ms = Date.now() - start;
+      const min = Math.floor(ms / 60000);
+      const sec = ((ms % 60000) / 1000).toFixed(1);
+      this.logger.log(`exportData failed after ${min}m ${sec}s (${ms} ms)`);
       throw new BadRequestException({
         status: HttpStatus.BAD_REQUEST,
         error: err.response?.error || err.message || err,
@@ -118,16 +127,46 @@ export class SearchService {
 
       // Use async iterator to process each row
       const parser = parse({ columns: true });
-      // Stream the obsExport string line by line to reduce memory usage
       const exportStream = require("stream").Readable.from([obsExport]);
       exportStream.pipe(parser);
+
+      // Chunked batch processing to reduce memory usage
+      const BATCH_SIZE = 1000;
+      let batchRows = [];
+      let batchObsIds = [];
 
       for await (const row of parser) {
         const obsId = row[ObsExportCsvHeader.ObservationId];
         if (obsId) {
-          const obsRecord = await this.observationRepository.findOneBy({
-            id: obsId,
+          batchRows.push(row);
+          batchObsIds.push(obsId);
+        }
+        if (batchRows.length === BATCH_SIZE) {
+          // Fetch this batch from DB
+          const obsRecords = await this.observationRepository.findBy({
+            id: In(batchObsIds),
           });
+          const obsMap = new Map(obsRecords.map((obs) => [obs.id, obs]));
+          for (const row of batchRows) {
+            const obsId = row[ObsExportCsvHeader.ObservationId];
+            const obsRecord = obsMap.get(obsId);
+            if (obsRecord) {
+              this.writeToCsv(obsRecord.data, row, csvStream);
+            }
+          }
+          batchRows = [];
+          batchObsIds = [];
+        }
+      }
+      // Process any remaining rows
+      if (batchRows.length > 0) {
+        const obsRecords = await this.observationRepository.findBy({
+          id: In(batchObsIds),
+        });
+        const obsMap = new Map(obsRecords.map((obs) => [obs.id, obs]));
+        for (const row of batchRows) {
+          const obsId = row[ObsExportCsvHeader.ObservationId];
+          const obsRecord = obsMap.get(obsId);
           if (obsRecord) {
             this.writeToCsv(obsRecord.data, row, csvStream);
           }
@@ -141,8 +180,11 @@ export class SearchService {
         writeStream.on("error", reject);
       });
 
+      const ms = Date.now() - start;
+      const min = Math.floor(ms / 60000);
+      const sec = ((ms % 60000) / 1000).toFixed(1);
       this.logger.log(
-        `prepareCsvExportData completed in ${Date.now() - start} ms`,
+        `prepareCsvExportData completed in ${min}m ${sec}s (${ms} ms)`,
       );
       return {
         data: fs.createReadStream(filePath),
@@ -150,8 +192,11 @@ export class SearchService {
       };
     } catch (err) {
       this.logger.error(err);
+      const ms = Date.now() - start;
+      const min = Math.floor(ms / 60000);
+      const sec = ((ms % 60000) / 1000).toFixed(1);
       this.logger.log(
-        `prepareCsvExportData failed after ${Date.now() - start} ms`,
+        `prepareCsvExportData failed after ${min}m ${sec}s (${ms} ms)`,
       );
       throw new BadRequestException({
         status: HttpStatus.BAD_REQUEST,

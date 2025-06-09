@@ -39,25 +39,25 @@ export class SearchService {
     );
     const start = Date.now();
     try {
-      // Only fetch obsExport from the API (not all observations)
+      // Stream obsExport from the API (not all observations)
       const obsExportStart = Date.now();
-      const obsExportPromise = this.getObservationPromise(
-        basicSearchDto,
-        this.OBSERVATIONS_EXPORT_URL,
-        "",
+      const apiResponse = await this.httpService.axiosRef.get(
+        this.getAbsoluteUrl(this.OBSERVATIONS_EXPORT_URL),
+        {
+          params: this.getUserSearchParams(basicSearchDto, ""),
+          responseType: "stream",
+        },
       );
-      const obsExportRes = await obsExportPromise;
       const obsExportMs = Date.now() - obsExportStart;
       const obsExportMin = Math.floor(obsExportMs / 60000);
       const obsExportSec = ((obsExportMs % 60000) / 1000).toFixed(1);
       this.logger.log(
-        `getObservationPromise completed in ${obsExportMin}m ${obsExportSec}s (${obsExportMs} ms)`,
+        `getObservationPromise (stream) completed in ${obsExportMin}m ${obsExportSec}s (${obsExportMs} ms)`,
       );
 
-      const obsExport = obsExportRes.data;
-      if (obsExport) {
+      if (apiResponse.data) {
         this.logger.log("Found records to export to CSV...");
-        const result = await this.prepareCsvExportData(obsExport);
+        const result = await this.prepareCsvExportDataStream(apiResponse.data);
         const ms = Date.now() - start;
         const min = Math.floor(ms / 60000);
         const sec = ((ms % 60000) / 1000).toFixed(1);
@@ -201,6 +201,92 @@ export class SearchService {
       const sec = ((ms % 60000) / 1000).toFixed(1);
       this.logger.log(
         `prepareCsvExportData failed after ${min}m ${sec}s (${ms} ms)`,
+      );
+      throw new BadRequestException({
+        status: HttpStatus.BAD_REQUEST,
+        error: err?.message || "Failed to prepare CSV export data",
+      });
+    }
+  }
+
+  private async prepareCsvExportDataStream(obsExportStream: any) {
+    const start = Date.now();
+    try {
+      const fileName = `tmp${Date.now()}.csv`;
+      const filePath = join(process.cwd(), `${this.DIR_NAME}${fileName}`);
+
+      const csvStream = fastcsv.format({ headers: true });
+      const writeStream = fs.createWriteStream(filePath);
+      csvStream.pipe(writeStream).on("error", (err) => this.logger.error(err));
+
+      this.logger.log(`Processing CSV export STREAMING data`);
+      // Log memory usage before starting the for loop
+      const memBeforeLoop = process.memoryUsage();
+      const heapUsedMBBeforeLoop = memBeforeLoop.heapUsed / (1024 * 1024);
+      this.logger.log(
+        `[MEMORY USAGE BEFORE LOOP] heapUsed: ${heapUsedMBBeforeLoop.toFixed(2)} MB`,
+      );
+      let lastHeapUsedMB = heapUsedMBBeforeLoop;
+      let processedRows = 0;
+
+      // Pipe the incoming stream directly to the CSV formatter
+      obsExportStream.pipe(csvStream);
+
+      csvStream.on("data", async (row: any) => {
+        const obsId = row[ObsExportCsvHeader.ObservationId];
+        if (obsId) {
+          // Fetch the observation for this row
+          const obsRecord = await this.observationRepository.findOneBy({
+            id: obsId,
+          });
+          if (obsRecord) {
+            this.writeToCsv(obsRecord.data, row, csvStream);
+          }
+        }
+        processedRows++;
+        // Optionally log memory usage per row if needed
+        const memNow = process.memoryUsage();
+        const heapUsedNow = memNow.heapUsed / (1024 * 1024);
+        if (heapUsedNow > 400 && lastHeapUsedMB <= 400) {
+          this.logger.log(
+            `[MEMORY CROSSED 400MB] at row: heapUsed: ${heapUsedNow.toFixed(2)} MB`,
+          );
+        }
+        lastHeapUsedMB = heapUsedNow;
+      });
+
+      await new Promise((resolve, reject) => {
+        csvStream.on("end", resolve);
+        csvStream.on("error", reject);
+      });
+
+      this.logger.log(
+        `Finished processing CSV export stream, processed ${processedRows} rows`,
+      );
+      this.logger.log("CSV stream ended, waiting for writeStream to finish...");
+      // Wait for the CSV to finish writing before returning the read stream
+      await new Promise((resolve, reject) => {
+        writeStream.on("finish", resolve);
+        writeStream.on("error", reject);
+      });
+
+      const ms = Date.now() - start;
+      const min = Math.floor(ms / 60000);
+      const sec = ((ms % 60000) / 1000).toFixed(1);
+      this.logger.log(
+        `prepareCsvExportDataStream completed in ${min}m ${sec}s (${ms} ms)`,
+      );
+      return {
+        data: fs.createReadStream(filePath),
+        status: HttpStatus.OK,
+      };
+    } catch (err) {
+      this.logger.error(err);
+      const ms = Date.now() - start;
+      const min = Math.floor(ms / 60000);
+      const sec = ((ms % 60000) / 1000).toFixed(1);
+      this.logger.log(
+        `prepareCsvExportDataStream failed after ${min}m ${sec}s (${ms} ms)`,
       );
       throw new BadRequestException({
         status: HttpStatus.BAD_REQUEST,

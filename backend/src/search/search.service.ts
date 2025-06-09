@@ -34,16 +34,26 @@ export class SearchService {
     process.env.OBSERVATIONS_EXPORT_URL;
 
   public async exportData(basicSearchDto: BasicSearchDto): Promise<any> {
-    this.logger.debug(`Observations URL: ${this.OBSERVATIONS_URL}`);
+    this.logger.debug(
+      `Starting exportData with DTO: ${JSON.stringify(basicSearchDto)}`,
+    );
     const start = Date.now();
     try {
       // Only fetch obsExport from the API (not all observations)
+      const obsExportStart = Date.now();
       const obsExportPromise = this.getObservationPromise(
         basicSearchDto,
         this.OBSERVATIONS_EXPORT_URL,
         "",
       );
       const obsExportRes = await obsExportPromise;
+      const obsExportMs = Date.now() - obsExportStart;
+      const obsExportMin = Math.floor(obsExportMs / 60000);
+      const obsExportSec = ((obsExportMs % 60000) / 1000).toFixed(1);
+      this.logger.log(
+        `getObservationPromise completed in ${obsExportMin}m ${obsExportSec}s (${obsExportMs} ms)`,
+      );
+
       const obsExport = obsExportRes.data;
       if (obsExport) {
         this.logger.log("Found records to export to CSV...");
@@ -135,12 +145,14 @@ export class SearchService {
       let batchRows = [];
       let batchObsIds = [];
 
+      this.logger.log(`Processing CSV export with batch size: ${BATCH_SIZE}`);
       for await (const row of parser) {
         const obsId = row[ObsExportCsvHeader.ObservationId];
         if (obsId) {
           batchRows.push(row);
           batchObsIds.push(obsId);
         }
+
         if (batchRows.length === BATCH_SIZE) {
           // Fetch this batch from DB
           const obsRecords = await this.observationRepository.findBy({
@@ -158,7 +170,13 @@ export class SearchService {
           batchObsIds = [];
         }
       }
+      this.logger.log(
+        `Finished processing CSV export, processed ${batchRows.length} rows`,
+      );
       // Process any remaining rows
+      this.logger.log(
+        `Processing remaining ${batchRows.length} rows in the last batch`,
+      );
       if (batchRows.length > 0) {
         const obsRecords = await this.observationRepository.findBy({
           id: In(batchObsIds),
@@ -173,7 +191,7 @@ export class SearchService {
         }
       }
       csvStream.end();
-
+      this.logger.log("CSV stream ended, waiting for writeStream to finish...");
       // Wait for the CSV to finish writing before returning the read stream
       await new Promise((resolve, reject) => {
         writeStream.on("finish", resolve);

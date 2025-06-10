@@ -43,6 +43,7 @@ export class SearchController {
   }
 
   private sendCsvResponse(readStream: any, response: Response): void {
+    this.logger.log("Sending CSV response");
     readStream
       .on("open", () => {
         response.attachment("ObservationSearchResult.csv");
@@ -52,6 +53,7 @@ export class SearchController {
         this.logger.log("Deleting tmp file: " + readStream.path);
         unlinkSync(readStream.path);
       });
+    this.logger.log("CSV response sent successfully");
   }
 
   @Get("getLocationTypes")

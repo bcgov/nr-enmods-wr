@@ -9,11 +9,11 @@ export class HTTPLoggerMiddleware implements NestMiddleware {
     const { method, originalUrl } = request;
 
     response.on("finish", () => {
+      const userAgent = request.get("user-agent") || "";
+      if (userAgent.includes("kube-probe")) return; // Skip kube-probe logs
       const { statusCode } = response;
-      const contentLength = response.get("content-length") || '-';
-      const hostedHttpLogFormat = `${method} ${originalUrl} ${statusCode} ${contentLength} - ${request.get(
-        "user-agent"
-      )}`;
+      const contentLength = response.get("content-length") || "-";
+      const hostedHttpLogFormat = `${method} ${originalUrl} ${statusCode} ${contentLength} - ${userAgent}`;
       this.logger.log(hostedHttpLogFormat);
     });
     next();

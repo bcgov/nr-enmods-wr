@@ -491,7 +491,7 @@ export class GeodataService {
       attributeId === this.EXTENDED_ATTRIBUTES.establishedDate &&
       (!attribute || attribute === "")
     ) {
-      return creationTime;
+      return new Date(creationTime).toISOString().split("T")[0];
     }
     if (attribute && attribute.text === "NA") {
       return "";
@@ -636,18 +636,18 @@ export class GeodataService {
               type: "Feature",
               geometry: feature.geometry,
               properties: {
-                LOCATION_ID: feature.properties.ID,
-                LOCATION_NAME: feature.properties.NAME,
-                WATERSHED_GROUP_CD: feature.properties.WATERSHED_GROUP_CD,
-                WATERSHED_GROUP_NAME: feature.properties.WATERSHED_GROUP_NAME,
                 GROUP_NAME: group.name,
                 GROUP_DESCRIPTION:
                   group.description && group.description !== "NA"
                     ? group.description
                     : "",
                 GROUP_TYPE: group.locationGroupType?.customId || "",
-                LATITUDE: feature.properties.LATITUDE || "",
-                LONGITUDE: feature.properties.LONGITUDE || "",
+                LOCATION_ID: feature.properties.ID,
+                LOCATION_NAME: feature.properties.NAME,
+                LOCATION_LATITUDE: feature.properties.LATITUDE || "",
+                LOCATION_LONGITUDE: feature.properties.LONGITUDE || "",
+                WATERSHED_GROUP_CD: feature.properties.WATERSHED_GROUP_CD,
+                WATERSHED_GROUP_NAME: feature.properties.WATERSHED_GROUP_NAME,
               },
             });
           } else {

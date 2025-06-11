@@ -191,7 +191,7 @@ const BasicSearch = () => {
       setIsLoading(true)
       const res = await apiService
         .getAxiosInstance()
-        .post("/v1/search/observationSearch", data)
+        .post("/v1/search/observationSearch", data, { responseType: "blob" })
 
       if (res.status === 200) {
         window.scroll(0, 0)

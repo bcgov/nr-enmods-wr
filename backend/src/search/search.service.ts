@@ -232,7 +232,12 @@ export class SearchService {
       let lastHeapUsedMB = heapUsedMBBeforeLoop;
       let processedRows = 0;
 
+      let anyRows = false;
       for await (const row of parser) {
+        if (!anyRows) {
+          this.logger.log("First row received from parser:", row);
+          anyRows = true;
+        }
         const obsId = row[ObsExportCsvHeader.ObservationId];
         if (obsId) {
           // Fetch the observation for this row
@@ -240,8 +245,13 @@ export class SearchService {
             id: obsId,
           });
           if (obsRecord) {
+            this.logger.log("Writing row to CSV:", row);
             this.writeToCsv(obsRecord.data, row, csvStream);
+          } else {
+            this.logger.log("No obsRecord found for obsId:", obsId);
           }
+        } else {
+          this.logger.log("No obsId found in row:", row);
         }
         processedRows++;
         // Optionally log memory usage per row if needed
@@ -253,6 +263,9 @@ export class SearchService {
           );
         }
         lastHeapUsedMB = heapUsedNow;
+      }
+      if (!anyRows) {
+        this.logger.log("No rows received from parser.");
       }
       this.logger.log(
         `Finished processing CSV export stream, processed ${processedRows} rows`,
@@ -362,22 +375,31 @@ export class SearchService {
     const activity = observation?.activity;
     const numericResult = observation?.numericResult;
 
+    this.logger.log("writeToCsv called", {
+      obsExport,
+      observation,
+      fieldVisit,
+      specimen,
+      activity,
+      numericResult,
+    });
+
     csvStream.write({
       Ministry_Contact: this.getMinistryContact(fieldVisit?.extendedAttributes),
       Sampling_Agency: this.getSamplingAgency(fieldVisit?.extendedAttributes),
-      Project: fieldVisit.project?.name,
+      Project: fieldVisit?.project?.name,
       Work_Order_number: this.getWorkOrderNo(specimen?.extendedAttributes),
       Location_ID: obsExport[ObsExportCsvHeader.LocationId],
-      Location_Name: fieldVisit.samplingLocation.name,
+      Location_Name: fieldVisit?.samplingLocation?.name,
       LocationType: obsExport[ObsExportCsvHeader.LocationType],
       Location_Latitude: obsExport[ObsExportCsvHeader.Latitude],
       Location_Longitude: obsExport[ObsExportCsvHeader.Longitude],
       Location_Elevation: obsExport[ObsExportCsvHeader.Elevation],
       Location_Elevation_Units: obsExport[ObsExportCsvHeader.ElevationUnit],
       Location_Group: obsExport[ObsExportCsvHeader.LocationGroup],
-      Field_Visit_Start_Time: fieldVisit.startTime,
-      Field_Visit_End_Time: fieldVisit.endTime,
-      Field_Visit_Participants: fieldVisit.participants,
+      Field_Visit_Start_Time: fieldVisit?.startTime,
+      Field_Visit_End_Time: fieldVisit?.endTime,
+      Field_Visit_Participants: fieldVisit?.participants,
       Field_Comment: obsExport[ObsExportCsvHeader.FieldComment],
       Activity_Comment: activity?.comment,
       Field_Filtered: specimen?.filtered,

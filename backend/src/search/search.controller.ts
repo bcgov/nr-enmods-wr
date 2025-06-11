@@ -51,7 +51,7 @@ export class SearchController {
       })
       .on("close", () => {
         this.logger.log("Deleting tmp file: " + readStream.path);
-        unlinkSync(readStream.path);
+        //unlinkSync(readStream.path);
       });
     this.logger.log("CSV response sent successfully");
   }

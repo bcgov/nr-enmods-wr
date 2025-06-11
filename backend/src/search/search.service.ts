@@ -219,6 +219,9 @@ export class SearchService {
       const writeStream = fs.createWriteStream(filePath);
       csvStream.pipe(writeStream).on("error", (err) => this.logger.error(err));
 
+      const parser = parse({ columns: true });
+      obsExportStream.pipe(parser);
+
       this.logger.log(`Processing CSV export STREAMING data`);
       // Log memory usage before starting the for loop
       const memBeforeLoop = process.memoryUsage();
@@ -229,10 +232,7 @@ export class SearchService {
       let lastHeapUsedMB = heapUsedMBBeforeLoop;
       let processedRows = 0;
 
-      // Pipe the incoming stream directly to the CSV formatter
-      obsExportStream.pipe(csvStream);
-
-      csvStream.on("data", async (row: any) => {
+      for await (const row of parser) {
         const obsId = row[ObsExportCsvHeader.ObservationId];
         if (obsId) {
           // Fetch the observation for this row
@@ -253,16 +253,11 @@ export class SearchService {
           );
         }
         lastHeapUsedMB = heapUsedNow;
-      });
-
-      await new Promise((resolve, reject) => {
-        csvStream.on("end", resolve);
-        csvStream.on("error", reject);
-      });
-
+      }
       this.logger.log(
         `Finished processing CSV export stream, processed ${processedRows} rows`,
       );
+      csvStream.end();
       this.logger.log("CSV stream ended, waiting for writeStream to finish...");
       // Wait for the CSV to finish writing before returning the read stream
       await new Promise((resolve, reject) => {

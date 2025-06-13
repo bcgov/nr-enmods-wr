@@ -13,10 +13,41 @@ global:
   #-- global secrets, can be accessed by sub-charts.
   secrets:
     enabled: true
+    databasePassword: ~
+    databaseUser: ~
+    databaseName: ~
     persist: true
+    #-- backend
+    baseUrlBcApi: ~
+    observationsExportUrl: ~
+    observationsUrl: ~
+    locationTypeCodeTableApi: ~
+    locationNameCodeTableApi: ~
+    permitNumberCodeTableApi: ~
+    mediaCodeTableApi: ~
+    observedPropertiesCodeTableApi: ~
+    projectsCodeTableApi: ~
+    apiKey: ~
+    authToken: ~
+    samplingLocationsEndpoint: ~
+    samplingLocationGroupsEndpoint: ~
+    extendedAttributesEndpoint: ~
+    objectstoreUrl: ~
+    objectstoreAccessKey: ~
+    objectstoreSecretKey: ~
+    objectstoreBucket: ~
+    objectstoreFolder: ~
+    #-- frontend
+    port: "3000"
+    #-- flyway
+    flywayLocations:
+      dev: "filesystem:/flyway/sql, filesystem:/flyway/sql-test"
+      test: "filesystem:/flyway/sql, filesystem:/flyway/sql-test"
+      prod: "filesystem:/flyway/sql"
   #-- domain of the application, it is required, apps.silver.devops.gov.bc.ca for silver cluster and apps.devops.gov.bc.ca for gold cluster
   domain: "apps.silver.devops.gov.bc.ca" # it is apps.gold.devops.gov.bc.ca for gold cluster
   #-- the database Alias gives a nice way to switch to different databases, crunchy, patroni ... etc.
+  databaseAlias: bitnami-pg
 #-- the components of the application, backend.
 backend:
   #-- enable or disable backend
@@ -79,7 +110,7 @@ backend:
   volumes:
     - name: wr-csv-files
       persistentVolumeClaim:
-        claimName: wr-csv-files
+        claimName: wr-csv-files #
 
 frontend:
   # -- enable or disable a component deployment.
@@ -119,7 +150,45 @@ frontend:
   ingress:
     annotations:
       route.openshift.io/termination: "edge"
-      haproxy.router.openshift.io/timeout: 5m
+      haproxy.router.openshift.io/timeout: 15m
   pdb:
     enabled: false # enable it in PRODUCTION for having pod disruption budget.
     minAvailable: 1 # the minimum number of pods that must be available during the disruption budget.
+
+bitnami-pg:
+  enabled: true
+  image:
+    registry: ghcr.io
+    repository: bcgov/nr-containers/bitnami/postgresql
+    tag: 15.10.0
+  auth:
+    existingSecret: "{{ .Release.Name }}-database"
+    username: "enmodswr"
+    database: enmodswr
+  shmVolume:
+    enabled: false
+  backup:
+    enabled: false
+    cronjob:
+      containerSecurityContext: {}
+      podSecurityContext:
+        enabled: false
+      storage:
+        size: 200Mi
+  primary:
+    persistence:
+      enabled: true
+      storageClass: netapp-block-standard
+      accessModes:
+        - ReadWriteOnce
+      size: 3500Mi
+    containerSecurityContext:
+      enabled: false
+    podSecurityContext:
+      enabled: false
+    initdb:
+      scripts: # remove the below script, if POSTGIS is not required.
+    resources:
+      requests:
+        cpu: 100m
+        memory: 250Mi

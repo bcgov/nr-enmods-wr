@@ -178,9 +178,6 @@ const AdvanceSearch = (props: Props) => {
         if (apiData.status === 200) {
           setErrors([])
           let response = apiData.data
-          // Log the API response for debugging
-          console.log(`API response for ${fieldName}:`, response)
-          // Defensive: ensure response is always an array
           if (!Array.isArray(response)) {
             response = []
           }
@@ -334,8 +331,8 @@ const AdvanceSearch = (props: Props) => {
         await getDropdownOptions(SearchAttr.SamplingAgency, query)
         break
       case SearchAttr.AnalyticalMethod:
-          await getDropdownOptions(SearchAttr.AnalyticalMethod, query)
-          break
+        await getDropdownOptions(SearchAttr.AnalyticalMethod, query)
+        break
       case SearchAttr.SpecimenId:
         await getDropdownOptions(SearchAttr.SpecimenId, query)
         break
@@ -373,7 +370,9 @@ const AdvanceSearch = (props: Props) => {
         }
       } else {
         window.scroll(0, 0)
-        setErrors(res.data.error)
+        setErrors(
+          Array.isArray(res.data.error) ? res.data.error : [res.data.error],
+        )
       }
       setIsDisabled(false)
       setIsLoading(false)
@@ -436,7 +435,7 @@ const AdvanceSearch = (props: Props) => {
       <form noValidate onSubmit={onSubmit}>
         <div>
           <div>
-            {errors.length > 0 && (
+            {Array.isArray(errors) && errors.length > 0 && (
               <Alert
                 sx={{ my: 1 }}
                 icon={<InfoOutlined fontSize="inherit" />}

@@ -73,9 +73,6 @@ const BasicSearch = () => {
         if (apiData.status === 200) {
           setErrors([])
           let response = apiData.data
-          // Log the API response for debugging
-          console.log(`API response for ${fieldName}:`, response)
-          // Defensive: ensure response is always an array
           if (!Array.isArray(response)) {
             response = []
           }
@@ -194,7 +191,7 @@ const BasicSearch = () => {
       setIsLoading(true)
       const res = await apiService
         .getAxiosInstance()
-        .post("/v1/search/observationSearch", data)
+        .post("/v1/search/observationSearch", data, { responseType: "blob" })
 
       if (res.status === 200) {
         window.scroll(0, 0)
@@ -211,7 +208,9 @@ const BasicSearch = () => {
         }
       } else {
         window.scroll(0, 0)
-        setErrors(res.data.error)
+        setErrors(
+          Array.isArray(res.data.error) ? res.data.error : [res.data.error],
+        )
       }
       setIsDisabled(false)
       setIsLoading(false)

@@ -1,5 +1,10 @@
 import { HttpService } from "@nestjs/axios";
-import { BadRequestException, HttpStatus, Injectable, Logger } from "@nestjs/common";
+import {
+  BadRequestException,
+  HttpStatus,
+  Injectable,
+  Logger,
+} from "@nestjs/common";
 import { firstValueFrom } from "rxjs";
 import { BasicSearchDto } from "./dto/basicSearch.dto";
 import { join } from "path";
@@ -8,58 +13,91 @@ import { ObsExportCsvHeader } from "src/enum/obsExportCsvHeader.enum";
 import * as fs from "fs";
 import * as fastcsv from "@fast-csv/format";
 import { parse } from "csv-parse";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository, In } from "typeorm";
+import { Observation } from "../observations/entities/observation.entity";
+import { Transform } from "stream";
 
 @Injectable()
 export class SearchService {
-  constructor(private readonly httpService: HttpService) {}
+  constructor(
+    private readonly httpService: HttpService,
+    @InjectRepository(Observation)
+    private readonly observationRepository: Repository<Observation>,
+  ) {}
   private readonly logger = new Logger("ObservationSearchService");
   private readonly DIR_NAME = "/data/";
   private readonly MAX_DROPDWN_OPTIONS_LIMIT = 100;
   private readonly MAX_API_DATA_LIMIT = 1_000;
   private readonly OBSERVATIONS_URL = process.env.OBSERVATIONS_URL;
-  private readonly OBSERVATIONS_EXPORT_URL = process.env.OBSERVATIONS_EXPORT_URL;
+  private readonly OBSERVATIONS_EXPORT_URL =
+    process.env.OBSERVATIONS_EXPORT_URL;
 
   public async exportData(basicSearchDto: BasicSearchDto): Promise<any> {
-    this.logger.debug(`Observations URL: ${this.OBSERVATIONS_URL}`);
+    this.logger.debug(
+      `Starting exportData with DTO: ${JSON.stringify(basicSearchDto)}`,
+    );
+    const start = Date.now();
     try {
-      const obsExportPromise = this.getObservationPromise(basicSearchDto, this.OBSERVATIONS_EXPORT_URL, "");
-      const observationPromise = this.getObservationPromise(basicSearchDto, this.OBSERVATIONS_URL, "");
+      // Only fetch obsExport from the API (not all observations)
+      const obsExportStart = Date.now();
+      const obsExportPromise = this.getObservationPromise(
+        basicSearchDto,
+        this.OBSERVATIONS_EXPORT_URL,
+        "",
+      );
+      const obsExportRes = await obsExportPromise;
+      const obsExportMs = Date.now() - obsExportStart;
+      const obsExportMin = Math.floor(obsExportMs / 60000);
+      const obsExportSec = ((obsExportMs % 60000) / 1000).toFixed(1);
+      this.logger.log(
+        `getObservationPromise completed in ${obsExportMin}m ${obsExportSec}s (${obsExportMs} ms)`,
+      );
 
-      const startTime = Date.now();
-      this.logger.log("Start time: ", startTime);
-      const res = await Promise.all([obsExportPromise, observationPromise]);
-      const endTime = Date.now();
-      const totalTime = (endTime - startTime) / 1000;
-      this.logger.log("Total time elapsed calling BC API only in seconds: ", totalTime);
-
-      if (res && res.length > 0) {
-        const obsExport = res[0].data;
-        const observations = await this.getObsFromPagination(JSON.parse(res[1].data), basicSearchDto);
-
-        this.logger.log("Observation length: ", observations.length);
-
-        if (obsExport && observations && observations.length > 0) {
-          this.logger.log("Found records to export to CSV...");
-          return await this.prepareCsvExportData(obsExport, observations);
-        }
-
-        this.logger.log("No data found to export to CSV...");
-        return { data: "", status: HttpStatus.OK };
+      const obsExport = obsExportRes.data;
+      if (obsExport) {
+        this.logger.log("Found records to export to CSV...");
+        const result = await this.prepareCsvExportData(obsExport);
+        const ms = Date.now() - start;
+        const min = Math.floor(ms / 60000);
+        const sec = ((ms % 60000) / 1000).toFixed(1);
+        this.logger.log(`exportData completed in ${min}m ${sec}s (${ms} ms)`);
+        return result;
       }
+      this.logger.log("No data found to export to CSV...");
+      const ms = Date.now() - start;
+      const min = Math.floor(ms / 60000);
+      const sec = ((ms % 60000) / 1000).toFixed(1);
+      this.logger.log(`exportData completed in ${min}m ${sec}s (${ms} ms)`);
+      return { data: "", status: HttpStatus.OK };
     } catch (err) {
       this.logger.error(err);
+      const ms = Date.now() - start;
+      const min = Math.floor(ms / 60000);
+      const sec = ((ms % 60000) / 1000).toFixed(1);
+      this.logger.log(`exportData failed after ${min}m ${sec}s (${ms} ms)`);
       throw new BadRequestException({
         status: HttpStatus.BAD_REQUEST,
-        error: err.response.error,
+        error: err.response?.error || err.message || err,
       });
     }
   }
 
-  private getObservationPromise(basicSearchDto: BasicSearchDto, url: string, cursor: string): Promise<any> {
-    return this.bcApiCall(this.getAbsoluteUrl(url), this.getUserSearchParams(basicSearchDto, cursor));
+  public getObservationPromise(
+    basicSearchDto: BasicSearchDto,
+    url: string,
+    cursor: string,
+  ): Promise<any> {
+    return this.bcApiCall(
+      this.getAbsoluteUrl(url),
+      this.getUserSearchParams(basicSearchDto, cursor),
+    );
   }
 
-  private async getObsFromPagination(observations: any, basicSearchDto: BasicSearchDto): Promise<any> {
+  private async getObsFromPagination(
+    observations: any,
+    basicSearchDto: BasicSearchDto,
+  ): Promise<any> {
     const totalRecordCount = observations.totalCount;
     let currentObsData = observations.domainObjects;
     let cursor = observations.cursor;
@@ -70,7 +108,11 @@ export class SearchService {
 
       while (i < noOfLoop) {
         this.logger.log("Cursor for the next record: " + cursor);
-        const res = await this.getObservationPromise(basicSearchDto, this.OBSERVATIONS_URL, cursor);
+        const res = await this.getObservationPromise(
+          basicSearchDto,
+          this.OBSERVATIONS_URL,
+          cursor,
+        );
         if (res.status === HttpStatus.OK) {
           const data = JSON.parse(res.data);
           currentObsData = currentObsData.concat(data.domainObjects);
@@ -83,40 +125,83 @@ export class SearchService {
     return currentObsData;
   }
 
-  private async prepareCsvExportData(obsExport: string, observations: any[]) {
+  private async prepareCsvExportData(obsExport: string) {
+    const start = Date.now();
     try {
       const fileName = `tmp${Date.now()}.csv`;
       const filePath = join(process.cwd(), `${this.DIR_NAME}${fileName}`);
 
-      const observationMap = new Map<string, any>();
-      for (const obs of observations) observationMap.set(obs.id, obs);
-
-      this.logger.log("ObservationMap size: ", observationMap.size);
-
       const csvStream = fastcsv.format({ headers: true });
       const writeStream = fs.createWriteStream(filePath);
-
       csvStream.pipe(writeStream).on("error", (err) => this.logger.error(err));
 
-      const parser = parse({ columns: true })
-        .on("error", (err) => this.logger.error("CSV parsing error:", err))
-        .on("data", (row: any) => {
-          const obsId = row[ObsExportCsvHeader.ObservationId];
-          const matchingObs = observationMap.get(obsId);
-          if (matchingObs) this.writeToCsv(matchingObs, row, csvStream);
-        })
-        .on("end", () => csvStream.end());
-
-      // Stream the original obsExport string into parser
+      // Use async iterator to process each row
+      const parser = parse({ columns: true });
       const exportStream = require("stream").Readable.from([obsExport]);
       exportStream.pipe(parser);
 
+      this.logger.log(
+        `Processing CSV export with NO batching (one DB fetch per row)`,
+      );
+      // Log memory usage before starting the for loop
+      const memBeforeLoop = process.memoryUsage();
+      const heapUsedMBBeforeLoop = memBeforeLoop.heapUsed / (1024 * 1024);
+      this.logger.log(
+        `[MEMORY USAGE BEFORE LOOP] heapUsed: ${heapUsedMBBeforeLoop.toFixed(2)} MB`,
+      );
+      let lastHeapUsedMB = heapUsedMBBeforeLoop;
+      let processedRows = 0;
+      for await (const row of parser) {
+        const obsId = row[ObsExportCsvHeader.ObservationId];
+        if (obsId) {
+          // Fetch the observation for this row
+          const obsRecord = await this.observationRepository.findOneBy({
+            id: obsId,
+          });
+          if (obsRecord) {
+            this.writeToCsv(obsRecord.data, row, csvStream);
+          }
+        }
+        processedRows++;
+        // Optionally log memory usage per row if needed
+        const memNow = process.memoryUsage();
+        const heapUsedNow = memNow.heapUsed / (1024 * 1024);
+        if (heapUsedNow > 400 && lastHeapUsedMB <= 400) {
+          this.logger.log(
+            `[MEMORY CROSSED 400MB] at row: heapUsed: ${heapUsedNow.toFixed(2)} MB`,
+          );
+        }
+        lastHeapUsedMB = heapUsedNow;
+      }
+      this.logger.log(
+        `Finished processing CSV export, processed ${processedRows} rows`,
+      );
+      csvStream.end();
+      this.logger.log("CSV stream ended, waiting for writeStream to finish...");
+      // Wait for the CSV to finish writing before returning the read stream
+      await new Promise((resolve, reject) => {
+        writeStream.on("finish", resolve);
+        writeStream.on("error", reject);
+      });
+
+      const ms = Date.now() - start;
+      const min = Math.floor(ms / 60000);
+      const sec = ((ms % 60000) / 1000).toFixed(1);
+      this.logger.log(
+        `prepareCsvExportData completed in ${min}m ${sec}s (${ms} ms)`,
+      );
       return {
         data: fs.createReadStream(filePath),
         status: HttpStatus.OK,
       };
     } catch (err) {
       this.logger.error(err);
+      const ms = Date.now() - start;
+      const min = Math.floor(ms / 60000);
+      const sec = ((ms % 60000) / 1000).toFixed(1);
+      this.logger.log(
+        `prepareCsvExportData failed after ${min}m ${sec}s (${ms} ms)`,
+      );
       throw new BadRequestException({
         status: HttpStatus.BAD_REQUEST,
         error: err?.message || "Failed to prepare CSV export data",
@@ -129,33 +214,43 @@ export class SearchService {
 
     if (basicSearchDto?.labBatchId) arr.push(basicSearchDto.labBatchId);
 
-    if (basicSearchDto?.workedOrderNo) arr.push(basicSearchDto.workedOrderNo.text);
+    if (basicSearchDto?.workedOrderNo)
+      arr.push(basicSearchDto.workedOrderNo.text);
 
-    if (basicSearchDto.samplingAgency && basicSearchDto.samplingAgency.length > 0)
+    if (
+      basicSearchDto.samplingAgency &&
+      basicSearchDto.samplingAgency.length > 0
+    )
       arr.push(...basicSearchDto.samplingAgency);
 
     return {
-      samplingLocationIds: basicSearchDto.locationName.toString(),
-      samplingLocationGroupIds: basicSearchDto.permitNumber.toString(),
-      media: basicSearchDto.media.toString(),
-      analyticalGroupIds: basicSearchDto.observedPropertyGrp.toString(),
-      projectIds: basicSearchDto.projects.toString(),
-      "start-observedTime": basicSearchDto.fromDate,
-      "end-observedTime": basicSearchDto.toDate,
+      samplingLocationIds: (basicSearchDto.locationName || "").toString(),
+      samplingLocationGroupIds: (basicSearchDto.permitNumber || "").toString(),
+      media: (basicSearchDto.media || "").toString(),
+      analyticalGroupIds: (basicSearchDto.observedPropertyGrp || "").toString(),
+      projectIds: (basicSearchDto.projects || "").toString(),
+      "start-observedTime": basicSearchDto.fromDate || "",
+      "end-observedTime": basicSearchDto.toDate || "",
       limit: this.MAX_API_DATA_LIMIT,
       cursor: cursor,
-      observedPropertyIds: basicSearchDto?.observedProperty?.toString(),
-      labResultLaboratoryIds: basicSearchDto?.analyzingAgency?.toString(),
-      analysisMethodIds: basicSearchDto?.analyticalMethod?.toString(),
-      "start-resultTime": basicSearchDto?.labArrivalFromDate,
-      "end-resultTime": basicSearchDto?.labArrivalToDate,
-      collectionMethodIds: basicSearchDto?.collectionMethod?.toString(),
-      qualityControlTypes: basicSearchDto?.qcSampleType?.toString(),
-      dataClassifications: basicSearchDto?.dataClassification?.toString(),
-      depthValue: parseFloat(basicSearchDto?.sampleDepth?.depth?.value),
-      depthUnitId: basicSearchDto?.units?.id,
-      specimenIds: basicSearchDto?.specimenId?.toString(),
-      search: arr?.toString(),
+      observedPropertyIds: (basicSearchDto?.observedProperty || "").toString(),
+      labResultLaboratoryIds: (
+        basicSearchDto?.analyzingAgency || ""
+      ).toString(),
+      analysisMethodIds: (basicSearchDto?.analyticalMethod || "").toString(),
+      "start-resultTime": basicSearchDto?.labArrivalFromDate || "",
+      "end-resultTime": basicSearchDto?.labArrivalToDate || "",
+      collectionMethodIds: (basicSearchDto?.collectionMethod || "").toString(),
+      qualityControlTypes: (basicSearchDto?.qcSampleType || "").toString(),
+      dataClassifications: (
+        basicSearchDto?.dataClassification || ""
+      ).toString(),
+      depthValue: basicSearchDto?.sampleDepth?.depth?.value
+        ? parseFloat(basicSearchDto.sampleDepth.depth.value)
+        : undefined,
+      depthUnitId: basicSearchDto?.units?.id || "",
+      specimenIds: (basicSearchDto?.specimenId || "").toString(),
+      search: arr?.toString() || "",
     };
   }
 
@@ -221,7 +316,8 @@ export class SearchService {
       Observed_Property_ID: obsExport[ObsExportCsvHeader.ObservedPropertyId],
       CAS_Number: obsExport[ObsExportCsvHeader.CasNumber],
       Result_Value: obsExport[ObsExportCsvHeader.ResultValue],
-      Method_Detection_Limit: obsExport[ObsExportCsvHeader.MethodDetectionLimit],
+      Method_Detection_Limit:
+        obsExport[ObsExportCsvHeader.MethodDetectionLimit],
       Method_Reporting_Limit: obsExport[ObsExportCsvHeader.MethodReportingUnit],
       Result_Unit: obsExport[ObsExportCsvHeader.ResultUnit],
       Detection_Condition: obsExport[ObsExportCsvHeader.DetectionCondition],
@@ -236,7 +332,9 @@ export class SearchService {
       Result_Grade: obsExport[ObsExportCsvHeader.ResultGrade],
       Activity_Name: obsExport[ObsExportCsvHeader.ActivityName],
       Tissue_Type: "",
-      Lab_Arrival_Temperature: this.getLabArrivalTemp(specimen?.extendedAttributes),
+      Lab_Arrival_Temperature: this.getLabArrivalTemp(
+        specimen?.extendedAttributes,
+      ),
       Specimen_Name: obsExport[ObsExportCsvHeader.SpecimenName],
       Lab_Quality_Flag: obsExport[ObsExportCsvHeader.LabQualityFlag],
       Lab_Arrival_Date_Time: obsExport[ObsExportCsvHeader.LabArrivalDateTime],
@@ -246,7 +344,8 @@ export class SearchService {
       Lab_Comment: obsExport[ObsExportCsvHeader.LabComment],
       Lab_Batch_ID: obsExport[ObsExportCsvHeader.LabBatchId],
       QC_Type: obsExport[ObsExportCsvHeader.QCType],
-      QC_Source_Activity_Name: obsExport[ObsExportCsvHeader.QCSourceActivityName],
+      QC_Source_Activity_Name:
+        obsExport[ObsExportCsvHeader.QCSourceActivityName],
       Validation_Warnings: obsExport[ObsExportCsvHeader.ValidationWarnings],
       Standards_Violation: obsExport[ObsExportCsvHeader.StandardsViolation],
     });
@@ -306,7 +405,9 @@ export class SearchService {
         if (query) params["search"] = query;
       }
 
-      const res = await firstValueFrom(this.httpService.get(url, { params: params }));
+      const res = await firstValueFrom(
+        this.httpService.get(url, { params: params }),
+      );
       if (res.status === HttpStatus.OK) {
         const dataArr = JSON.parse(res.data).domainObjects;
         if (sortBy) sortArr(dataArr, sortBy);
@@ -329,7 +430,10 @@ export class SearchService {
   }
 
   public async getLocationTypes(): Promise<any[]> {
-    this.logger.log("getLocationTypes called, env:", process.env.LOCATION_TYPE_CODE_TABLE_API);
+    this.logger.log(
+      "getLocationTypes called, env:",
+      process.env.LOCATION_TYPE_CODE_TABLE_API,
+    );
     return await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.LOCATION_TYPE_CODE_TABLE_API),
       null,
@@ -339,7 +443,10 @@ export class SearchService {
   }
 
   public async getLocationNames(query: string): Promise<any[]> {
-    this.logger.log("getLocationNames called, env:", process.env.LOCATION_NAME_CODE_TABLE_API);
+    this.logger.log(
+      "getLocationNames called, env:",
+      process.env.LOCATION_NAME_CODE_TABLE_API,
+    );
     return await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.LOCATION_NAME_CODE_TABLE_API),
       query,
@@ -349,7 +456,6 @@ export class SearchService {
   }
 
   public async getPermitNumbers(query: string): Promise<any[]> {
-    this.logger.log("getPermitNumbers called, env:", process.env.PERMIT_NUMBER_CODE_TABLE_API);
     return await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.PERMIT_NUMBER_CODE_TABLE_API),
       query,
@@ -359,79 +465,66 @@ export class SearchService {
   }
 
   public async getMediums(query: string): Promise<any[]> {
-    this.logger.log("getMediums called, env:", process.env.MEDIA_CODE_TABLE_API);
     const result = await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.MEDIA_CODE_TABLE_API),
       query,
       null,
       true,
     );
-    console.log("getMediums returning:", result);
     return result;
   }
 
   public async getObservedPropertyGroups(query: string): Promise<any[]> {
-    this.logger.log("getObservedPropertyGroups called, env:", process.env.OBSERVED_PROPERTIES_GROUP_CODE_TABLE_API);
     const result = await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.OBSERVED_PROPERTIES_GROUP_CODE_TABLE_API),
       query,
       null,
       true,
     );
-    console.log("getObservedPropertyGroups returning:", result);
     return result;
   }
 
   public async getProjects(query: string): Promise<any[]> {
-    this.logger.log("getProjects called, env:", process.env.PROJECTS_CODE_TABLE_API);
     const result = await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.PROJECTS_CODE_TABLE_API),
       query,
       null,
       true,
     );
-    console.log("getProjects returning:", result);
     return result;
   }
 
   public async getAnalyticalMethods(query: string): Promise<any[]> {
-    this.logger.log("getAnalyticalMethods called, env:", process.env.ANALYTICAL_METHOD_CODE_TABLE_API);
     const result = await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.ANALYTICAL_METHOD_CODE_TABLE_API),
       query,
       "name",
       true,
     );
-    console.log("getAnalyticalMethods returning:", result);
     return result;
   }
 
   public async getAnalyzingAgencies(query: string): Promise<any[]> {
-    this.logger.log("getAnalyzingAgencies called, env:", process.env.ANALYZING_AGENCY_CODE_TABLE_API);
     const result = await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.ANALYZING_AGENCY_CODE_TABLE_API),
       null,
       "name",
       false,
     );
-    console.log("getAnalyzingAgencies returning:", result);
     return result;
   }
 
   public async getObservedProperties(query: string): Promise<any[]> {
-    this.logger.log("getObservedProperties called, env:", process.env.OBSERVED_PROPERTIES_CODE_TABLE_API);
     const result = await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.OBSERVED_PROPERTIES_CODE_TABLE_API),
       query,
       null,
       true,
     );
-    console.log("getObservedProperties returning:", result);
     return result;
   }
 
   public async getWorkedOrderNos(query: string): Promise<any[]> {
-    this.logger.log("getWorkedOrderNos called, env:", process.env.WORKED_ORDER_NO_CODE_TABLE_API);
     const specimens = await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.WORKED_ORDER_NO_CODE_TABLE_API),
       query,
@@ -439,14 +532,14 @@ export class SearchService {
       true,
     );
     const arr = this.getExtendedAttribute(specimens, "text");
-    const workOrderedNos = [...new Map(arr.map((item) => [item["text"], item])).values()];
+    const workOrderedNos = [
+      ...new Map(arr.map((item) => [item["text"], item])).values(),
+    ];
     sortArr(workOrderedNos, "text");
-    console.log("getWorkedOrderNos returning:", workOrderedNos);
     return workOrderedNos;
   }
 
   public async getSamplingAgencies(query: string): Promise<any[]> {
-    this.logger.log("getSamplingAgencies called, env:", process.env.SAMPLING_AGENCY_CODE_TABLE_API);
     const fieldVisits = await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.SAMPLING_AGENCY_CODE_TABLE_API),
       query,
@@ -454,9 +547,10 @@ export class SearchService {
       true,
     );
     const arr = this.getExtendedAttribute(fieldVisits, "dropDownListItem");
-    const agencies = [...new Map(arr.map((item) => [item["id"], item])).values()];
+    const agencies = [
+      ...new Map(arr.map((item) => [item["id"], item])).values(),
+    ];
     sortArr(agencies, "customId");
-    console.log("getSamplingAgencies returning:", agencies);
     return agencies;
   }
 
@@ -477,81 +571,81 @@ export class SearchService {
   }
 
   public async getCollectionMethods(query: string): Promise<any[]> {
-    this.logger.log("getCollectionMethods called, env:", process.env.COLLECTION_METHOD_CODE_TABLE_API);
     const result = await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.COLLECTION_METHOD_CODE_TABLE_API),
       null,
       null,
       false,
     );
-    console.log("getCollectionMethods returning:", result);
     return result;
   }
 
   public async getUnits(query: string): Promise<any[]> {
-    this.logger.log("getUnits called, env:", process.env.UNITS_CODE_TABLE_API);
     const result = await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.UNITS_CODE_TABLE_API),
       null,
       "name",
       false,
     );
-    console.log("getUnits returning:", result);
     return result;
   }
 
   public async getQcSampleTypes(query: string): Promise<any[]> {
-    this.logger.log("getQcSampleTypes called, env:", process.env.QC_SAMPLE_TYPE_CODE_TABLE_API);
     const activities = await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.QC_SAMPLE_TYPE_CODE_TABLE_API),
       null,
       null,
       true,
     );
-    const result = [...new Map(activities.map((item: any) => [item["type"], item])).values()];
-    console.log("getQcSampleTypes returning:", result);
+    const result = [
+      ...new Map(activities.map((item: any) => [item["type"], item])).values(),
+    ];
     return result;
   }
 
   public async getDataClassifications(query: string): Promise<any[]> {
-    this.logger.log("getDataClassifications called, env:", process.env.DATA_CLASSIFICATION_CODE_TABLE_API);
     const observations = await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.DATA_CLASSIFICATION_CODE_TABLE_API),
       query,
       null,
       true,
     );
-    const result = [...new Map(observations.map((item: any) => [item["dataClassification"], item])).values()];
-    console.log("getDataClassifications returning:", result);
+    const result = [
+      ...new Map(
+        observations.map((item: any) => [item["dataClassification"], item]),
+      ).values(),
+    ];
     return result;
   }
 
   public async getSampleDepths(query: string): Promise<any[]> {
-    this.logger.log("getSampleDepths called, env:", process.env.SAMPLE_DEPTH_CODE_TABLE_API);
     const activities = await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.SAMPLE_DEPTH_CODE_TABLE_API),
       null,
       null,
       true,
     );
-    const obsArr = activities.filter((item: any) => Object.hasOwn(item, "depth"));
-    const result = [...new Map(obsArr.map((item: any) => [item["depth"].value, item])).values()].sort(
-      (a: any, b: any) => a.depth.value - b.depth.value,
+    const obsArr = activities.filter((item: any) =>
+      Object.hasOwn(item, "depth"),
     );
-    console.log("getSampleDepths returning:", result);
+    const result = [
+      ...new Map(
+        obsArr.map((item: any) => [item["depth"].value, item]),
+      ).values(),
+    ].sort((a: any, b: any) => a.depth.value - b.depth.value);
     return result;
   }
 
   public async getSpecimenIds(query: string): Promise<any[]> {
-    this.logger.log("getSpecimenIds called, env:", process.env.SPECIMEN_ID_CODE_TABLE_API);
     const specimens = await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.SPECIMEN_ID_CODE_TABLE_API),
       query,
       "name",
       true,
     );
-    const result = [...new Map(specimens.map((item: any) => [item["name"], item])).values()];
-    console.log("getSpecimenIds returning:", result);
+    const result = [
+      ...new Map(specimens.map((item: any) => [item["name"], item])).values(),
+    ];
     return result;
   }
 }

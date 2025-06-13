@@ -1,30 +1,39 @@
 import "dotenv/config";
-import { Logger, MiddlewareConsumer, Module, RequestMethod } from "@nestjs/common";
+import { MiddlewareConsumer, Module, RequestMethod } from "@nestjs/common";
 import { HTTPLoggerMiddleware } from "./middleware/req.res.logger";
 import { ConfigModule } from "@nestjs/config";
 import { AppService } from "./app.service";
 import { AppController } from "./app.controller";
 import { MetricsController } from "./metrics.controller";
-import { TerminusModule } from '@nestjs/terminus';
-import { SearchController } from './search/search.controller';
-import { SearchService } from "./search/search.service";
-import { SearchModule } from './search/search.module';
-
-function getMiddlewares() {
-  return [];
-}
+import { TerminusModule } from "@nestjs/terminus";
+import { SearchModule } from "./search/search.module";
+import { GeodataModule } from "./geodata/geodata.module";
+import { ScheduleModule } from "@nestjs/schedule";
+import { TypeOrmModule } from "@nestjs/typeorm";
+import ormconfig from "src/ormconfig";
+import { ObservationsModule } from "./observations/observations.module";
 
 @Module({
   imports: [
+    TypeOrmModule.forRoot(ormconfig),
     ConfigModule.forRoot(),
+    ScheduleModule.forRoot(),
     TerminusModule,
     SearchModule,
+    GeodataModule,
+    ObservationsModule,
   ],
-  controllers: [AppController,MetricsController],
-  providers: [AppService]
+  controllers: [AppController, MetricsController],
+  providers: [AppService],
 })
-export class AppModule { // let's add a middleware on all routes
+export class AppModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(HTTPLoggerMiddleware).exclude({ path: 'metrics', method: RequestMethod.ALL }, { path: 'health', method: RequestMethod.ALL }).forRoutes('*');
+    consumer
+      .apply(HTTPLoggerMiddleware)
+      .exclude(
+        { path: "metrics", method: RequestMethod.ALL },
+        { path: "health", method: RequestMethod.ALL },
+      )
+      .forRoutes("*");
   }
 }

@@ -1,4 +1,15 @@
-import { Body, Controller, Get, HttpStatus, Logger, Post, Req, Res, UsePipes, ValidationPipe } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Get,
+  HttpStatus,
+  Logger,
+  Post,
+  Req,
+  Res,
+  UsePipes,
+  ValidationPipe,
+} from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import { SearchService } from "./search.service";
 import { Response, Request } from "express";
@@ -14,7 +25,10 @@ export class SearchController {
 
   @Post("observationSearch")
   @UsePipes(new ValidationPipe({ transform: true }))
-  public async basicSearch(@Res() response: Response, @Body() basicSearchDto: BasicSearchDto) {
+  public async basicSearch(
+    @Res() response: Response,
+    @Body() basicSearchDto: BasicSearchDto,
+  ) {
     try {
       validateDto(basicSearchDto);
       const res = await this.searchService.exportData(basicSearchDto);
@@ -29,6 +43,7 @@ export class SearchController {
   }
 
   private sendCsvResponse(readStream: any, response: Response): void {
+    this.logger.log("Sending CSV response");
     readStream
       .on("open", () => {
         response.attachment("ObservationSearchResult.csv");
@@ -38,6 +53,7 @@ export class SearchController {
         this.logger.log("Deleting tmp file: " + readStream.path);
         unlinkSync(readStream.path);
       });
+    this.logger.log("CSV response sent successfully");
   }
 
   @Get("getLocationTypes")

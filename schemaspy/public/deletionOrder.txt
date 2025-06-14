@@ -1,0 +1,4 @@
+observations
+flyway_schema_history
+file_info
+spatial_ref_sys

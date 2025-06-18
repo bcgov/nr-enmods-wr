@@ -348,36 +348,81 @@ const AdvanceSearch = (props: Props) => {
   }
 
   const advanceSearch = async (data: { [key: string]: any }): Promise<void> => {
-    setIsDisabled(true)
-    setIsLoading(true)
     try {
+      setIsDisabled(true)
+      setIsLoading(true)
       const res = await apiService
         .getAxiosInstance()
-        .post("/v1/search/observationSearch", data)
+        .post("/v1/search/observationSearch", data, { responseType: "blob" })
 
       if (res.status === 200) {
-        window.scroll(0, 0)
-        if (res.data.message) {
-          setAlertMsg(res.data.message)
-        } else {
-          clearForm()
-          const url = window.URL.createObjectURL(new Blob([res.data]))
-          const link = document.createElement("a")
-          link.href = url
-          link.download = extractFileName(res.headers["content-disposition"])
-          link.click()
-          window.URL.revokeObjectURL(url)
+        // Try to parse the blob as JSON to check for a message
+        let isJson = false
+        let message = ""
+        try {
+          const text = await res.data.text()
+          const json = JSON.parse(text)
+          if (json.message) {
+            isJson = true
+            message = json.message
+          }
+        } catch (parseErr) {
+          // Not JSON, so it's probably the CSV file
+          console.info(
+            "Response is not JSON, likely a CSV file. Parse error:",
+            parseErr,
+          )
         }
-      } else {
-        window.scroll(0, 0)
-        setErrors(
-          Array.isArray(res.data.error) ? res.data.error : [res.data.error],
-        )
+
+        if (isJson) {
+          setAlertMsg(message)
+          window.scroll(0, 0)
+
+          setIsDisabled(false)
+          setIsLoading(false)
+        } else {
+          try {
+            clearForm()
+            const url = window.URL.createObjectURL(new Blob([res.data]))
+            const link = document.createElement("a")
+            link.href = url
+            link.download = extractFileName(res.headers["content-disposition"])
+            link.click()
+            window.URL.revokeObjectURL(url)
+          } catch (downloadErr) {
+            console.error("Error during file download:", downloadErr)
+            setAlertMsg("An error occurred while downloading the file.")
+          }
+          setIsDisabled(false)
+          setIsLoading(false)
+        }
       }
+    } catch (err: any) {
+      // Log the error for debugging
+      console.error("Error in advanceSearch:", err)
+
       setIsDisabled(false)
       setIsLoading(false)
-    } catch (err) {
-      console.error(err)
+      let errorArr: string[] = []
+      if (err.response && err.response.status === 400) {
+        try {
+          const text = await err.response.data.text()
+          const json = JSON.parse(text)
+          if (Array.isArray(json.error)) {
+            errorArr = json.error
+          } else if (json.message) {
+            errorArr = [json.message]
+          }
+        } catch (parseErr) {
+          console.error("Error parsing error response:", parseErr)
+          errorArr = ["An error occurred."]
+        }
+        setErrors(errorArr)
+        setAlertMsg(errorArr[0])
+      } else {
+        setErrors(["An unexpected error occurred."])
+        setAlertMsg("An unexpected error occurred.")
+      }
     }
   }
 

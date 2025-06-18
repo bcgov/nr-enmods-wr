@@ -193,61 +193,55 @@ const BasicSearch = () => {
         .getAxiosInstance()
         .post("/v1/search/observationSearch", data, { responseType: "blob" })
 
-      // Try to parse the blob as JSON to check for a message
-      let isJson = false
-      let message = ""
-      try {
-        const text = await res.data.text()
-        if (!text) {
-          setAlertMsg("No Data Found")
+      if (res.status === 200) {
+        let isJson = false
+        let message = ""
+        try {
+          const text = await res.data.text()
+          const json = JSON.parse(text)
+          if (json.message) {
+            isJson = true
+            message = json.message
+          } else if (Array.isArray(json.error)) {
+            isJson = true
+            message = json.error[0]
+            setErrors(json.error)
+          }
+        } catch (parseErr) {
+          // Not JSON, so it's probably the CSV file
+          console.info(
+            "Response is not JSON, likely a CSV file. Parse error:",
+            parseErr,
+          )
+        }
+
+        if (isJson) {
+          setAlertMsg(message)
           window.scroll(0, 0)
           setIsDisabled(false)
           setIsLoading(false)
-          return
+        } else {
+          try {
+            clearForm()
+            const url = window.URL.createObjectURL(new Blob([res.data]))
+            const link = document.createElement("a")
+            link.href = url
+            link.download = extractFileName(res.headers["content-disposition"])
+            link.click()
+            window.URL.revokeObjectURL(url)
+          } catch (downloadErr) {
+            console.error("Error during file download:", downloadErr)
+            setAlertMsg("An error occurred while downloading the file.")
+          }
+          setIsDisabled(false)
+          setIsLoading(false)
         }
-        const json = JSON.parse(text)
-        if (json.message) {
-          isJson = true
-          message = json.message
-        }
-      } catch (parseErr) {
-        // Not JSON, so it's probably the CSV file
-        console.info(
-          "Response is not JSON, likely a CSV file. Parse error:",
-          parseErr,
-        )
-      }
-
-      if (isJson) {
-        setAlertMsg(message)
-        window.scroll(0, 0)
-
-        setIsDisabled(false)
-        setIsLoading(false)
-      } else {
-        try {
-          clearForm()
-          const url = window.URL.createObjectURL(new Blob([res.data]))
-          const link = document.createElement("a")
-          link.href = url
-          link.download = extractFileName(res.headers["content-disposition"])
-          link.click()
-          window.URL.revokeObjectURL(url)
-        } catch (downloadErr) {
-          console.error("Error during file download:", downloadErr)
-          setAlertMsg("An error occurred while downloading the file.")
-        }
-        setIsDisabled(false)
-        setIsLoading(false)
       }
     } catch (err: any) {
       setIsDisabled(false)
       setIsLoading(false)
-
       let errorArr: string[] = []
       let errorMsg = "An unexpected error occurred."
-
-      // Axios error: err.response.data may be a Blob if responseType: 'blob'
       if (err.response && err.response.data) {
         try {
           const text = await err.response.data.text()
@@ -260,13 +254,11 @@ const BasicSearch = () => {
             errorArr = [json.message]
           }
         } catch (parseErr) {
-          // Not JSON, fallback
           errorArr = [errorMsg]
         }
       } else {
         errorArr = [errorMsg]
       }
-
       setErrors(errorArr)
       setAlertMsg(errorMsg)
       window.scroll(0, 0)

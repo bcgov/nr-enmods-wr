@@ -355,47 +355,45 @@ const AdvanceSearch = (props: Props) => {
         .getAxiosInstance()
         .post("/v1/search/observationSearch", data, { responseType: "blob" })
 
-      if (res.status === 200) {
-        // Try to parse the blob as JSON to check for a message
-        let isJson = false
-        let message = ""
+      // Try to parse the blob as JSON to check for a message
+      let isJson = false
+      let message = ""
+      try {
+        const text = await res.data.text()
+        const json = JSON.parse(text)
+        if (json.message) {
+          isJson = true
+          message = json.message
+        }
+      } catch (parseErr) {
+        // Not JSON, so it's probably the CSV file
+        console.info(
+          "Response is not JSON, likely a CSV file. Parse error:",
+          parseErr,
+        )
+      }
+
+      if (isJson) {
+        setAlertMsg(message)
+        window.scroll(0, 0)
+
+        setIsDisabled(false)
+        setIsLoading(false)
+      } else {
         try {
-          const text = await res.data.text()
-          const json = JSON.parse(text)
-          if (json.message) {
-            isJson = true
-            message = json.message
-          }
-        } catch (parseErr) {
-          // Not JSON, so it's probably the CSV file
-          console.info(
-            "Response is not JSON, likely a CSV file. Parse error:",
-            parseErr,
-          )
+          clearForm()
+          const url = window.URL.createObjectURL(new Blob([res.data]))
+          const link = document.createElement("a")
+          link.href = url
+          link.download = extractFileName(res.headers["content-disposition"])
+          link.click()
+          window.URL.revokeObjectURL(url)
+        } catch (downloadErr) {
+          console.error("Error during file download:", downloadErr)
+          setAlertMsg("An error occurred while downloading the file.")
         }
-
-        if (isJson) {
-          setAlertMsg(message)
-          window.scroll(0, 0)
-
-          setIsDisabled(false)
-          setIsLoading(false)
-        } else {
-          try {
-            clearForm()
-            const url = window.URL.createObjectURL(new Blob([res.data]))
-            const link = document.createElement("a")
-            link.href = url
-            link.download = extractFileName(res.headers["content-disposition"])
-            link.click()
-            window.URL.revokeObjectURL(url)
-          } catch (downloadErr) {
-            console.error("Error during file download:", downloadErr)
-            setAlertMsg("An error occurred while downloading the file.")
-          }
-          setIsDisabled(false)
-          setIsLoading(false)
-        }
+        setIsDisabled(false)
+        setIsLoading(false)
       }
     } catch (err: any) {
       // Log the error for debugging

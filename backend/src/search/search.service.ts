@@ -55,7 +55,8 @@ export class SearchService {
       );
 
       const obsExport = obsExportRes.data;
-      if (obsExport) {
+
+      if (obsExport && obsExport.length > 0) {
         this.logger.log("Found records to export to CSV...");
         const result = await this.prepareCsvExportData(obsExport);
         const ms = Date.now() - start;

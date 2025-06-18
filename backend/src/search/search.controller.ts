@@ -37,13 +37,15 @@ export class SearchController {
         response.status(res.status || 200).json({ message: res.message });
         return;
       }
-
-      // Otherwise, stream the file as before
       if (res.data) {
         this.sendCsvResponse(res.data, response);
-      } else {
-        response.send({ message: "No Data Found" });
+        return;
       }
+      response
+        .status(200)
+        .json({
+          message: "No Data Found.  Please adjust your search criteria.",
+        });
     } catch (error) {
       response.send(error.response);
     }

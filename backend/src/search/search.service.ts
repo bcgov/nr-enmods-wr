@@ -50,7 +50,7 @@ export class SearchService {
         this.logger.debug("No observations found for export");
         return {
           data: null,
-          status: 204,
+          status: 200,
           message: "No Data Found.  Please adjust your search criteria.",
         };
       }

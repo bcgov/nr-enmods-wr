@@ -47,8 +47,15 @@ export class SearchService {
       // Check for no results
       if (!obsExport || obsExport.length === 0) {
         // Return a 204 No Content or 200 with a message
-        return { data: null, status: 204, message: "No Data Found" };
+        this.logger.debug("No observations found for export");
+        return {
+          data: null,
+          status: 204,
+          message: "No Data Found.  Please adjust your search criteria.",
+        };
       }
+
+      this.logger.debug(`Received ${obsExport.length} observations for export`);
 
       // If all good, stream the CSV (status 200)
       return this.prepareCsvExportData(obsExport);

@@ -353,81 +353,54 @@ const AdvanceSearch = (props: Props) => {
       setIsLoading(true)
       const res = await apiService
         .getAxiosInstance()
-        .post("/v1/search/observationSearch", data, { responseType: "blob" })
+        .post("/v1/search/observationSearch", data, {
+          responseType: "blob",
+          validateStatus: () => true,
+        })
 
-      // Try to parse the blob as JSON to check for a message
-      let isJson = false
-      let message = ""
-      try {
-        const text = await res.data.text()
-        if (!text) {
-          setAlertMsg("No Data Found")
-          window.scroll(0, 0)
-          setIsDisabled(false)
-          setIsLoading(false)
-          return
-        }
-        const json = JSON.parse(text)
-        if (json.message) {
-          isJson = true
-          message = json.message
-        }
-      } catch (parseErr) {
-        // Not JSON, so it's probably the CSV file
-        console.info(
-          "Response is not JSON, likely a CSV file. Parse error:",
-          parseErr,
-        )
-      }
-
-      if (isJson) {
-        setAlertMsg(message)
-        window.scroll(0, 0)
-
-        setIsDisabled(false)
-        setIsLoading(false)
+      const contentType = res.headers["content-type"]
+      if (
+        res.status === 200 &&
+        contentType &&
+        contentType.includes("text/csv")
+      ) {
+        // Download CSV
+        clearForm()
+        const url = window.URL.createObjectURL(res.data)
+        const link = document.createElement("a")
+        link.href = url
+        link.download = extractFileName(res.headers["content-disposition"])
+        link.click()
+        window.URL.revokeObjectURL(url)
       } else {
+        // Parse JSON message or error
+        const text = await res.data.text()
+        let errorMsg = "An unexpected error occurred."
+        let errorArr: string[] = []
         try {
-          clearForm()
-          const url = window.URL.createObjectURL(new Blob([res.data]))
-          const link = document.createElement("a")
-          link.href = url
-          link.download = extractFileName(res.headers["content-disposition"])
-          link.click()
-          window.URL.revokeObjectURL(url)
-        } catch (downloadErr) {
-          console.error("Error during file download:", downloadErr)
-          setAlertMsg("An error occurred while downloading the file.")
-        }
-        setIsDisabled(false)
-        setIsLoading(false)
-      }
-    } catch (err: any) {
-      // Log the error for debugging
-      console.error("Error in advanceSearch:", err)
-
-      setIsDisabled(false)
-      setIsLoading(false)
-      let errorArr: string[] = []
-      if (err.response && err.response.status === 400) {
-        try {
-          const text = await err.response.data.text()
           const json = JSON.parse(text)
-          if (Array.isArray(json.error)) {
-            errorArr = json.error
-          } else if (json.message) {
+          if (json.message) {
+            errorMsg = json.message
             errorArr = [json.message]
+          } else if (Array.isArray(json.error)) {
+            errorMsg = json.error[0]
+            errorArr = json.error
           }
-        } catch (parseErr) {
-          console.error("Error parsing error response:", parseErr)
-          errorArr = ["An error occurred."]
+        } catch {
+          errorArr = [errorMsg]
         }
         setErrors(errorArr)
-        setAlertMsg(errorArr[0])
-      } else {
-        setErrors(["An unexpected error occurred."])
-        setAlertMsg("An unexpected error occurred.")
+        setAlertMsg(errorMsg)
+        window.scroll(0, 0)
       }
+      setIsDisabled(false)
+      setIsLoading(false)
+    } catch (err: any) {
+      setIsDisabled(false)
+      setIsLoading(false)
+      setErrors(["An unexpected error occurred."])
+      setAlertMsg("An unexpected error occurred.")
+      window.scroll(0, 0)
     }
   }
 

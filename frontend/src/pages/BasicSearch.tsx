@@ -198,6 +198,13 @@ const BasicSearch = () => {
       let message = ""
       try {
         const text = await res.data.text()
+        if (!text) {
+          setAlertMsg("No Data Found")
+          window.scroll(0, 0)
+          setIsDisabled(false)
+          setIsLoading(false)
+          return
+        }
         const json = JSON.parse(text)
         if (json.message) {
           isJson = true

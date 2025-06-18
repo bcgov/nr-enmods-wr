@@ -191,76 +191,55 @@ const BasicSearch = () => {
       setIsLoading(true)
       const res = await apiService
         .getAxiosInstance()
-        .post("/v1/search/observationSearch", data, { responseType: "blob" })
+        .post("/v1/search/observationSearch", data, {
+          responseType: "blob",
+          validateStatus: () => true,
+        })
 
-      if (res.status === 200) {
-        let isJson = false
-        let message = ""
+      // Check the status code and content type
+      const contentType = res.headers["content-type"]
+      if (
+        res.status === 200 &&
+        contentType &&
+        contentType.includes("text/csv")
+      ) {
+        // Download CSV
+        clearForm()
+        const url = window.URL.createObjectURL(res.data)
+        const link = document.createElement("a")
+        link.href = url
+        link.download = extractFileName(res.headers["content-disposition"])
+        link.click()
+        window.URL.revokeObjectURL(url)
+      } else {
+        // Parse error or message JSON
+        const text = await res.data.text()
+        let errorMsg = "An unexpected error occurred."
+        let errorArr: string[] = []
         try {
-          const text = await res.data.text()
           const json = JSON.parse(text)
           if (json.message) {
-            isJson = true
-            message = json.message
+            errorMsg = json.message
+            errorArr = [json.message]
           } else if (Array.isArray(json.error)) {
-            isJson = true
-            message = json.error[0]
-            setErrors(json.error)
+            errorMsg = json.error[0]
+            errorArr = json.error
           }
-        } catch (parseErr) {
-          // Not JSON, so it's probably the CSV file
-          console.info(
-            "Response is not JSON, likely a CSV file. Parse error:",
-            parseErr,
-          )
+        } catch {
+          // Not JSON, fallback
+          errorArr = [errorMsg]
         }
-
-        if (isJson) {
-          setAlertMsg(message)
-          window.scroll(0, 0)
-          setIsDisabled(false)
-          setIsLoading(false)
-        } else {
-          try {
-            clearForm()
-            const url = window.URL.createObjectURL(new Blob([res.data]))
-            const link = document.createElement("a")
-            link.href = url
-            link.download = extractFileName(res.headers["content-disposition"])
-            link.click()
-            window.URL.revokeObjectURL(url)
-          } catch (downloadErr) {
-            console.error("Error during file download:", downloadErr)
-            setAlertMsg("An error occurred while downloading the file.")
-          }
-          setIsDisabled(false)
-          setIsLoading(false)
-        }
+        setErrors(errorArr)
+        setAlertMsg(errorMsg)
+        window.scroll(0, 0)
       }
+      setIsDisabled(false)
+      setIsLoading(false)
     } catch (err: any) {
       setIsDisabled(false)
       setIsLoading(false)
-      let errorArr: string[] = []
-      let errorMsg = "An unexpected error occurred."
-      if (err.response && err.response.data) {
-        try {
-          const text = await err.response.data.text()
-          const json = JSON.parse(text)
-          if (Array.isArray(json.error)) {
-            errorArr = json.error
-            errorMsg = errorArr[0]
-          } else if (json.message) {
-            errorMsg = json.message
-            errorArr = [json.message]
-          }
-        } catch (parseErr) {
-          errorArr = [errorMsg]
-        }
-      } else {
-        errorArr = [errorMsg]
-      }
-      setErrors(errorArr)
-      setAlertMsg(errorMsg)
+      setErrors(["An unexpected error occurred."])
+      setAlertMsg("An unexpected error occurred.")
       window.scroll(0, 0)
     }
   }

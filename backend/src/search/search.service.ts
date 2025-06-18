@@ -34,52 +34,30 @@ export class SearchService {
     process.env.OBSERVATIONS_EXPORT_URL;
 
   public async exportData(basicSearchDto: BasicSearchDto): Promise<any> {
-    this.logger.debug(
-      `Starting exportData with DTO: ${JSON.stringify(basicSearchDto)}`,
-    );
-    const start = Date.now();
+    this.logger.debug(`Observations URL: ${this.OBSERVATIONS_URL}`);
     try {
-      // Only fetch obsExport from the API (not all observations)
-      const obsExportStart = Date.now();
       const obsExportPromise = this.getObservationPromise(
         basicSearchDto,
         this.OBSERVATIONS_EXPORT_URL,
         "",
       );
-      const obsExportRes = await obsExportPromise;
-      const obsExportMs = Date.now() - obsExportStart;
-      const obsExportMin = Math.floor(obsExportMs / 60000);
-      const obsExportSec = ((obsExportMs % 60000) / 1000).toFixed(1);
-      this.logger.log(
-        `getObservationPromise completed in ${obsExportMin}m ${obsExportSec}s (${obsExportMs} ms)`,
-      );
+      const res = await obsExportPromise;
+      const obsExport = res.data;
 
-      const obsExport = obsExportRes.data;
-
-      if (obsExport && obsExport.length > 0) {
-        this.logger.log("Found records to export to CSV...");
-        const result = await this.prepareCsvExportData(obsExport);
-        const ms = Date.now() - start;
-        const min = Math.floor(ms / 60000);
-        const sec = ((ms % 60000) / 1000).toFixed(1);
-        this.logger.log(`exportData completed in ${min}m ${sec}s (${ms} ms)`);
-        return result;
+      // Check for no results
+      if (!obsExport || obsExport.length === 0) {
+        // Return a 204 No Content or 200 with a message
+        return { data: null, status: 204, message: "No Data Found" };
       }
-      this.logger.log("No data found to export to CSV...");
-      const ms = Date.now() - start;
-      const min = Math.floor(ms / 60000);
-      const sec = ((ms % 60000) / 1000).toFixed(1);
-      this.logger.log(`exportData completed in ${min}m ${sec}s (${ms} ms)`);
-      return { data: "", status: HttpStatus.OK };
+
+      // If all good, stream the CSV (status 200)
+      return this.prepareCsvExportData(obsExport);
     } catch (err) {
       this.logger.error(err);
-      const ms = Date.now() - start;
-      const min = Math.floor(ms / 60000);
-      const sec = ((ms % 60000) / 1000).toFixed(1);
-      this.logger.log(`exportData failed after ${min}m ${sec}s (${ms} ms)`);
+      // Return a 400 or 500 with error details
       throw new BadRequestException({
         status: HttpStatus.BAD_REQUEST,
-        error: err.response?.error || err.message || err,
+        error: err.response?.error || err.message || "Unknown error",
       });
     }
   }

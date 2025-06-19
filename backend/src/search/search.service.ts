@@ -35,6 +35,8 @@ export class SearchService {
 
   public async exportData(basicSearchDto: BasicSearchDto): Promise<any> {
     this.logger.debug(`Observations URL: ${this.OBSERVATIONS_URL}`);
+    const start = Date.now();
+
     try {
       this.logger.debug(
         `Exporting observations with search criteria: ${JSON.stringify(
@@ -50,7 +52,10 @@ export class SearchService {
       const res = await obsExportPromise;
       const obsExport = res.data;
 
-      this.logger.debug(`AQI API took ${res.elapsedTime} ms`);
+      const elapsedMs = Date.now() - start;
+      const minutes = Math.floor(elapsedMs / 60000);
+      const seconds = ((elapsedMs % 60000) / 1000).toFixed(1);
+      this.logger.debug(`AQI API took ${minutes}m ${seconds}s`);
 
       // Check for no results
       if (!obsExport || obsExport.length === 0) {

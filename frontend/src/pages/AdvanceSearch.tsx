@@ -360,7 +360,8 @@ const AdvanceSearch = (props: Props) => {
 
       const contentType = res.headers["content-type"]
       if (
-        res.status === 200 &&
+        res.status >= 200 &&
+        res.status < 300 &&
         contentType &&
         contentType.includes("text/csv")
       ) {

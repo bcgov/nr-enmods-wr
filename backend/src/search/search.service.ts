@@ -176,6 +176,16 @@ export class SearchService {
         `Finished processing CSV export, processed ${processedRows} rows.  Found ${matchedRows} matching observations.`,
       );
       csvStream.end();
+      if (matchedRows === 0) {
+        this.logger.debug(
+          "No matching observations found, returning message instead of CSV.",
+        );
+        return {
+          data: null,
+          status: 200,
+          message: "No Data Found. Please adjust your search criteria.",
+        };
+      }
       this.logger.log("CSV stream ended, waiting for writeStream to finish...");
       // Wait for the CSV to finish writing before returning the read stream
       await new Promise((resolve, reject) => {

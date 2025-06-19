@@ -30,13 +30,22 @@ export class SearchController {
     @Body() basicSearchDto: BasicSearchDto,
   ) {
     try {
-      validateDto(basicSearchDto);
       const res = await this.searchService.exportData(basicSearchDto);
-      if (res.status === HttpStatus.OK) {
-        response.status(HttpStatus.OK);
-        if (res.data) this.sendCsvResponse(res.data, response);
-        else response.send({ message: "No Data Found" });
+
+      // If a message is present, send JSON instead of a file
+      if (res.message) {
+        response.status(res.status || 200).json({ message: res.message });
+        return;
       }
+
+      // Otherwise, stream the file as before
+      if (res.data) {
+        this.sendCsvResponse(res.data, response);
+        return;
+      }
+
+      // Fallback
+      response.status(200).json({ message: "No Data Found" });
     } catch (error) {
       response.send(error.response);
     }

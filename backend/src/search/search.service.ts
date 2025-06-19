@@ -34,51 +34,50 @@ export class SearchService {
     process.env.OBSERVATIONS_EXPORT_URL;
 
   public async exportData(basicSearchDto: BasicSearchDto): Promise<any> {
-    this.logger.debug(
-      `Starting exportData with DTO: ${JSON.stringify(basicSearchDto)}`,
-    );
+    this.logger.debug(`Observations URL: ${this.OBSERVATIONS_URL}`);
     const start = Date.now();
+
     try {
-      // Only fetch obsExport from the API (not all observations)
-      const obsExportStart = Date.now();
+      this.logger.debug(
+        `Exporting observations with search criteria: ${JSON.stringify(
+          basicSearchDto,
+        )}`,
+      );
+      // Validate the DTO
       const obsExportPromise = this.getObservationPromise(
         basicSearchDto,
         this.OBSERVATIONS_EXPORT_URL,
         "",
       );
-      const obsExportRes = await obsExportPromise;
-      const obsExportMs = Date.now() - obsExportStart;
-      const obsExportMin = Math.floor(obsExportMs / 60000);
-      const obsExportSec = ((obsExportMs % 60000) / 1000).toFixed(1);
-      this.logger.log(
-        `getObservationPromise completed in ${obsExportMin}m ${obsExportSec}s (${obsExportMs} ms)`,
-      );
+      const res = await obsExportPromise;
+      const obsExport = res.data;
 
-      const obsExport = obsExportRes.data;
-      if (obsExport) {
-        this.logger.log("Found records to export to CSV...");
-        const result = await this.prepareCsvExportData(obsExport);
-        const ms = Date.now() - start;
-        const min = Math.floor(ms / 60000);
-        const sec = ((ms % 60000) / 1000).toFixed(1);
-        this.logger.log(`exportData completed in ${min}m ${sec}s (${ms} ms)`);
-        return result;
+      const elapsedMs = Date.now() - start;
+      const minutes = Math.floor(elapsedMs / 60000);
+      const seconds = ((elapsedMs % 60000) / 1000).toFixed(1);
+      this.logger.debug(`AQI API took ${minutes}m ${seconds}s`);
+
+      // Check for no results
+      if (!obsExport || obsExport.length === 0) {
+        // Return a 204 No Content or 200 with a message
+        this.logger.debug("No observations found for export");
+        return {
+          data: null,
+          status: 200,
+          message: "No Data Found.  Please adjust your search criteria.",
+        };
       }
-      this.logger.log("No data found to export to CSV...");
-      const ms = Date.now() - start;
-      const min = Math.floor(ms / 60000);
-      const sec = ((ms % 60000) / 1000).toFixed(1);
-      this.logger.log(`exportData completed in ${min}m ${sec}s (${ms} ms)`);
-      return { data: "", status: HttpStatus.OK };
+
+      this.logger.debug(`Received ${obsExport.length} observations for export`);
+
+      // If all good, stream the CSV (status 200)
+      return this.prepareCsvExportData(obsExport);
     } catch (err) {
       this.logger.error(err);
-      const ms = Date.now() - start;
-      const min = Math.floor(ms / 60000);
-      const sec = ((ms % 60000) / 1000).toFixed(1);
-      this.logger.log(`exportData failed after ${min}m ${sec}s (${ms} ms)`);
+      // Return a 400 or 500 with error details
       throw new BadRequestException({
         status: HttpStatus.BAD_REQUEST,
-        error: err.response?.error || err.message || err,
+        error: err.response?.error || err.message || "Unknown error",
       });
     }
   }
@@ -140,9 +139,6 @@ export class SearchService {
       const exportStream = require("stream").Readable.from([obsExport]);
       exportStream.pipe(parser);
 
-      this.logger.log(
-        `Processing CSV export with NO batching (one DB fetch per row)`,
-      );
       // Log memory usage before starting the for loop
       const memBeforeLoop = process.memoryUsage();
       const heapUsedMBBeforeLoop = memBeforeLoop.heapUsed / (1024 * 1024);
@@ -151,6 +147,8 @@ export class SearchService {
       );
       let lastHeapUsedMB = heapUsedMBBeforeLoop;
       let processedRows = 0;
+      let matchedRows = 0;
+      // go through the results from the AQI export API, and find matching observations in the database
       for await (const row of parser) {
         const obsId = row[ObsExportCsvHeader.ObservationId];
         if (obsId) {
@@ -160,6 +158,7 @@ export class SearchService {
           });
           if (obsRecord) {
             this.writeToCsv(obsRecord.data, row, csvStream);
+            matchedRows++;
           }
         }
         processedRows++;
@@ -174,9 +173,19 @@ export class SearchService {
         lastHeapUsedMB = heapUsedNow;
       }
       this.logger.log(
-        `Finished processing CSV export, processed ${processedRows} rows`,
+        `Finished processing CSV export, processed ${processedRows} rows.  Found ${matchedRows} matching observations.`,
       );
       csvStream.end();
+      if (matchedRows === 0) {
+        this.logger.debug(
+          "No matching observations found, returning message instead of CSV.",
+        );
+        return {
+          data: null,
+          status: 200,
+          message: "No Data Found. Please adjust your search criteria.",
+        };
+      }
       this.logger.log("CSV stream ended, waiting for writeStream to finish...");
       // Wait for the CSV to finish writing before returning the read stream
       await new Promise((resolve, reject) => {

@@ -196,6 +196,11 @@ const BasicSearch = () => {
           validateStatus: () => true,
         })
 
+      console.debug(`Status from observationSearch: ${res.status}`)
+      console.debug(
+        `content-type from observationSearch: ${res.headers["content-type"]}`,
+      )
+
       const contentType = res.headers["content-type"]
       if (
         res.status === 200 &&
@@ -214,6 +219,7 @@ const BasicSearch = () => {
       } else {
         // Parse JSON message or error
         const text = await res.data.text()
+        console.debug(`Response text: ${text}`)
         let errorArr: string[] = []
         try {
           const json = JSON.parse(text)

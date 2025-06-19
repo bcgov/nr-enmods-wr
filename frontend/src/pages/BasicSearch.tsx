@@ -196,7 +196,6 @@ const BasicSearch = () => {
           validateStatus: () => true,
         })
 
-      // Check the status code and content type
       const contentType = res.headers["content-type"]
       if (
         res.status === 200 &&
@@ -211,26 +210,24 @@ const BasicSearch = () => {
         link.download = extractFileName(res.headers["content-disposition"])
         link.click()
         window.URL.revokeObjectURL(url)
+        setErrors([]) // clear errors on success
       } else {
-        // Parse error or message JSON
+        // Parse JSON message or error
         const text = await res.data.text()
-        let errorMsg = "An unexpected error occurred."
         let errorArr: string[] = []
         try {
           const json = JSON.parse(text)
           if (json.message) {
-            errorMsg = json.message
             errorArr = [json.message]
           } else if (Array.isArray(json.error)) {
-            errorMsg = json.error[0]
             errorArr = json.error
+          } else {
+            errorArr = ["An unexpected error occurred."]
           }
         } catch {
-          // Not JSON, fallback
-          errorArr = [errorMsg]
+          errorArr = ["An unexpected error occurred."]
         }
         setErrors(errorArr)
-        setAlertMsg(errorMsg)
         window.scroll(0, 0)
       }
       setIsDisabled(false)
@@ -239,7 +236,6 @@ const BasicSearch = () => {
       setIsDisabled(false)
       setIsLoading(false)
       setErrors(["An unexpected error occurred."])
-      setAlertMsg("An unexpected error occurred.")
       window.scroll(0, 0)
     }
   }
@@ -296,35 +292,21 @@ const BasicSearch = () => {
           Advance
         </Link>
       </div>
-
-      {alertMsg && (
-        <Alert
-          sx={{ my: 1 }}
-          icon={<InfoOutlined fontSize="inherit" />}
-          severity="info"
-          onClose={() => setAlertMsg("")}
-        >
-          {alertMsg}
-        </Alert>
-      )}
-
       <form noValidate onSubmit={onSubmit}>
         <div>
           <div>
-            {errors.length > 0 && (
+            {errors && errors.length > 0 && (
               <Alert
                 sx={{ my: 1 }}
                 icon={<InfoOutlined fontSize="inherit" />}
-                severity="error"
+                severity="info"
                 onClose={() => setErrors([])}
               >
-                {errors.map((item, index) => (
-                  <div key={index}>
-                    <ul>
-                      <li>{item}</li>
-                    </ul>
-                  </div>
-                ))}
+                <ul style={{ margin: 0, paddingLeft: 20 }}>
+                  {errors.map((err, idx) => (
+                    <li key={idx}>{err}</li>
+                  ))}
+                </ul>
               </Alert>
             )}
           </div>

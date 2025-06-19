@@ -36,6 +36,12 @@ export class SearchService {
   public async exportData(basicSearchDto: BasicSearchDto): Promise<any> {
     this.logger.debug(`Observations URL: ${this.OBSERVATIONS_URL}`);
     try {
+      this.logger.debug(
+        `Exporting observations with search criteria: ${JSON.stringify(
+          basicSearchDto,
+        )}`,
+      );
+      // Validate the DTO
       const obsExportPromise = this.getObservationPromise(
         basicSearchDto,
         this.OBSERVATIONS_EXPORT_URL,
@@ -43,6 +49,8 @@ export class SearchService {
       );
       const res = await obsExportPromise;
       const obsExport = res.data;
+
+      this.logger.debug(`AQI API took ${res.elapsedTime} ms`);
 
       // Check for no results
       if (!obsExport || obsExport.length === 0) {
@@ -126,9 +134,6 @@ export class SearchService {
       const exportStream = require("stream").Readable.from([obsExport]);
       exportStream.pipe(parser);
 
-      this.logger.log(
-        `Processing CSV export with NO batching (one DB fetch per row)`,
-      );
       // Log memory usage before starting the for loop
       const memBeforeLoop = process.memoryUsage();
       const heapUsedMBBeforeLoop = memBeforeLoop.heapUsed / (1024 * 1024);
@@ -137,6 +142,8 @@ export class SearchService {
       );
       let lastHeapUsedMB = heapUsedMBBeforeLoop;
       let processedRows = 0;
+      let matchedRows = 0;
+      // go through the results from the AQI export API, and find matching observations in the database
       for await (const row of parser) {
         const obsId = row[ObsExportCsvHeader.ObservationId];
         if (obsId) {
@@ -146,6 +153,7 @@ export class SearchService {
           });
           if (obsRecord) {
             this.writeToCsv(obsRecord.data, row, csvStream);
+            matchedRows++;
           }
         }
         processedRows++;
@@ -160,7 +168,7 @@ export class SearchService {
         lastHeapUsedMB = heapUsedNow;
       }
       this.logger.log(
-        `Finished processing CSV export, processed ${processedRows} rows`,
+        `Finished processing CSV export, processed ${processedRows} rows.  Found ${matchedRows} matching observations.`,
       );
       csvStream.end();
       this.logger.log("CSV stream ended, waiting for writeStream to finish...");

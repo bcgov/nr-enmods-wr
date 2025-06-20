@@ -487,11 +487,12 @@ export class GeodataService {
       (attr) => attr.attributeId === attributeId,
     );
     // if the established date is empty, return the creation time instead
-    if (
-      attributeId === this.EXTENDED_ATTRIBUTES.establishedDate &&
-      (!attribute || attribute === "")
-    ) {
-      return new Date(creationTime).toISOString().split("T")[0];
+    if (attributeId === this.EXTENDED_ATTRIBUTES.establishedDate) {
+      if (!attribute || attribute === "") {
+        return creationTime.slice(0, 10);
+      } else {
+        return attribute.text.slice(0, 10);
+      }
     }
     if (attribute && attribute.text === "NA") {
       return "";

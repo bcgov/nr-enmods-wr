@@ -191,31 +191,59 @@ const BasicSearch = () => {
       setIsLoading(true)
       const res = await apiService
         .getAxiosInstance()
-        .post("/v1/search/observationSearch", data)
+        .post("/v1/search/observationSearch", data, {
+          responseType: "blob",
+          validateStatus: () => true,
+        })
 
-      if (res.status === 200) {
-        window.scroll(0, 0)
-        if (res.data.message) {
-          setAlertMsg(res.data.message)
-        } else {
-          clearForm()
-          const url = window.URL.createObjectURL(new Blob([res.data]))
-          const link = document.createElement("a")
-          link.href = url
-          link.download = extractFileName(res.headers["content-disposition"])
-          link.click()
-          window.URL.revokeObjectURL(url)
-        }
+      console.debug(`Status from observationSearch: ${res.status}`)
+      console.debug(
+        `content-type from observationSearch: ${res.headers["content-type"]}`,
+      )
+
+      const contentType = res.headers["content-type"]
+      if (
+        res.status >= 200 &&
+        res.status < 300 &&
+        contentType &&
+        contentType.includes("text/csv")
+      ) {
+        // Download CSV
+        clearForm()
+        const url = window.URL.createObjectURL(res.data)
+        const link = document.createElement("a")
+        link.href = url
+        link.download = extractFileName(res.headers["content-disposition"])
+        link.click()
+        window.URL.revokeObjectURL(url)
+        setErrors([]) // clear errors on success
       } else {
+        // Parse JSON message or error
+        const text = await res.data.text()
+        console.debug(`Response text: ${text}`)
+        let errorArr: string[] = []
+        try {
+          const json = JSON.parse(text)
+          if (json.message) {
+            errorArr = [json.message]
+          } else if (Array.isArray(json.error)) {
+            errorArr = json.error
+          } else {
+            errorArr = ["An unexpected error occurred."]
+          }
+        } catch {
+          errorArr = ["An unexpected error occurred."]
+        }
+        setErrors(errorArr)
         window.scroll(0, 0)
-        setErrors(
-          Array.isArray(res.data.error) ? res.data.error : [res.data.error],
-        )
       }
       setIsDisabled(false)
       setIsLoading(false)
-    } catch (err) {
-      console.error(err)
+    } catch (err: any) {
+      setIsDisabled(false)
+      setIsLoading(false)
+      setErrors(["An unexpected error occurred."])
+      window.scroll(0, 0)
     }
   }
 
@@ -271,35 +299,21 @@ const BasicSearch = () => {
           Advance
         </Link>
       </div>
-
-      {alertMsg && (
-        <Alert
-          sx={{ my: 1 }}
-          icon={<InfoOutlined fontSize="inherit" />}
-          severity="info"
-          onClose={() => setAlertMsg("")}
-        >
-          {alertMsg}
-        </Alert>
-      )}
-
       <form noValidate onSubmit={onSubmit}>
         <div>
           <div>
-            {errors.length > 0 && (
+            {errors && errors.length > 0 && (
               <Alert
                 sx={{ my: 1 }}
                 icon={<InfoOutlined fontSize="inherit" />}
-                severity="error"
+                severity="info"
                 onClose={() => setErrors([])}
               >
-                {errors.map((item, index) => (
-                  <div key={index}>
-                    <ul>
-                      <li>{item}</li>
-                    </ul>
-                  </div>
-                ))}
+                <ul style={{ margin: 0, paddingLeft: 20 }}>
+                  {errors.map((err, idx) => (
+                    <li key={idx}>{err}</li>
+                  ))}
+                </ul>
               </Alert>
             )}
           </div>

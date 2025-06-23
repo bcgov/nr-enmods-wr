@@ -13,5 +13,4 @@ const ormconfig: TypeOrmModuleOptions = {
   entities: [FileInfo, Observation],
   synchronize: false,
 };
-
 export default ormconfig;

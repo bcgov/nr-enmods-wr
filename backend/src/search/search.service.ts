@@ -18,6 +18,9 @@ import { Repository, In } from "typeorm";
 import { Observation } from "../observations/entities/observation.entity";
 import { Transform } from "stream";
 
+import { promisify } from "util";
+const unlinkAsync = promisify(fs.unlink);
+
 @Injectable()
 export class SearchService {
   constructor(
@@ -33,6 +36,18 @@ export class SearchService {
   private readonly OBSERVATIONS_EXPORT_URL =
     process.env.OBSERVATIONS_EXPORT_URL;
 
+  /** exportData
+   * Exports observations based on the provided search criteria.
+   * It streams the AQS API response to a temporary file, processes it into CSV format,
+   * and returns the CSV file as a stream.
+   * In order to avoid memory issues, it processes the CSV in chunks.  CSV intermediary data from the OBSERVATIONS_EXPORT_URL AQS
+   * API is streamed to a temporary file, which is then read and processed
+   * to create a CSV file with the required headers and data.  This is done to avoid memory issues.
+   * This is streamed back into memory, row by row, and compined with data from the database
+   * to create the final CSV file.
+   * @param basicSearchDto - The search criteria for filtering observations.
+   * @returns A promise that resolves to the CSV file stream or a message if no data is found.
+   */
   public async exportData(basicSearchDto: BasicSearchDto): Promise<any> {
     this.logger.debug(`Observations URL: ${this.OBSERVATIONS_URL}`);
     const start = Date.now();
@@ -43,88 +58,88 @@ export class SearchService {
           basicSearchDto,
         )}`,
       );
-      // Validate the DTO
-      const obsExportPromise = this.getObservationPromise(
+
+      // Prepare temp file for streaming the API response
+      const tempFileName = `tmp_obs_export_${Date.now()}.csv`;
+      const tempFilePath = join(
+        process.cwd(),
+        `${this.DIR_NAME}${tempFileName}`,
+      );
+
+      // Get the API response as a stream
+      const responseStream = await this.getObservationPromise(
         basicSearchDto,
         this.OBSERVATIONS_EXPORT_URL,
         "",
+        true, // pass a flag to indicate streaming
       );
-      const res = await obsExportPromise;
-      const obsExport = res.data;
+
+      if (!responseStream) {
+        this.logger.debug("No observations found for export (empty stream)");
+        return {
+          data: null,
+          status: 200,
+          message: "No Data Found. Please adjust your search criteria.",
+        };
+      }
+
+      // Pipe the response stream directly to a file and wait for completion
+      await new Promise((resolve, reject) => {
+        const writeStream = fs.createWriteStream(tempFilePath);
+        responseStream.pipe(writeStream);
+        writeStream.on("finish", resolve);
+        writeStream.on("error", reject);
+        responseStream.on("error", reject);
+      });
 
       const elapsedMs = Date.now() - start;
       const minutes = Math.floor(elapsedMs / 60000);
       const seconds = ((elapsedMs % 60000) / 1000).toFixed(1);
       this.logger.debug(`AQI API took ${minutes}m ${seconds}s`);
 
-      // Check for no results
-      if (!obsExport || obsExport.length === 0) {
-        // Return a 204 No Content or 200 with a message
-        this.logger.debug("No observations found for export");
-        return {
-          data: null,
-          status: 200,
-          message: "No Data Found.  Please adjust your search criteria.",
-        };
-      }
+      // Pass the temp file path to prepareCsvExportData
+      const result = await this.prepareCsvExportData(tempFilePath);
 
-      this.logger.debug(`Received ${obsExport.length} observations for export`);
+      // Delete the temp file after processing
+      await unlinkAsync(tempFilePath);
 
-      // If all good, stream the CSV (status 200)
-      return this.prepareCsvExportData(obsExport);
+      return result;
     } catch (err) {
       this.logger.error(err);
-      // Return a 400 or 500 with error details
       throw new BadRequestException({
         status: HttpStatus.BAD_REQUEST,
         error: err.response?.error || err.message || "Unknown error",
       });
     }
   }
-
-  public getObservationPromise(
+  /**
+   * Fetches observations from the API and returns a promise that resolves to the data.
+   * If `asStream` is true, it returns a stream for direct processing.
+   * Otherwise, it returns the full response data.
+   */
+  public async getObservationPromise(
     basicSearchDto: BasicSearchDto,
     url: string,
     cursor: string,
+    asStream = false,
   ): Promise<any> {
-    return this.bcApiCall(
-      this.getAbsoluteUrl(url),
-      this.getUserSearchParams(basicSearchDto, cursor),
-    );
-  }
+    const params = this.getUserSearchParams(basicSearchDto, cursor);
+    if (asStream) {
+      // Use axiosRef directly for streaming
+      const absoluteUrl = this.getAbsoluteUrl(url);
 
-  private async getObsFromPagination(
-    observations: any,
-    basicSearchDto: BasicSearchDto,
-  ): Promise<any> {
-    const totalRecordCount = observations.totalCount;
-    let currentObsData = observations.domainObjects;
-    let cursor = observations.cursor;
-
-    if (totalRecordCount > currentObsData.length && cursor) {
-      const noOfLoop = Math.ceil(totalRecordCount / currentObsData.length);
-      let i = 0;
-
-      while (i < noOfLoop) {
-        this.logger.log("Cursor for the next record: " + cursor);
-        const res = await this.getObservationPromise(
-          basicSearchDto,
-          this.OBSERVATIONS_URL,
-          cursor,
-        );
-        if (res.status === HttpStatus.OK) {
-          const data = JSON.parse(res.data);
-          currentObsData = currentObsData.concat(data.domainObjects);
-          cursor = data.cursor;
-          i++;
-        }
-      }
+      const response = await this.httpService.axiosRef.get(absoluteUrl, {
+        params,
+        responseType: "stream",
+      });
+      return response.data; // This is the stream
+    } else {
+      // Default behavior (non-stream)
+      return this.bcApiCall(this.getAbsoluteUrl(url), params);
     }
-
-    return currentObsData;
   }
 
-  private async prepareCsvExportData(obsExport: string) {
+  private async prepareCsvExportData(tempFilePath: string) {
     const start = Date.now();
     try {
       const fileName = `tmp${Date.now()}.csv`;
@@ -134,12 +149,11 @@ export class SearchService {
       const writeStream = fs.createWriteStream(filePath);
       csvStream.pipe(writeStream).on("error", (err) => this.logger.error(err));
 
-      // Use async iterator to process each row
-      const parser = parse({ columns: true });
-      const exportStream = require("stream").Readable.from([obsExport]);
-      exportStream.pipe(parser);
+      // Stream from the temp file instead of a string
+      const parser = parse({ columns: true, bom: true, trim: true });
+      const readStream = fs.createReadStream(tempFilePath);
+      readStream.pipe(parser);
 
-      // Log memory usage before starting the for loop
       const memBeforeLoop = process.memoryUsage();
       const heapUsedMBBeforeLoop = memBeforeLoop.heapUsed / (1024 * 1024);
       this.logger.log(
@@ -148,11 +162,12 @@ export class SearchService {
       let lastHeapUsedMB = heapUsedMBBeforeLoop;
       let processedRows = 0;
       let matchedRows = 0;
-      // go through the results from the AQI export API, and find matching observations in the database
+
       for await (const row of parser) {
         const obsId = row[ObsExportCsvHeader.ObservationId];
+        const memoryUsageBeforeCSVWrite =
+          process.memoryUsage().heapUsed / (1024 * 1024);
         if (obsId) {
-          // Fetch the observation for this row
           const obsRecord = await this.observationRepository.findOneBy({
             id: obsId,
           });
@@ -161,13 +176,20 @@ export class SearchService {
             matchedRows++;
           }
         }
+        const memoryUsageAfterCSVWrite =
+          process.memoryUsage().heapUsed / (1024 * 1024);
         processedRows++;
-        // Optionally log memory usage per row if needed
         const memNow = process.memoryUsage();
         const heapUsedNow = memNow.heapUsed / (1024 * 1024);
         if (heapUsedNow > 400 && lastHeapUsedMB <= 400) {
           this.logger.log(
-            `[MEMORY CROSSED 400MB] at row: heapUsed: ${heapUsedNow.toFixed(2)} MB`,
+            `[MEMORY CROSSED 400MB] at row: heapUsed: ${heapUsedNow.toFixed(2)} MB with obsId: ${obsId}`,
+          );
+          this.logger.log(
+            `[MEMORY CROSSED 400MB] Memory usege before CSV write: ${memoryUsageBeforeCSVWrite.toFixed(2)} MB`,
+          );
+          this.logger.log(
+            `[MEMORY CROSSED 400MB] Memory usege after CSV write: ${memoryUsageAfterCSVWrite.toFixed(2)} MB`,
           );
         }
         lastHeapUsedMB = heapUsedNow;
@@ -187,11 +209,14 @@ export class SearchService {
         };
       }
       this.logger.log("CSV stream ended, waiting for writeStream to finish...");
-      // Wait for the CSV to finish writing before returning the read stream
       await new Promise((resolve, reject) => {
+        readStream.on("end", resolve);
         writeStream.on("finish", resolve);
-        writeStream.on("error", reject);
+        readStream.on("close", resolve);
+        readStream.on("error", reject);
       });
+      // Now it's safe to delete
+      //await unlinkAsync(filePath);
 
       const ms = Date.now() - start;
       const min = Math.floor(ms / 60000);

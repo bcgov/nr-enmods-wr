@@ -151,6 +151,8 @@ export class SearchService {
       // go through the results from the AQI export API, and find matching observations in the database
       for await (const row of parser) {
         const obsId = row[ObsExportCsvHeader.ObservationId];
+        const memoryUsageBeforeCSVWrite =
+          process.memoryUsage().heapUsed / (1024 * 1024);
         if (obsId) {
           // Fetch the observation for this row
           const obsRecord = await this.observationRepository.findOneBy({
@@ -161,13 +163,21 @@ export class SearchService {
             matchedRows++;
           }
         }
+        const memoryUsageAfterCSVWrite =
+          process.memoryUsage().heapUsed / (1024 * 1024);
         processedRows++;
         // Optionally log memory usage per row if needed
         const memNow = process.memoryUsage();
         const heapUsedNow = memNow.heapUsed / (1024 * 1024);
         if (heapUsedNow > 400 && lastHeapUsedMB <= 400) {
           this.logger.log(
-            `[MEMORY CROSSED 400MB] at row: heapUsed: ${heapUsedNow.toFixed(2)} MB`,
+            `[MEMORY CROSSED 400MB] at row: heapUsed: ${heapUsedNow.toFixed(2)} MB with obsId: ${obsId}`,
+          );
+          this.logger.log(
+            `[MEMORY CROSSED 400MB] Memory usege before CSV write: ${memoryUsageBeforeCSVWrite.toFixed(2)} MB`,
+          );
+          this.logger.log(
+            `[MEMORY CROSSED 400MB] Memory usege after CSV write: ${memoryUsageAfterCSVWrite.toFixed(2)} MB`,
           );
         }
         lastHeapUsedMB = heapUsedNow;

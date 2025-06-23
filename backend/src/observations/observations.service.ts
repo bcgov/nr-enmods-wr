@@ -46,10 +46,11 @@ export class ObservationsService {
     return this.observationRepository.save(observations);
   }
 
+  // fetch all observations from the paginated API and upsert into DB
   async refreshObservationsTable(): Promise<void> {
-    // fetch all observations from the paginated API and upsert into DB
     const basicSearchDto = {} as any;
     let totalCount = 0;
+    const BATCH_SIZE = 1000;
 
     const firstPageRes = await this.searchService.getObservationPromise(
       basicSearchDto,
@@ -59,18 +60,48 @@ export class ObservationsService {
     if (!firstPageRes || firstPageRes.status !== 200) return;
     const firstPage = JSON.parse(firstPageRes.data);
     let cursor = firstPage.cursor;
-    // Upsert the first batch
-    let batch = firstPage.domainObjects.map((obs: any) => ({
-      id: obs.id,
-      data: toMinimalObservation(obs),
-    }));
-    await this.observationRepository.save(batch);
-    totalCount += batch.length;
-    if (totalCount % 50000 === 0) {
-      console.log(
-        `refreshObservationsTable: Retrieved and upserted ${totalCount} records so far...`,
-      );
+
+    // Helper to save a batch in its own transaction
+    const saveBatch = async (batch: any[]) => {
+      const queryRunner =
+        this.observationRepository.manager.connection.createQueryRunner();
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+      try {
+        await queryRunner.manager.save(Observation, batch);
+        await queryRunner.commitTransaction();
+      } catch (err) {
+        await queryRunner.rollbackTransaction();
+        throw err;
+      } finally {
+        await queryRunner.release();
+      }
+    };
+
+    // Collect and save the first batch
+    let batch = [];
+    for (const obs of firstPage.domainObjects) {
+      batch.push({ id: obs.id, data: toMinimalObservation(obs) });
+      if (batch.length >= BATCH_SIZE) {
+        await saveBatch(batch);
+        totalCount += batch.length;
+        batch = [];
+        if (totalCount % 50000 === 0) {
+          console.log(
+            `refreshObservationsTable: Retrieved and upserted ${totalCount} records so far...`,
+          );
+        }
+      }
     }
+
+    // Save any remaining from the first page
+    if (batch.length > 0) {
+      await saveBatch(batch);
+      totalCount += batch.length;
+      batch = [];
+    }
+
+    // Continue with the rest of the pages
     while (cursor) {
       const res = await this.searchService.getObservationPromise(
         basicSearchDto,
@@ -79,21 +110,29 @@ export class ObservationsService {
       );
       if (res && res.status === 200) {
         const data = JSON.parse(res.data);
-        batch = data.domainObjects.map((obs: any) => ({
-          id: obs.id,
-          data: toMinimalObservation(obs),
-        }));
-        await this.observationRepository.save(batch);
-        totalCount += batch.length;
-        if (totalCount % 50000 === 0) {
-          console.log(
-            `refreshObservationsTable: Retrieved and upserted ${totalCount} records so far...`,
-          );
+        for (const obs of data.domainObjects) {
+          batch.push({ id: obs.id, data: toMinimalObservation(obs) });
+          if (batch.length >= BATCH_SIZE) {
+            await saveBatch(batch);
+            totalCount += batch.length;
+            batch = [];
+            if (totalCount % 50000 === 0) {
+              console.log(
+                `refreshObservationsTable: Retrieved and upserted ${totalCount} records so far...`,
+              );
+            }
+          }
         }
         cursor = data.cursor;
       } else {
         break;
       }
+    }
+
+    // Save any remaining records in the last batch
+    if (batch.length > 0) {
+      await saveBatch(batch);
+      totalCount += batch.length;
     }
   }
 

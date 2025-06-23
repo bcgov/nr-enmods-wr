@@ -18,6 +18,9 @@ import { Repository, In } from "typeorm";
 import { Observation } from "../observations/entities/observation.entity";
 import { Transform } from "stream";
 
+import { promisify } from "util";
+const unlinkAsync = promisify(fs.unlink);
+
 @Injectable()
 export class SearchService {
   constructor(
@@ -59,7 +62,6 @@ export class SearchService {
 
       // Check for no results
       if (!obsExport || obsExport.length === 0) {
-        // Return a 204 No Content or 200 with a message
         this.logger.debug("No observations found for export");
         return {
           data: null,
@@ -70,11 +72,23 @@ export class SearchService {
 
       this.logger.debug(`Received ${obsExport.length} observations for export`);
 
-      // If all good, stream the CSV (status 200)
-      return this.prepareCsvExportData(obsExport);
+      // Write obsExport to a temp file
+      const tempFileName = `tmp_obs_export_${Date.now()}.csv`;
+      const tempFilePath = join(
+        process.cwd(),
+        `${this.DIR_NAME}${tempFileName}`,
+      );
+      fs.writeFileSync(tempFilePath, obsExport);
+
+      // Pass the temp file path to prepareCsvExportData
+      const result = await this.prepareCsvExportData(tempFilePath);
+
+      // Delete the temp file after processing
+      await unlinkAsync(tempFilePath);
+
+      return result;
     } catch (err) {
       this.logger.error(err);
-      // Return a 400 or 500 with error details
       throw new BadRequestException({
         status: HttpStatus.BAD_REQUEST,
         error: err.response?.error || err.message || "Unknown error",
@@ -124,7 +138,7 @@ export class SearchService {
     return currentObsData;
   }
 
-  private async prepareCsvExportData(obsExport: string) {
+  private async prepareCsvExportData(tempFilePath: string) {
     const start = Date.now();
     try {
       const fileName = `tmp${Date.now()}.csv`;
@@ -134,12 +148,11 @@ export class SearchService {
       const writeStream = fs.createWriteStream(filePath);
       csvStream.pipe(writeStream).on("error", (err) => this.logger.error(err));
 
-      // Use async iterator to process each row
+      // Stream from the temp file instead of a string
       const parser = parse({ columns: true });
-      const exportStream = require("stream").Readable.from([obsExport]);
-      exportStream.pipe(parser);
+      const readStream = fs.createReadStream(tempFilePath);
+      readStream.pipe(parser);
 
-      // Log memory usage before starting the for loop
       const memBeforeLoop = process.memoryUsage();
       const heapUsedMBBeforeLoop = memBeforeLoop.heapUsed / (1024 * 1024);
       this.logger.log(
@@ -148,13 +161,12 @@ export class SearchService {
       let lastHeapUsedMB = heapUsedMBBeforeLoop;
       let processedRows = 0;
       let matchedRows = 0;
-      // go through the results from the AQI export API, and find matching observations in the database
+
       for await (const row of parser) {
         const obsId = row[ObsExportCsvHeader.ObservationId];
         const memoryUsageBeforeCSVWrite =
           process.memoryUsage().heapUsed / (1024 * 1024);
         if (obsId) {
-          // Fetch the observation for this row
           const obsRecord = await this.observationRepository.findOneBy({
             id: obsId,
           });
@@ -166,7 +178,6 @@ export class SearchService {
         const memoryUsageAfterCSVWrite =
           process.memoryUsage().heapUsed / (1024 * 1024);
         processedRows++;
-        // Optionally log memory usage per row if needed
         const memNow = process.memoryUsage();
         const heapUsedNow = memNow.heapUsed / (1024 * 1024);
         if (heapUsedNow > 400 && lastHeapUsedMB <= 400) {
@@ -197,7 +208,6 @@ export class SearchService {
         };
       }
       this.logger.log("CSV stream ended, waiting for writeStream to finish...");
-      // Wait for the CSV to finish writing before returning the read stream
       await new Promise((resolve, reject) => {
         writeStream.on("finish", resolve);
         writeStream.on("error", reject);

@@ -216,7 +216,7 @@ export class SearchService {
         readStream.on("error", reject);
       });
       // Now it's safe to delete
-      await unlinkAsync(filePath);
+      //await unlinkAsync(filePath);
 
       const ms = Date.now() - start;
       const min = Math.floor(ms / 60000);

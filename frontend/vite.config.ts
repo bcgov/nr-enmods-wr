@@ -2,7 +2,6 @@ import { defineConfig } from "vite"
 import { fileURLToPath, URL } from "node:url"
 import react from "@vitejs/plugin-react"
 
-
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
@@ -50,7 +49,6 @@ export default defineConfig({
             "@emotion/styled",
           ],
           mui: ["@mui/material", "@mui/icons-material"],
-          mui_tables: ["mui-datatables"],
           axios: ["axios"],
         },
       },

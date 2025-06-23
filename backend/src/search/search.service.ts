@@ -150,7 +150,7 @@ export class SearchService {
       csvStream.pipe(writeStream).on("error", (err) => this.logger.error(err));
 
       // Stream from the temp file instead of a string
-      const parser = parse({ columns: true });
+      const parser = parse({ columns: true, bom: true, trim: true });
       const readStream = fs.createReadStream(tempFilePath);
       readStream.pipe(parser);
 
@@ -210,9 +210,12 @@ export class SearchService {
       }
       this.logger.log("CSV stream ended, waiting for writeStream to finish...");
       await new Promise((resolve, reject) => {
-        writeStream.on("finish", resolve);
-        writeStream.on("error", reject);
+        readStream.on("end", resolve);
+        readStream.on("close", resolve);
+        readStream.on("error", reject);
       });
+      // Now it's safe to delete
+      await unlinkAsync(tempFilePath);
 
       const ms = Date.now() - start;
       const min = Math.floor(ms / 60000);

@@ -2,7 +2,7 @@ import * as React from "react"
 import TitleText from "../TitleText"
 import { forwardRef } from "react"
 import TooltipInfo from "../TooltipInfo"
-import DatePicker from "react-datepicker/dist"
+import DatePicker from "react-datepicker"
 import { Autocomplete, TextField } from "@mui/material"
 import { SearchAttr } from "@/enum/searchEnum"
 
@@ -95,7 +95,7 @@ export default function AdditionalCriteria(props: any) {
           <div className="flex items-center">
             <Autocomplete
               multiple
-              freeSolo                        
+              freeSolo
               value={formData?.collectionMethod}
               getOptionKey={(option) => option.id}
               options={additionalCriteriaDrpdwns.collectionMethods}
@@ -163,11 +163,15 @@ export default function AdditionalCriteria(props: any) {
             <TooltipInfo title="Data Classification" />
           </div>
           <div className="flex items-center">
-            <Autocomplete                         
-              value={formData?.sampleDepth}            
+            <Autocomplete
+              value={formData?.sampleDepth}
               options={additionalCriteriaDrpdwns.sampleDepths}
-              isOptionEqualToValue={(option, selectedValue) => option.depth?.value === selectedValue.depth?.value}
-              getOptionLabel={(option) => JSON.stringify(option?.depth?.value) || ""}            
+              isOptionEqualToValue={(option, selectedValue) =>
+                option.depth?.value === selectedValue.depth?.value
+              }
+              getOptionLabel={(option) =>
+                JSON.stringify(option?.depth?.value) || ""
+              }
               onChange={(e, val) =>
                 handleOnChange(e, val, SearchAttr.SampleDepth)
               }
@@ -182,11 +186,11 @@ export default function AdditionalCriteria(props: any) {
         </div>
         <div className="flex flex-col lg:flex-row gap-4 justify-between px-4 pb-4">
           <div className="flex items-center">
-            <Autocomplete              
-              value={formData?.units}             
+            <Autocomplete
+              value={formData?.units}
               options={additionalCriteriaDrpdwns.units}
               isOptionEqualToValue={(option, value) => option.id === value.id}
-              getOptionLabel={(option) => option.customId || ""}             
+              getOptionLabel={(option) => option.customId || ""}
               onChange={(e, val) => handleOnChange(e, val, SearchAttr.Units)}
               sx={{ width: 380 }}
               renderInput={(params) => <TextField {...params} label="Units" />}
@@ -206,7 +210,7 @@ export default function AdditionalCriteria(props: any) {
         </div>
         <div className="flex flex-col lg:flex-row gap-4 justify-between px-4 pb-4">
           <div className="flex items-center">
-          <Autocomplete
+            <Autocomplete
               multiple
               freeSolo
               value={formData?.specimenId}
@@ -217,9 +221,13 @@ export default function AdditionalCriteria(props: any) {
               onInputChange={(e, val) =>
                 handleInputChange(e, val, SearchAttr.SpecimenId)
               }
-              onChange={(e, val) => handleOnChange(e, val, SearchAttr.SpecimenId)}
+              onChange={(e, val) =>
+                handleOnChange(e, val, SearchAttr.SpecimenId)
+              }
               sx={{ width: 380 }}
-              renderInput={(params) => <TextField {...params} label="Specimen ID" />}
+              renderInput={(params) => (
+                <TextField {...params} label="Specimen ID" />
+              )}
             />
             <TooltipInfo title="Specimen ID" />
           </div>

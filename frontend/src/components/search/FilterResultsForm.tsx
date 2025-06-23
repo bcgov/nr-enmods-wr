@@ -1,4 +1,4 @@
-import DatePicker from "react-datepicker/dist"
+import DatePicker from "react-datepicker"
 import TitleText from "../TitleText"
 import TooltipInfo from "../TooltipInfo"
 import { Autocomplete, TextField } from "@mui/material"
@@ -172,7 +172,7 @@ export default function FilterResultsForm(props: any) {
                 </div>
 
                 <div className="flex items-center">
-                   <Autocomplete                   
+                  <Autocomplete
                     value={formData?.workedOrderNo}
                     getOptionKey={(option) => option.id}
                     options={filterResultDrpdwns.workedOrderNos}
@@ -190,7 +190,7 @@ export default function FilterResultsForm(props: any) {
                     renderInput={(params) => (
                       <TextField {...params} label="Worked Order Number" />
                     )}
-                  /> 
+                  />
                   {/* <TextField
                     value={formData.workedOrderNo}
                     onChange={(e) =>

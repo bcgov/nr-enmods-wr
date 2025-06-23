@@ -1,7 +1,4 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
+@import "tailwindcss";
 
 @font-face {
   font-family: "BCSans";
@@ -50,7 +47,7 @@
 }
 
 .padding-half {
-  padding: .5rem;
+  padding: 0.5rem;
 }
 
 .padding-y-1 {
@@ -80,38 +77,37 @@
 }
 
 .gap-half {
-  gap: .5rem;
+  gap: 0.5rem;
 }
 
-
 .search-btn:hover {
-  background-color: #0B5394;
+  background-color: #0b5394;
   color: #fff;
 }
 
-.react-datepicker-popper{
+.react-datepicker-popper {
   z-index: 10;
 }
 
-.errorMsg{
+.errorMsg {
   color: #f70000;
   font-size: small;
   margin-left: 1rem;
 }
 
-.error-heading{
+.error-heading {
   display: flex;
   align-items: center;
   justify-content: start;
-  gap: .2rem;
+  gap: 0.2rem;
   font-size: medium;
 }
 
-.heading-section{
-  border: 1px solid #0B5394;
-  padding: .5rem;  
+.heading-section {
+  border: 1px solid #0b5394;
+  padding: 0.5rem;
   background: #38598a;
   color: #fff;
-  border-top-left-radius: .2rem;
-  border-top-right-radius: .2rem;
+  border-top-left-radius: 0.2rem;
+  border-top-right-radius: 0.2rem;
 }

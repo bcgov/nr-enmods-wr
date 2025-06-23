@@ -15,17 +15,17 @@ services:
       SAMPLING_LOCATIONS_ENDPOINT: ${SAMPLING_LOCATIONS_ENDPOINT}
       SAMPLING_LOCATION_GROUPS_ENDPOINT: ${SAMPLING_LOCATION_GROUPS_ENDPOINT}
       EXTENDED_ATTRIBUTES_ENDPOINT: ${EXTENDED_ATTRIBUTES_ENDPOINT}
-      OBJECTSTORE_FOLDER: ${OBJECTSTORE_FOLDER}
+      OBJECTSTORE_FOLDER: ${OBJECTSTORE_FOLDER}      
       API_KEY: ${API_KEY}
       AUTH_TOKEN: ${AUTH_TOKEN}
       POSTGRES_HOST: postgres
-      POSTGRES_USER: enmodswr_user
-      POSTGRES_PASSWORD: enmodswr_password
-      POSTGRES_DATABASE: enmodswr_db
+      POSTGRES_USER: enmodswr
+      POSTGRES_PASSWORD: enmodswr
+      POSTGRES_DATABASE: enmodswr
     # image: node:22
     ports: ["3001:3000"]
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/api"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/api"]
     working_dir: "/app"
 
   frontend:

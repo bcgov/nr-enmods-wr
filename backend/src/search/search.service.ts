@@ -36,6 +36,18 @@ export class SearchService {
   private readonly OBSERVATIONS_EXPORT_URL =
     process.env.OBSERVATIONS_EXPORT_URL;
 
+  /** exportData
+   * Exports observations based on the provided search criteria.
+   * It streams the AQS API response to a temporary file, processes it into CSV format,
+   * and returns the CSV file as a stream.
+   * In order to avoid memory issues, it processes the CSV in chunks.  CSV intermediary data from the OBSERVATIONS_EXPORT_URL AQS
+   * API is streamed to a temporary file, which is then read and processed
+   * to create a CSV file with the required headers and data.  This is done to avoid memory issues.
+   * This is streamed back into memory, row by row, and compined with data from the database
+   * to create the final CSV file.
+   * @param basicSearchDto - The search criteria for filtering observations.
+   * @returns A promise that resolves to the CSV file stream or a message if no data is found.
+   */
   public async exportData(basicSearchDto: BasicSearchDto): Promise<any> {
     this.logger.debug(`Observations URL: ${this.OBSERVATIONS_URL}`);
     const start = Date.now();
@@ -46,39 +58,44 @@ export class SearchService {
           basicSearchDto,
         )}`,
       );
-      // Validate the DTO
-      const obsExportPromise = this.getObservationPromise(
-        basicSearchDto,
-        this.OBSERVATIONS_EXPORT_URL,
-        "",
-      );
-      const res = await obsExportPromise;
-      const obsExport = res.data;
 
-      const elapsedMs = Date.now() - start;
-      const minutes = Math.floor(elapsedMs / 60000);
-      const seconds = ((elapsedMs % 60000) / 1000).toFixed(1);
-      this.logger.debug(`AQI API took ${minutes}m ${seconds}s`);
-
-      // Check for no results
-      if (!obsExport || obsExport.length === 0) {
-        this.logger.debug("No observations found for export");
-        return {
-          data: null,
-          status: 200,
-          message: "No Data Found.  Please adjust your search criteria.",
-        };
-      }
-
-      this.logger.debug(`Received ${obsExport.length} observations for export`);
-
-      // Write obsExport to a temp file
+      // Prepare temp file for streaming the API response
       const tempFileName = `tmp_obs_export_${Date.now()}.csv`;
       const tempFilePath = join(
         process.cwd(),
         `${this.DIR_NAME}${tempFileName}`,
       );
-      fs.writeFileSync(tempFilePath, obsExport);
+
+      // Get the API response as a stream
+      const responseStream = await this.getObservationPromise(
+        basicSearchDto,
+        this.OBSERVATIONS_EXPORT_URL,
+        "",
+        true, // pass a flag to indicate streaming
+      );
+
+      if (!responseStream) {
+        this.logger.debug("No observations found for export (empty stream)");
+        return {
+          data: null,
+          status: 200,
+          message: "No Data Found. Please adjust your search criteria.",
+        };
+      }
+
+      // Pipe the response stream directly to a file and wait for completion
+      await new Promise((resolve, reject) => {
+        const writeStream = fs.createWriteStream(tempFilePath);
+        responseStream.pipe(writeStream);
+        writeStream.on("finish", resolve);
+        writeStream.on("error", reject);
+        responseStream.on("error", reject);
+      });
+
+      const elapsedMs = Date.now() - start;
+      const minutes = Math.floor(elapsedMs / 60000);
+      const seconds = ((elapsedMs % 60000) / 1000).toFixed(1);
+      this.logger.debug(`AQI API took ${minutes}m ${seconds}s`);
 
       // Pass the temp file path to prepareCsvExportData
       const result = await this.prepareCsvExportData(tempFilePath);
@@ -95,47 +112,31 @@ export class SearchService {
       });
     }
   }
-
-  public getObservationPromise(
+  /**
+   * Fetches observations from the API and returns a promise that resolves to the data.
+   * If `asStream` is true, it returns a stream for direct processing.
+   * Otherwise, it returns the full response data.
+   */
+  public async getObservationPromise(
     basicSearchDto: BasicSearchDto,
     url: string,
     cursor: string,
+    asStream = false,
   ): Promise<any> {
-    return this.bcApiCall(
-      this.getAbsoluteUrl(url),
-      this.getUserSearchParams(basicSearchDto, cursor),
-    );
-  }
+    const params = this.getUserSearchParams(basicSearchDto, cursor);
+    if (asStream) {
+      // Use axiosRef directly for streaming
+      const absoluteUrl = this.getAbsoluteUrl(url);
 
-  private async getObsFromPagination(
-    observations: any,
-    basicSearchDto: BasicSearchDto,
-  ): Promise<any> {
-    const totalRecordCount = observations.totalCount;
-    let currentObsData = observations.domainObjects;
-    let cursor = observations.cursor;
-
-    if (totalRecordCount > currentObsData.length && cursor) {
-      const noOfLoop = Math.ceil(totalRecordCount / currentObsData.length);
-      let i = 0;
-
-      while (i < noOfLoop) {
-        this.logger.log("Cursor for the next record: " + cursor);
-        const res = await this.getObservationPromise(
-          basicSearchDto,
-          this.OBSERVATIONS_URL,
-          cursor,
-        );
-        if (res.status === HttpStatus.OK) {
-          const data = JSON.parse(res.data);
-          currentObsData = currentObsData.concat(data.domainObjects);
-          cursor = data.cursor;
-          i++;
-        }
-      }
+      const response = await this.httpService.axiosRef.get(absoluteUrl, {
+        params,
+        responseType: "stream",
+      });
+      return response.data; // This is the stream
+    } else {
+      // Default behavior (non-stream)
+      return this.bcApiCall(this.getAbsoluteUrl(url), params);
     }
-
-    return currentObsData;
   }
 
   private async prepareCsvExportData(tempFilePath: string) {

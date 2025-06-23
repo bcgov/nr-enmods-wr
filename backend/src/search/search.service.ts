@@ -211,11 +211,12 @@ export class SearchService {
       this.logger.log("CSV stream ended, waiting for writeStream to finish...");
       await new Promise((resolve, reject) => {
         readStream.on("end", resolve);
+        writeStream.on("finish", resolve);
         readStream.on("close", resolve);
         readStream.on("error", reject);
       });
       // Now it's safe to delete
-      await unlinkAsync(tempFilePath);
+      await unlinkAsync(filePath);
 
       const ms = Date.now() - start;
       const min = Math.floor(ms / 60000);

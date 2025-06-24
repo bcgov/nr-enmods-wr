@@ -53,9 +53,19 @@ export class SearchController {
 
   private sendCsvResponse(readStream: any, response: Response): void {
     this.logger.log("Sending CSV response");
+    response.attachment("ObservationSearchResult.csv");
+
+    // Add error handler before piping
+    readStream.on("error", (err) => {
+      this.logger.error("Error streaming CSV file: " + err.message);
+      if (!response.headersSent) {
+        response.status(500).send("Failed to stream CSV file.");
+      } else {
+        response.end();
+      }
+    });
     readStream
       .on("open", () => {
-        response.attachment("ObservationSearchResult.csv");
         readStream.pipe(response);
       })
       .on("close", () => {

@@ -240,6 +240,7 @@ const BasicSearch = () => {
       setIsDisabled(false)
       setIsLoading(false)
     } catch (err: any) {
+      console.debug("Error in basicSearch:", err)
       setIsDisabled(false)
       setIsLoading(false)
       setErrors(["An unexpected error occurred."])

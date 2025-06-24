@@ -146,7 +146,18 @@ export class SearchService {
 
       const csvStream = fastcsv.format({ headers: true });
       const writeStream = fs.createWriteStream(filePath);
-      csvStream.pipe(writeStream).on("error", (err) => this.logger.error(err));
+
+      // Add error and finish listeners for debugging
+      csvStream.on("error", (err) =>
+        this.logger.error("CSV Stream error: " + err.message),
+      );
+      writeStream.on("error", (err) =>
+        this.logger.error("Write Stream error: " + err.message),
+      );
+      writeStream.on("finish", () => this.logger.log("Write stream finished"));
+      csvStream.on("end", () => this.logger.log("CSV stream ended"));
+
+      csvStream.pipe(writeStream);
 
       // Stream from the temp file instead of a string
       const parser = parse({ columns: true, bom: true, trim: true });
@@ -166,20 +177,42 @@ export class SearchService {
       let batchRows = [];
       let batchIds = [];
 
-      for await (const row of parser) {
-        const obsId = row[ObsExportCsvHeader.ObservationId];
-        processedRows++;
-        batchRows.push(row);
-        batchIds.push(obsId);
+      try {
+        for await (const row of parser) {
+          const obsId = row[ObsExportCsvHeader.ObservationId];
+          processedRows++;
+          batchRows.push(row);
+          batchIds.push(obsId);
 
-        if (batchRows.length >= BATCH_SIZE) {
-          // Fetch all records for this batch
+          if (batchRows.length >= BATCH_SIZE) {
+            // Fetch all records for this batch
+            const obsRecords = await this.observationRepository.findBy({
+              id: In(batchIds),
+            });
+            const obsMap = new Map(obsRecords.map((obs) => [obs.id, obs]));
+
+            // Process the batch
+            for (const row of batchRows) {
+              const obsId = row[ObsExportCsvHeader.ObservationId];
+              const obsRecord = obsMap.get(obsId);
+              if (obsRecord) {
+                matchedRows++;
+                this.writeToCsv(obsRecord.data, row, csvStream);
+              }
+            }
+
+            // Reset for next batch
+            batchRows = [];
+            batchIds = [];
+          }
+        }
+
+        // Process any remaining rows
+        if (batchRows.length > 0) {
           const obsRecords = await this.observationRepository.findBy({
             id: In(batchIds),
           });
           const obsMap = new Map(obsRecords.map((obs) => [obs.id, obs]));
-
-          // Process the batch
           for (const row of batchRows) {
             const obsId = row[ObsExportCsvHeader.ObservationId];
             const obsRecord = obsMap.get(obsId);
@@ -188,32 +221,17 @@ export class SearchService {
               this.writeToCsv(obsRecord.data, row, csvStream);
             }
           }
-
-          // Reset for next batch
-          batchRows = [];
-          batchIds = [];
         }
+      } catch (err) {
+        this.logger.error("Error during batch processing: " + err.message);
+        throw err;
+      } finally {
+        csvStream.end();
       }
 
-      // Process any remaining rows
-      if (batchRows.length > 0) {
-        const obsRecords = await this.observationRepository.findBy({
-          id: In(batchIds),
-        });
-        const obsMap = new Map(obsRecords.map((obs) => [obs.id, obs]));
-        for (const row of batchRows) {
-          const obsId = row[ObsExportCsvHeader.ObservationId];
-          const obsRecord = obsMap.get(obsId);
-          if (obsRecord) {
-            matchedRows++;
-            this.writeToCsv(obsRecord.data, row, csvStream);
-          }
-        }
-      }
       this.logger.log(
         `Finished processing CSV export, processed ${processedRows} rows.  Found ${matchedRows} matching observations.`,
       );
-      csvStream.end();
 
       if (matchedRows === 0) {
         this.logger.debug(

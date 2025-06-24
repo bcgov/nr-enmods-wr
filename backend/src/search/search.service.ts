@@ -16,7 +16,6 @@ import { parse } from "csv-parse";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository, In } from "typeorm";
 import { Observation } from "../observations/entities/observation.entity";
-import { Transform } from "stream";
 
 import { promisify } from "util";
 const unlinkAsync = promisify(fs.unlink);
@@ -159,40 +158,57 @@ export class SearchService {
       this.logger.log(
         `[MEMORY USAGE BEFORE LOOP] heapUsed: ${heapUsedMBBeforeLoop.toFixed(2)} MB`,
       );
-      let lastHeapUsedMB = heapUsedMBBeforeLoop;
       let processedRows = 0;
       let matchedRows = 0;
 
+      // batch processing of database requests
+      const BATCH_SIZE = 1000;
+      let batchRows = [];
+      let batchIds = [];
+
       for await (const row of parser) {
         const obsId = row[ObsExportCsvHeader.ObservationId];
-        const memoryUsageBeforeCSVWrite =
-          process.memoryUsage().heapUsed / (1024 * 1024);
-        if (obsId) {
-          const obsRecord = await this.observationRepository.findOneBy({
-            id: obsId,
+        processedRows++;
+        batchRows.push(row);
+        batchIds.push(obsId);
+
+        if (batchRows.length >= BATCH_SIZE) {
+          // Fetch all records for this batch
+          const obsRecords = await this.observationRepository.findBy({
+            id: In(batchIds),
           });
+          const obsMap = new Map(obsRecords.map((obs) => [obs.id, obs]));
+
+          // Process the batch
+          for (const row of batchRows) {
+            const obsId = row[ObsExportCsvHeader.ObservationId];
+            const obsRecord = obsMap.get(obsId);
+            if (obsRecord) {
+              matchedRows++;
+              this.writeToCsv(obsRecord.data, row, csvStream);
+            }
+          }
+
+          // Reset for next batch
+          batchRows = [];
+          batchIds = [];
+        }
+      }
+
+      // Process any remaining rows
+      if (batchRows.length > 0) {
+        const obsRecords = await this.observationRepository.findBy({
+          id: In(batchIds),
+        });
+        const obsMap = new Map(obsRecords.map((obs) => [obs.id, obs]));
+        for (const row of batchRows) {
+          const obsId = row[ObsExportCsvHeader.ObservationId];
+          const obsRecord = obsMap.get(obsId);
           if (obsRecord) {
-            this.writeToCsv(obsRecord.data, row, csvStream);
             matchedRows++;
+            this.writeToCsv(obsRecord.data, row, csvStream);
           }
         }
-        const memoryUsageAfterCSVWrite =
-          process.memoryUsage().heapUsed / (1024 * 1024);
-        processedRows++;
-        const memNow = process.memoryUsage();
-        const heapUsedNow = memNow.heapUsed / (1024 * 1024);
-        if (heapUsedNow > 400 && lastHeapUsedMB <= 400) {
-          this.logger.log(
-            `[MEMORY CROSSED 400MB] at row: heapUsed: ${heapUsedNow.toFixed(2)} MB with obsId: ${obsId}`,
-          );
-          this.logger.log(
-            `[MEMORY CROSSED 400MB] Memory usege before CSV write: ${memoryUsageBeforeCSVWrite.toFixed(2)} MB`,
-          );
-          this.logger.log(
-            `[MEMORY CROSSED 400MB] Memory usege after CSV write: ${memoryUsageAfterCSVWrite.toFixed(2)} MB`,
-          );
-        }
-        lastHeapUsedMB = heapUsedNow;
       }
       this.logger.log(
         `Finished processing CSV export, processed ${processedRows} rows.  Found ${matchedRows} matching observations.`,

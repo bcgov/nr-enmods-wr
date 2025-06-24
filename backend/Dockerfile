@@ -33,7 +33,7 @@ USER appuser
 
 # Boilerplate, not used in OpenShift/Kubernetes
 EXPOSE 3000
-HEALTHCHECK --interval=30s --timeout=3s CMD curl -f http://localhost:3000/api
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 CMD curl -f http://localhost:3000/api
 
 # limit heap size to 512 MB~
 CMD ["node", "--max-old-space-size=512", "/app/dist/main.js"]

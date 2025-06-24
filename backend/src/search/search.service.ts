@@ -164,11 +164,6 @@ export class SearchService {
       const readStream = fs.createReadStream(tempFilePath);
       readStream.pipe(parser);
 
-      const memBeforeLoop = process.memoryUsage();
-      const heapUsedMBBeforeLoop = memBeforeLoop.heapUsed / (1024 * 1024);
-      this.logger.log(
-        `[MEMORY USAGE BEFORE LOOP] heapUsed: ${heapUsedMBBeforeLoop.toFixed(2)} MB`,
-      );
       let processedRows = 0;
       let matchedRows = 0;
 

@@ -55,23 +55,33 @@ export class SearchController {
     this.logger.log("Sending CSV response");
     response.attachment("ObservationSearchResult.csv");
 
-    // Add error handler before piping
+    readStream.pipe(response);
+
+    readStream.on("close", () => {
+      this.logger.log("Deleting tmp file: " + readStream.path);
+      try {
+        unlinkSync(readStream.path);
+      } catch (e) {
+        this.logger.warn(`Failed to delete temp file: ${e.message}`);
+      }
+    });
+
     readStream.on("error", (err) => {
       this.logger.error("Error streaming CSV file: " + err.message);
+      try {
+        unlinkSync(readStream.path);
+      } catch (e) {
+        this.logger.warn(
+          `Failed to delete temp file after error: ${e.message}`,
+        );
+      }
       if (!response.headersSent) {
         response.status(500).send("Failed to stream CSV file.");
       } else {
         response.end();
       }
     });
-    readStream
-      .on("open", () => {
-        readStream.pipe(response);
-      })
-      .on("close", () => {
-        this.logger.log("Deleting tmp file: " + readStream.path);
-        unlinkSync(readStream.path);
-      });
+
     this.logger.log("CSV response sent successfully");
   }
 

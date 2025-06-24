@@ -214,6 +214,7 @@ export class SearchService {
         `Finished processing CSV export, processed ${processedRows} rows.  Found ${matchedRows} matching observations.`,
       );
       csvStream.end();
+
       if (matchedRows === 0) {
         this.logger.debug(
           "No matching observations found, returning message instead of CSV.",
@@ -224,15 +225,15 @@ export class SearchService {
           message: "No Data Found. Please adjust your search criteria.",
         };
       }
+
       this.logger.log("CSV stream ended, waiting for writeStream to finish...");
       await new Promise((resolve, reject) => {
-        readStream.on("end", resolve);
         writeStream.on("finish", resolve);
-        readStream.on("close", resolve);
-        readStream.on("error", reject);
+        writeStream.on("error", reject);
       });
-      // Now it's safe to delete
-      //await unlinkAsync(filePath);
+
+      // Now it's safe to create the read stream and return it
+      const reportReadStream = fs.createReadStream(filePath);
 
       const ms = Date.now() - start;
       const min = Math.floor(ms / 60000);
@@ -240,8 +241,9 @@ export class SearchService {
       this.logger.log(
         `prepareCsvExportData completed in ${min}m ${sec}s (${ms} ms)`,
       );
+
       return {
-        data: fs.createReadStream(filePath),
+        data: reportReadStream,
         status: HttpStatus.OK,
       };
     } catch (err) {

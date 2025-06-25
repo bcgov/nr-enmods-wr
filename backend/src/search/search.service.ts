@@ -18,6 +18,7 @@ import { Repository, In } from "typeorm";
 import { Observation } from "../observations/entities/observation.entity";
 
 import { promisify } from "util";
+import { jobs } from "src/jobs/searchjob";
 const unlinkAsync = promisify(fs.unlink);
 
 @Injectable()
@@ -35,6 +36,22 @@ export class SearchService {
   private readonly OBSERVATIONS_EXPORT_URL =
     process.env.OBSERVATIONS_EXPORT_URL;
 
+  /** Runs the export job in a thread so that it doesn't block the frontend */
+  public async runExportJob(basicSearchDto: BasicSearchDto, jobId: string) {
+    try {
+      const result = await this.exportData(basicSearchDto);
+      if (result.data && result.data.path) {
+        jobs[jobId].status = "complete";
+        jobs[jobId].filePath = result.data.path;
+      } else {
+        jobs[jobId].status = "error";
+        jobs[jobId].error = result.message || "Unknown error";
+      }
+    } catch (err) {
+      jobs[jobId].status = "error";
+      jobs[jobId].error = err?.message || "Unknown error";
+    }
+  }
   /** exportData
    * Exports observations based on the provided search criteria.
    * It streams the AQS API response to a temporary file, processes it into CSV format,
@@ -50,6 +67,22 @@ export class SearchService {
   public async exportData(basicSearchDto: BasicSearchDto): Promise<any> {
     this.logger.debug(`Observations URL: ${this.OBSERVATIONS_URL}`);
     const start = Date.now();
+
+    const allEmpty = Object.values(basicSearchDto).every(
+      (val) =>
+        val === null ||
+        val === undefined ||
+        (typeof val === "string" && val.trim() === "") ||
+        (Array.isArray(val) && val.length === 0),
+    );
+
+    if (allEmpty) {
+      return {
+        data: null,
+        status: 400,
+        message: "Please provide at least one search criteria.",
+      };
+    }
 
     try {
       this.logger.debug(
@@ -105,9 +138,18 @@ export class SearchService {
       return result;
     } catch (err) {
       this.logger.error(err);
+      let apiMsg =
+        err.response?.data?.message ||
+        err.response?.data?.error ||
+        err.message ||
+        "Unknown error";
+      // aqs no longer returns a message in the response, so if we get a 400 error, we return a generic message
+      if (err.response && err.response.status === 400) {
+        apiMsg = "Too many results. Please narrow your search criteria.";
+      }
       throw new BadRequestException({
         status: HttpStatus.BAD_REQUEST,
-        error: err.response?.error || err.message || "Unknown error",
+        message: apiMsg,
       });
     }
   }

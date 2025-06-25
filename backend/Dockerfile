@@ -31,8 +31,6 @@ COPY --from=builder /app/src/util/watersheds_3005.gpkg ./dist/geodata/watersheds
 RUN chown -R appuser:appgroup /app
 USER appuser
 
-ENV UV_THREADPOOL_SIZE=50
-
 # Boilerplate, not used in OpenShift/Kubernetes
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 CMD curl -f http://localhost:3000/api

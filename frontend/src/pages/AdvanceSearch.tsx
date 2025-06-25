@@ -20,10 +20,18 @@ import Loading from "@/components/Loading"
 import LoadingSpinner from "../components/LoadingSpinner"
 import { InfoOutlined } from "@mui/icons-material"
 import type AdvanceSearchFormType from "@/interfaces/AdvanceSearchFormType"
+import DownloadReadyDialog from "@/components/search/DownloadReadyDialog"
+import config from "@/config"
 
 type Props = {}
 
 const AdvanceSearch = (props: Props) => {
+  const apiBase = config.API_BASE_URL
+    ? config.API_BASE_URL
+    : import.meta.env.DEV
+      ? "http://localhost:3000/api"
+      : ""
+
   const [errors, setErrors] = useState<string[]>([])
   const [alertMsg, setAlertMsg] = useState("")
   const [isDisabled, setIsDisabled] = useState(false)
@@ -47,6 +55,8 @@ const AdvanceSearch = (props: Props) => {
   const [sampleDepths, setSampleDepths] = useState([])
   const [specimenIds, setSpecimenIds] = useState([])
   const [units, setUnits] = useState([])
+  const [downloadUrl, setDownloadUrl] = useState<string | null>(null)
+  const [isPolling, setIsPolling] = useState(false)
 
   const [formData, setFormData] = useState<AdvanceSearchFormType>({
     locationName: [],
@@ -122,6 +132,37 @@ const AdvanceSearch = (props: Props) => {
       specimenIds: specimenIds,
       units: units,
     },
+  }
+
+  const pollStatus = async (jobId: string) => {
+    setIsPolling(true)
+    let status = "pending"
+    while (status === "pending") {
+      try {
+        const res = await apiService
+          .getAxiosInstance()
+          .get(`/v1/search/observationSearch/status/${jobId}`)
+        status = res.data.status
+        if (status === "complete") {
+          setIsDisabled(false)
+          setIsLoading(false)
+          setDownloadUrl(
+            `${apiBase}/v1/search/observationSearch/download/${jobId}`,
+          )
+          break
+        } else if (status === "error") {
+          setIsDisabled(false)
+          setIsLoading(false)
+          setErrors([res.data.error || "Export failed"])
+          break
+        }
+        await new Promise((r) => setTimeout(r, 200))
+      } catch (err) {
+        setErrors(["Polling failed."])
+        break
+      }
+    }
+    setIsPolling(false)
   }
 
   const dropdwnUrl = (fieldName: string, query: string): string | undefined => {
@@ -344,6 +385,7 @@ const AdvanceSearch = (props: Props) => {
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+    window.scroll(0, 0)
     advanceSearch(prepareFormData(formData))
   }
 
@@ -354,9 +396,10 @@ const AdvanceSearch = (props: Props) => {
       const res = await apiService
         .getAxiosInstance()
         .post("/v1/search/observationSearch", data, {
-          responseType: "blob",
+          responseType: "json",
           validateStatus: () => true,
         })
+      pollStatus(res.data.jobId)
 
       const contentType = res.headers["content-type"]
       if (
@@ -366,39 +409,32 @@ const AdvanceSearch = (props: Props) => {
         contentType.includes("text/csv")
       ) {
         // Download CSV
-        clearForm()
-        const url = window.URL.createObjectURL(res.data)
-        const link = document.createElement("a")
-        link.href = url
-        link.download = extractFileName(res.headers["content-disposition"])
-        link.click()
-        window.URL.revokeObjectURL(url)
-        setErrors([]) // clear errors on success
-      } else {
-        // Parse JSON message or error
-        const text = await res.data.text()
+
+        const text = await res.data
         let errorArr: string[] = []
-        try {
-          const json = JSON.parse(text)
-          if (json.message) {
-            errorArr = [json.message]
-          } else if (Array.isArray(json.error)) {
-            errorArr = json.error
-          } else {
-            errorArr = ["An unexpected error occurred."]
-          }
-        } catch {
-          errorArr = ["An unexpected error occurred."]
+
+        const json = JSON.parse(text)
+        if (json.message) {
+          errorArr = [json.message]
+          setIsDisabled(false)
+          setIsLoading(false)
+        } else if (Array.isArray(json.error)) {
+          errorArr = json.error
+          setIsDisabled(false)
+          setIsLoading(false)
+        } else {
+          setIsDisabled(true)
+          setIsLoading(true)
         }
+
         setErrors(errorArr)
         window.scroll(0, 0)
       }
-      setIsDisabled(false)
-      setIsLoading(false)
     } catch (err: any) {
       setIsDisabled(false)
       setIsLoading(false)
-      setErrors(["An unexpected error occurred."])
+      console.log(err)
+      setErrors(["An unexpected error occurred..."])
       window.scroll(0, 0)
     }
   }
@@ -442,6 +478,11 @@ const AdvanceSearch = (props: Props) => {
         >
           Advance
         </Link>
+        <DownloadReadyDialog
+          open={!!downloadUrl}
+          downloadUrl={downloadUrl}
+          onClose={() => setDownloadUrl(null)}
+        />
       </div>
       <form noValidate onSubmit={onSubmit}>
         <div>
@@ -566,7 +607,7 @@ const AdvanceSearch = (props: Props) => {
           />
           <Btn
             disabled={isDisabled}
-            text={"Download"}
+            text={"Search"}
             type={"submit"}
             sx={{ fontSize: "8pt" }}
           />

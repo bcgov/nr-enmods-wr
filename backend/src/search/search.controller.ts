@@ -4,6 +4,7 @@ import {
   Get,
   HttpStatus,
   Logger,
+  Param,
   Post,
   Req,
   Res,
@@ -16,6 +17,9 @@ import { Response, Request } from "express";
 import { BasicSearchDto } from "./dto/basicSearch.dto";
 import { validateDto } from "src/validation/validateDto";
 import { unlinkSync } from "fs";
+import * as fs from "fs";
+import { v4 as uuidv4 } from "uuid";
+import { jobs } from "src/jobs/searchjob";
 
 @ApiTags("search")
 @Controller({ path: "search", version: "1" })
@@ -24,31 +28,49 @@ export class SearchController {
   constructor(private searchService: SearchService) {}
 
   @Post("observationSearch")
-  @UsePipes(new ValidationPipe({ transform: true }))
   public async basicSearch(
     @Res() response: Response,
     @Body() basicSearchDto: BasicSearchDto,
   ) {
-    try {
-      const res = await this.searchService.exportData(basicSearchDto);
+    const jobId = uuidv4();
+    jobs[jobId] = { id: jobId, status: "pending" };
 
-      // If a message is present, send JSON instead of a file
-      if (res.message) {
-        response.status(res.status || 200).json({ message: res.message });
-        return;
-      }
+    // Start background job (non-blocking)
+    this.searchService.runExportJob(basicSearchDto, jobId);
 
-      // Otherwise, stream the file as before
-      if (res.data) {
-        this.sendCsvResponse(res.data, response);
-        return;
-      }
+    response.status(202).json({ jobId });
+  }
 
-      // Fallback
-      response.status(200).json({ message: "No Data Found" });
-    } catch (error) {
-      response.send(error.response);
+  @Get("observationSearch/status/:jobId")
+  public getJobStatus(
+    @Param("jobId") jobId: string,
+    @Res() response: Response,
+  ) {
+    const job = jobs[jobId];
+    if (!job) return response.status(404).json({ status: "not_found" });
+    response.json({ status: job.status, error: job.error });
+  }
+
+  @Get("observationSearch/download/:jobId")
+  public downloadResult(
+    @Param("jobId") jobId: string,
+    @Res() response: Response,
+  ) {
+    const job = jobs[jobId];
+    if (!job || job.status !== "complete" || !job.filePath) {
+      return response.status(404).json({ message: "File not ready" });
     }
+    response.attachment("ObservationSearchResult.csv");
+    const stream = fs.createReadStream(job.filePath);
+    stream.pipe(response);
+    stream.on("close", () => {
+      fs.unlinkSync(job.filePath);
+      delete jobs[jobId];
+    });
+    stream.on("error", () => {
+      response.status(500).send("Failed to stream file.");
+      delete jobs[jobId];
+    });
   }
 
   private sendCsvResponse(readStream: any, response: Response): void {

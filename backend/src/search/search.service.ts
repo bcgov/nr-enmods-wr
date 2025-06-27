@@ -91,6 +91,17 @@ export class SearchService {
         )}`,
       );
 
+      // check for errors in request to AQS API before streaming
+      // this will throw an error if the request is invalid, e.g. too many results
+      // or if the API is down, etc.  If we jump right to the streaming we may not see the errors
+      // from the AQS API.  If there's an error, the exception handling will log it correctly
+      await this.getObservationPromise(
+        basicSearchDto,
+        this.OBSERVATIONS_EXPORT_URL,
+        "",
+        false, // don't stream, just check for errors
+      );
+
       // Prepare temp file for streaming the API response
       const tempFileName = `tmp_obs_export_${Date.now()}.csv`;
       const tempFilePath = join(
@@ -139,14 +150,14 @@ export class SearchService {
     } catch (err) {
       this.logger.error(err);
       let apiMsg =
-        err.response?.data?.message ||
-        err.response?.data?.error ||
-        err.message ||
-        "Unknown error";
+        Array.isArray(err.response?.error) && err.response?.error.length > 0
+          ? err.response.error.join(" ")
+          : err.response?.data?.message ||
+            err.response?.data?.error ||
+            err.message ||
+            "Unknown error";
+
       // aqs no longer returns a message in the response, so if we get a 400 error, we return a generic message
-      if (err.response && err.response.status === 400) {
-        apiMsg = "Too many results. Please narrow your search criteria.";
-      }
       throw new BadRequestException({
         status: HttpStatus.BAD_REQUEST,
         message: apiMsg,

@@ -85,11 +85,7 @@ export class SearchService {
     }
 
     try {
-      this.logger.debug(
-        `Exporting observations with search criteria: ${JSON.stringify(
-          basicSearchDto,
-        )}`,
-      );
+      this.logger.debug(`Exporting observations with search criteria: ${JSON.stringify(basicSearchDto)}`);
 
       // check for errors in request to AQS API before streaming
       // this will throw an error if the request is invalid, e.g. too many results
@@ -110,9 +106,7 @@ export class SearchService {
       );
 
       // Get the API response as a stream
-      const responseStream = await this.getObservationPromise(
-        basicSearchDto,
-        this.OBSERVATIONS_EXPORT_URL,
+      const responseStream = await this.getObservationPromise(basicSearchDto, this.OBSERVATIONS_EXPORT_URL,
         "",
         true, // pass a flag to indicate streaming
       );
@@ -175,7 +169,7 @@ export class SearchService {
     cursor: string,
     asStream = false,
   ): Promise<any> {
-    const params = this.getUserSearchParams(basicSearchDto, cursor);
+    const params = await this.getUserSearchParams(basicSearchDto, cursor);
     if (asStream) {
       // Use axiosRef directly for streaming
       const absoluteUrl = this.getAbsoluteUrl(url);
@@ -285,6 +279,9 @@ export class SearchService {
         this.logger.debug(
           "No matching observations found, returning message instead of CSV.",
         );
+
+        await unlinkAsync(filePath);
+
         return {
           data: null,
           status: 200,
@@ -327,22 +324,64 @@ export class SearchService {
     }
   }
 
-  private getUserSearchParams(basicSearchDto: BasicSearchDto, cursor: string) {
+  private async getLocationFromPagination(location: any, typeIds: string[]): Promise<any> {
+    const totalRecordCount = location.totalCount;
+    let currentObsData = location.domainObjects;
+    let cursor = location.cursor;
+
+    if (totalRecordCount > currentObsData.length && cursor) {
+      const noOfLoop = Math.ceil(totalRecordCount / currentObsData.length);
+      let i = 0;
+
+      while (i < noOfLoop) {
+        this.logger.log("Cursor for the next record: " + cursor);
+        const res = await this.bcApiCall(this.getAbsoluteUrl(process.env.LOCATION_NAME_CODE_TABLE_API), {locationTypeIds: typeIds.toString(), cursor: cursor});
+        if (res.status === HttpStatus.OK) {
+          const data = JSON.parse(res.data);
+          currentObsData = currentObsData.concat(data.domainObjects);
+          cursor = data.cursor;
+          i++;
+        }
+      }
+    }
+
+    return currentObsData.map((location: any)  => location.id);
+  }
+
+  private async getLocationIdsFromType(id: string): Promise<string[]> {
+
+    let typeIds: string[] = []
+    typeIds.push(id);
+    const res = await this.bcApiCall(this.getAbsoluteUrl(process.env.LOCATION_NAME_CODE_TABLE_API), 
+                                    {locationTypeIds: typeIds.toString()});
+    if( res.status === HttpStatus.OK) 
+      return await this.getLocationFromPagination(JSON.parse(res.data), typeIds);
+  
+    return;
+  }
+
+  private async getUserSearchParams(basicSearchDto: BasicSearchDto, cursor: string) {
     let arr = [];
+    let locationIds =[];
+
+    if (basicSearchDto?.locationType) {
+     const res =  await this.getLocationIdsFromType(basicSearchDto?.locationType?.id) 
+     if (res && res.length > 0)
+      locationIds = [...res]
+    }
 
     if (basicSearchDto?.labBatchId) arr.push(basicSearchDto.labBatchId);
 
     if (basicSearchDto?.workedOrderNo)
       arr.push(basicSearchDto.workedOrderNo.text);
 
-    if (
-      basicSearchDto.samplingAgency &&
-      basicSearchDto.samplingAgency.length > 0
-    )
+    if (basicSearchDto.samplingAgency && basicSearchDto.samplingAgency.length > 0)
       arr.push(...basicSearchDto.samplingAgency);
 
+    const allLocationIds = [...basicSearchDto.locationName, ...locationIds];
+    console.log(allLocationIds.length);
     return {
-      samplingLocationIds: (basicSearchDto.locationName || "").toString(),
+      samplingLocationIds: (allLocationIds || "").toString(),
       samplingLocationGroupIds: (basicSearchDto.permitNumber || "").toString(),
       media: (basicSearchDto.media || "").toString(),
       analyticalGroupIds: (basicSearchDto.observedPropertyGrp || "").toString(),

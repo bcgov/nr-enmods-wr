@@ -95,7 +95,7 @@ export default function AdditionalCriteria(props: any) {
           <div className="flex items-center">
             <Autocomplete
               multiple
-              freeSolo
+              
               value={formData?.collectionMethod}
               getOptionKey={(option) => option.id}
               options={additionalCriteriaDrpdwns.collectionMethods}
@@ -117,7 +117,7 @@ export default function AdditionalCriteria(props: any) {
           <div className="flex items-center">
             <Autocomplete
               multiple
-              freeSolo
+             
               value={formData?.qcSampleType}
               getOptionKey={(option) => option.id}
               options={additionalCriteriaDrpdwns.qcSampleTypes}
@@ -142,7 +142,7 @@ export default function AdditionalCriteria(props: any) {
           <div className="flex items-center">
             <Autocomplete
               multiple
-              freeSolo
+              
               value={formData?.dataClassification}
               getOptionKey={(option) => option.id}
               options={additionalCriteriaDrpdwns.dataClassifications}
@@ -212,7 +212,7 @@ export default function AdditionalCriteria(props: any) {
           <div className="flex items-center">
             <Autocomplete
               multiple
-              freeSolo
+              
               value={formData?.specimenId}
               getOptionKey={(option) => option.id}
               options={additionalCriteriaDrpdwns.specimenIds}

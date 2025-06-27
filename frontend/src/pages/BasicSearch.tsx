@@ -303,7 +303,7 @@ const BasicSearch = () => {
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     window.scroll(0, 0)
-   console.log(prepareFormData(formData))
+  // console.log(prepareFormData(formData))
      basicSearch(prepareFormData(formData))
   }
 

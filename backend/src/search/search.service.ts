@@ -85,11 +85,7 @@ export class SearchService {
     }
 
     try {
-      this.logger.debug(
-        `Exporting observations with search criteria: ${JSON.stringify(
-          basicSearchDto,
-        )}`,
-      );
+      this.logger.debug(`Exporting observations with search criteria: ${JSON.stringify(basicSearchDto)}`);
 
       // Prepare temp file for streaming the API response
       const tempFileName = `tmp_obs_export_${Date.now()}.csv`;
@@ -99,9 +95,7 @@ export class SearchService {
       );
 
       // Get the API response as a stream
-      const responseStream = await this.getObservationPromise(
-        basicSearchDto,
-        this.OBSERVATIONS_EXPORT_URL,
+      const responseStream = await this.getObservationPromise(basicSearchDto, this.OBSERVATIONS_EXPORT_URL,
         "",
         true, // pass a flag to indicate streaming
       );
@@ -164,7 +158,7 @@ export class SearchService {
     cursor: string,
     asStream = false,
   ): Promise<any> {
-    const params = this.getUserSearchParams(basicSearchDto, cursor);
+    const params = await this.getUserSearchParams(basicSearchDto, cursor);
     if (asStream) {
       // Use axiosRef directly for streaming
       const absoluteUrl = this.getAbsoluteUrl(url);
@@ -319,19 +313,39 @@ export class SearchService {
     }
   }
 
-  private async getLocationIdsFromType(id: string): Promise<string[]> {
+  private async getLocationFromPagination(location: any, typeIds: string[]): Promise<any> {
+    const totalRecordCount = location.totalCount;
+    let currentObsData = location.domainObjects;
+    let cursor = location.cursor;
 
-   let typeIds: string[] = []
-   typeIds.push(id);
+    if (totalRecordCount > currentObsData.length && cursor) {
+      const noOfLoop = Math.ceil(totalRecordCount / currentObsData.length);
+      let i = 0;
 
-    const res = await this.bcApiCall(this.getAbsoluteUrl(process.env.LOCATION_NAME_CODE_TABLE_API), {locationTypeIds: typeIds.toString()});
-    //console.log(res);
-    if( res.status === HttpStatus.OK) {
-      const locations = JSON.parse(res.data).domainObjects;
-      console.log("Location length: " + locations.length);
-      return locations.map((location: any)  => location.id)
+      while (i < noOfLoop) {
+        this.logger.log("Cursor for the next record: " + cursor);
+        const res = await this.bcApiCall(this.getAbsoluteUrl(process.env.LOCATION_NAME_CODE_TABLE_API), {locationTypeIds: typeIds.toString(), cursor: cursor});
+        if (res.status === HttpStatus.OK) {
+          const data = JSON.parse(res.data);
+          currentObsData = currentObsData.concat(data.domainObjects);
+          cursor = data.cursor;
+          i++;
+        }
+      }
     }
 
+    return currentObsData.map((location: any)  => location.id);
+  }
+
+  private async getLocationIdsFromType(id: string): Promise<string[]> {
+
+    let typeIds: string[] = []
+    typeIds.push(id);
+    const res = await this.bcApiCall(this.getAbsoluteUrl(process.env.LOCATION_NAME_CODE_TABLE_API), 
+                                    {locationTypeIds: typeIds.toString()});
+    if( res.status === HttpStatus.OK) 
+      return await this.getLocationFromPagination(JSON.parse(res.data), typeIds);
+  
     return;
   }
 
@@ -341,7 +355,6 @@ export class SearchService {
 
     if (basicSearchDto?.locationType) {
      const res =  await this.getLocationIdsFromType(basicSearchDto?.locationType?.id) 
-     console.log(res);
      if (res && res.length > 0)
       locationIds = [...res]
     }
@@ -355,8 +368,7 @@ export class SearchService {
       arr.push(...basicSearchDto.samplingAgency);
 
     const allLocationIds = [...basicSearchDto.locationName, ...locationIds];
-    console.log("all location Ids: " + allLocationIds);
-
+    console.log(allLocationIds.length);
     return {
       samplingLocationIds: (allLocationIds || "").toString(),
       samplingLocationGroupIds: (basicSearchDto.permitNumber || "").toString(),

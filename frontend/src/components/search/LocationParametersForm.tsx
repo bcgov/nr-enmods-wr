@@ -49,7 +49,7 @@ export default function LocationParametersForm(props: any) {
           <div className="flex items-center">            
             <Autocomplete
               multiple
-              freeSolo
+              
               value={formData?.locationName || null}
               getOptionKey={(option) => option.id}
               options={locationDropdwns.locationNames}
@@ -75,7 +75,7 @@ export default function LocationParametersForm(props: any) {
           <div className="flex items-center py-4">
             <Autocomplete
               multiple
-              freeSolo
+              
               value={formData?.permitNumber}
               getOptionKey={(option) => option.id}
               options={locationDropdwns.permitNumbers}
@@ -98,7 +98,7 @@ export default function LocationParametersForm(props: any) {
           <div className="flex items-center">            
             <Autocomplete
               multiple
-              freeSolo
+             
               value={formData?.locationName || null}
               getOptionKey={(option) => option.id}
               options={locationDropdwns.locationNames}

@@ -274,6 +274,9 @@ export class SearchService {
         this.logger.debug(
           "No matching observations found, returning message instead of CSV.",
         );
+
+        await unlinkAsync(filePath);
+
         return {
           data: null,
           status: 200,
@@ -316,22 +319,46 @@ export class SearchService {
     }
   }
 
-  private getUserSearchParams(basicSearchDto: BasicSearchDto, cursor: string) {
+  private async getLocationIdsFromType(id: string): Promise<string[]> {
+
+   let typeIds: string[] = []
+   typeIds.push(id);
+
+    const res = await this.bcApiCall(this.getAbsoluteUrl(process.env.LOCATION_NAME_CODE_TABLE_API), {locationTypeIds: typeIds.toString()});
+    //console.log(res);
+    if( res.status === HttpStatus.OK) {
+      const locations = JSON.parse(res.data).domainObjects;
+      console.log("Location length: " + locations.length);
+      return locations.map((location: any)  => location.id)
+    }
+
+    return;
+  }
+
+  private async getUserSearchParams(basicSearchDto: BasicSearchDto, cursor: string) {
     let arr = [];
+    let locationIds =[];
+
+    if (basicSearchDto?.locationType) {
+     const res =  await this.getLocationIdsFromType(basicSearchDto?.locationType?.id) 
+     console.log(res);
+     if (res && res.length > 0)
+      locationIds = [...res]
+    }
 
     if (basicSearchDto?.labBatchId) arr.push(basicSearchDto.labBatchId);
 
     if (basicSearchDto?.workedOrderNo)
       arr.push(basicSearchDto.workedOrderNo.text);
 
-    if (
-      basicSearchDto.samplingAgency &&
-      basicSearchDto.samplingAgency.length > 0
-    )
+    if (basicSearchDto.samplingAgency && basicSearchDto.samplingAgency.length > 0)
       arr.push(...basicSearchDto.samplingAgency);
 
+    const allLocationIds = [...basicSearchDto.locationName, ...locationIds];
+    console.log("all location Ids: " + allLocationIds);
+
     return {
-      samplingLocationIds: (basicSearchDto.locationName || "").toString(),
+      samplingLocationIds: (allLocationIds || "").toString(),
       samplingLocationGroupIds: (basicSearchDto.permitNumber || "").toString(),
       media: (basicSearchDto.media || "").toString(),
       analyticalGroupIds: (basicSearchDto.observedPropertyGrp || "").toString(),

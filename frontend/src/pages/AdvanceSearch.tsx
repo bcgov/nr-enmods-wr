@@ -282,7 +282,7 @@ const AdvanceSearch = (props: Props) => {
           }
         } else {
           setErrors([
-            "ENMODS service is currently down. Please contact the system administrator.",
+            "Error! Please contact the system administrator.",
           ])
         }
       }
@@ -386,6 +386,7 @@ const AdvanceSearch = (props: Props) => {
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     window.scroll(0, 0)
+    console.log(prepareFormData(formData));
     advanceSearch(prepareFormData(formData))
   }
 

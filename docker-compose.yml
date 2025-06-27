@@ -19,9 +19,9 @@ services:
       API_KEY: ${API_KEY}
       AUTH_TOKEN: ${AUTH_TOKEN}
       POSTGRES_HOST: postgres
-      POSTGRES_USER: enmodswr
-      POSTGRES_PASSWORD: enmodswr
-      POSTGRES_DATABASE: enmodswr
+      POSTGRES_USER: enmodswr_user
+      POSTGRES_PASSWORD: enmodswr_password
+      POSTGRES_DATABASE: enmodswr_db
     # image: node:22
     ports: ["3001:3000"]
     healthcheck:

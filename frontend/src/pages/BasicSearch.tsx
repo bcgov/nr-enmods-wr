@@ -64,7 +64,7 @@ const BasicSearch = () => {
     if (fieldName) {
       switch (fieldName) {
         case SearchAttr.ObservedPropertyGrp:
-          return `${API_VERSION}/search/getObservedProperties?search=${query}`
+          return `${API_VERSION}/search/getObservedPropertyGroups?search=${query}`
         case SearchAttr.Media:
           return `${API_VERSION}/search/getMediums?search=${query}`
         case SearchAttr.PermitNo:
@@ -118,6 +118,7 @@ const BasicSearch = () => {
       const url = dropdwnUrl(fieldName, query)
       if (url) {
         const apiData = await apiService.getAxiosInstance().get(url)
+        console.log(apiData);
         if (apiData.status === 200) {
           setErrors([])
           let response = apiData.data
@@ -148,7 +149,7 @@ const BasicSearch = () => {
           }
         } else {
           setErrors([
-            "ENMODS service is currently down. Please contact the system administrator.",
+            "Error! Please contact the system administrator.",
           ])
         }
       }
@@ -285,15 +286,16 @@ const BasicSearch = () => {
   }
 
   const prepareFormData = (formData: { [key: string]: any }) => {
+   // console.log(formData);
     const data = { ...formData }
     for (const key in formData) {
-      if (Array.isArray(formData[key])) {
-        const arr: string[] = []
+      const arr: string[] = []
+      if (Array.isArray(formData[key])) {        
         formData[key].forEach((item) => {
           arr.push(item.id)
         })
         data[key] = arr
-      }
+      } 
     }
     return data
   }
@@ -301,7 +303,8 @@ const BasicSearch = () => {
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     window.scroll(0, 0)
-    basicSearch(prepareFormData(formData))
+   console.log(prepareFormData(formData))
+     basicSearch(prepareFormData(formData))
   }
 
   const dropdwns = {

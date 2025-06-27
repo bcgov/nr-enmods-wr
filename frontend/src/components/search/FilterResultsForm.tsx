@@ -103,7 +103,7 @@ export default function FilterResultsForm(props: any) {
               <Autocomplete
                 multiple
                 freeSolo
-                value={formData?.media}
+                value={formData?.media}               
                 getOptionKey={(option) => option.id}
                 options={filterResultDrpdwns.mediums}
                 isOptionEqualToValue={(option, value) => option.id === value.id}

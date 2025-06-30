@@ -102,8 +102,8 @@ export default function FilterResultsForm(props: any) {
             <div className="flex items-center">
               <Autocomplete
                 multiple
-                freeSolo
-                value={formData?.media}
+                
+                value={formData?.media}               
                 getOptionKey={(option) => option.id}
                 options={filterResultDrpdwns.mediums}
                 isOptionEqualToValue={(option, value) => option.id === value.id}
@@ -122,7 +122,7 @@ export default function FilterResultsForm(props: any) {
             <div className="flex items-center">
               <Autocomplete
                 multiple
-                freeSolo
+                
                 value={formData?.observedPropertyGrp}
                 getOptionKey={(option) => option.id}
                 options={filterResultDrpdwns.observedPropGroups}
@@ -149,7 +149,7 @@ export default function FilterResultsForm(props: any) {
                 <div className="flex items-center">
                   <Autocomplete
                     multiple
-                    freeSolo
+                    
                     value={formData?.observedProperty}
                     getOptionKey={(option) => option.id}
                     options={filterResultDrpdwns.observeredProperties}
@@ -207,7 +207,7 @@ export default function FilterResultsForm(props: any) {
                 <div className="flex items-center">
                   <Autocomplete
                     multiple
-                    freeSolo
+                    
                     value={formData?.samplingAgency}
                     getOptionKey={(option) => option.id}
                     options={filterResultDrpdwns.samplingAgencies}
@@ -232,7 +232,7 @@ export default function FilterResultsForm(props: any) {
                 <div className="flex items-center">
                   <Autocomplete
                     multiple
-                    freeSolo
+                    
                     value={formData?.analyzingAgency}
                     getOptionKey={(option) => option.id}
                     options={filterResultDrpdwns.analyzingAgencies}
@@ -261,7 +261,7 @@ export default function FilterResultsForm(props: any) {
             <div className="flex items-center">
               <Autocomplete
                 multiple
-                freeSolo
+             
                 value={formData?.projects}
                 getOptionKey={(option) => option.id}
                 options={filterResultDrpdwns.projects}
@@ -285,7 +285,7 @@ export default function FilterResultsForm(props: any) {
               <div className="flex items-center">
                 <Autocomplete
                   multiple
-                  freeSolo
+                
                   value={formData?.analyticalMethod}
                   getOptionKey={(option) => option.id}
                   options={filterResultDrpdwns.analyticalMethods}

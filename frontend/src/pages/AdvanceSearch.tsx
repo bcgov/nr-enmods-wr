@@ -386,8 +386,8 @@ const AdvanceSearch = (props: Props) => {
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     window.scroll(0, 0)
-    console.log(prepareFormData(formData));
-    advanceSearch(prepareFormData(formData))
+    console.log(formData);
+    //advanceSearch(prepareFormData(formData))
   }
 
   const advanceSearch = async (data: { [key: string]: any }): Promise<void> => {

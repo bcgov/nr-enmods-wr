@@ -94,29 +94,81 @@ export class SearchService {
         `${this.DIR_NAME}${tempFileName}`,
       );
 
-      // Get the API response as a stream
-      const responseStream = await this.getObservationPromise(basicSearchDto, this.OBSERVATIONS_EXPORT_URL,
-        "",
-        true, // pass a flag to indicate streaming
-      );
+      if (basicSearchDto?.locationType) {
+        const res =  await this.getLocationIdsFromType(basicSearchDto?.locationType?.id) 
+        if (res && res.length > 0) {
+          this.logger.log("Total location ID length: " + res.length);
+            let chunk = 50;
 
-      if (!responseStream) {
-        this.logger.debug("No observations found for export (empty stream)");
-        return {
-          data: null,
-          status: 200,
-          message: "No Data Found. Please adjust your search criteria.",
-        };
+            if(res.length > chunk) {
+              const arr = this.chunkArray(res, chunk);
+              this.logger.log("Chuck length: " + arr.length);
+             
+              for(const ids of arr) {
+                this.logger.log("Location IDs length: " + ids.length);
+                const totalLocationIds = [...basicSearchDto.locationName, ...ids];
+                const params = {...basicSearchDto, locationName: totalLocationIds};
+                const responseStream = await this.getObservationPromise(params, this.OBSERVATIONS_EXPORT_URL, "", true);
+                const writeStream = fs.createWriteStream(tempFilePath, { flags: 'a' });
+                if (responseStream) {
+                  await new Promise((resolve, reject) => {                    
+                    responseStream.pipe(writeStream);
+                    writeStream.on("finish", resolve);
+                    writeStream.on("error", reject);
+                    responseStream.on("error", reject);
+                  });                                  
+                }
+              }                  
+
+            } else {
+              const totalLocationIds = [...basicSearchDto.locationName, ...res];
+              const params = {...basicSearchDto, locationName: totalLocationIds};
+              const responseStream = await this.getObservationPromise(params, this.OBSERVATIONS_EXPORT_URL, "", true);
+
+              if (!responseStream) {
+                this.logger.debug("No observations found for export (empty stream)");
+                return {
+                  data: null,
+                  status: 200,
+                  message: "No Data Found. Please adjust your search criteria.",
+                };
+              } 
+    
+              // Pipe the response stream directly to a file and wait for completion
+              await new Promise((resolve, reject) => {
+                const writeStream = fs.createWriteStream(tempFilePath);
+                responseStream.pipe(writeStream);
+                writeStream.on("finish", resolve);
+                writeStream.on("error", reject);
+                responseStream.on("error", reject);
+              });
+
+            }
+        }
+        
+      } else {
+        // Get the API response as a stream
+        const responseStream = await this.getObservationPromise(basicSearchDto, this.OBSERVATIONS_EXPORT_URL, "", true); //streaming indicator
+
+        if (!responseStream) {
+          this.logger.debug("No observations found for export (empty stream)");
+          return {
+            data: null,
+            status: 200,
+            message: "No Data Found. Please adjust your search criteria.",
+          };
+        } 
+
+        // Pipe the response stream directly to a file and wait for completion
+        await new Promise((resolve, reject) => {
+          const writeStream = fs.createWriteStream(tempFilePath);
+          responseStream.pipe(writeStream);
+          writeStream.on("finish", resolve);
+          writeStream.on("error", reject);
+          responseStream.on("error", reject);
+        });
+
       }
-
-      // Pipe the response stream directly to a file and wait for completion
-      await new Promise((resolve, reject) => {
-        const writeStream = fs.createWriteStream(tempFilePath);
-        responseStream.pipe(writeStream);
-        writeStream.on("finish", resolve);
-        writeStream.on("error", reject);
-        responseStream.on("error", reject);
-      });
 
       const elapsedMs = Date.now() - start;
       const minutes = Math.floor(elapsedMs / 60000);
@@ -147,6 +199,7 @@ export class SearchService {
       });
     }
   }
+
   /**
    * Fetches observations from the API and returns a promise that resolves to the data.
    * If `asStream` is true, it returns a stream for direct processing.
@@ -172,6 +225,14 @@ export class SearchService {
       // Default behavior (non-stream)
       return this.bcApiCall(this.getAbsoluteUrl(url), params);
     }
+  }
+
+  private chunkArray(arr: string[], size: number) {
+    const chunks = [];
+    for (let i = 0; i < arr.length; i += size) {
+      chunks.push(arr.slice(i, i + size));
+    }
+    return chunks;
   }
 
   private async prepareCsvExportData(tempFilePath: string) {
@@ -351,14 +412,7 @@ export class SearchService {
 
   private async getUserSearchParams(basicSearchDto: BasicSearchDto, cursor: string) {
     let arr = [];
-    let locationIds =[];
-
-    if (basicSearchDto?.locationType) {
-     const res =  await this.getLocationIdsFromType(basicSearchDto?.locationType?.id) 
-     if (res && res.length > 0)
-      locationIds = [...res]
-    }
-
+ 
     if (basicSearchDto?.labBatchId) arr.push(basicSearchDto.labBatchId);
 
     if (basicSearchDto?.workedOrderNo)
@@ -367,10 +421,10 @@ export class SearchService {
     if (basicSearchDto.samplingAgency && basicSearchDto.samplingAgency.length > 0)
       arr.push(...basicSearchDto.samplingAgency);
 
-    const allLocationIds = [...basicSearchDto.locationName, ...locationIds];
-    console.log(allLocationIds.length);
+    //const allLocationIds = [...basicSearchDto.locationName, ...basicSearchDto.locationType];
+
     return {
-      samplingLocationIds: (allLocationIds || "").toString(),
+      samplingLocationIds: (basicSearchDto.locationName || "").toString(),
       samplingLocationGroupIds: (basicSearchDto.permitNumber || "").toString(),
       media: (basicSearchDto.media || "").toString(),
       analyticalGroupIds: (basicSearchDto.observedPropertyGrp || "").toString(),

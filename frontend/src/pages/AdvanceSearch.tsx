@@ -22,6 +22,7 @@ import { InfoOutlined } from "@mui/icons-material"
 import type AdvanceSearchFormType from "@/interfaces/AdvanceSearchFormType"
 import DownloadReadyDialog from "@/components/search/DownloadReadyDialog"
 import config from "@/config"
+import BasicSearch from "./BasicSearch"
 
 type Props = {}
 
@@ -216,6 +217,8 @@ const AdvanceSearch = (props: Props) => {
       const url = dropdwnUrl(fieldName, query)
       if (url) {
         const apiData = await apiService.getAxiosInstance().get(url)
+        if(fieldName === SearchAttr.WorkedOrderNo)
+          console.log(apiData.data);
         if (apiData.status === 200) {
           setErrors([])
           let response = apiData.data
@@ -281,9 +284,7 @@ const AdvanceSearch = (props: Props) => {
               break
           }
         } else {
-          setErrors([
-            "Error! Please contact the system administrator.",
-          ])
+          setErrors(["Error! Please contact the system administrator."])
         }
       }
     } catch (err) {
@@ -386,8 +387,8 @@ const AdvanceSearch = (props: Props) => {
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     window.scroll(0, 0)
-    console.log(formData);
-    //advanceSearch(prepareFormData(formData))
+    console.log(prepareFormData(formData));
+    advanceSearch(prepareFormData(formData))
   }
 
   const advanceSearch = async (data: { [key: string]: any }): Promise<void> => {
@@ -451,7 +452,6 @@ const AdvanceSearch = (props: Props) => {
             arr.push(item.dataClassification)
           else if (key === SearchAttr.SampleDepth) arr.push(item.depth.value)
           else if (key === SearchAttr.QcSampleType) arr.push(item.type)
-          else if (key === SearchAttr.SamplingAgency) arr.push(item.customId)
           else arr.push(item.id)
         })
 
@@ -495,7 +495,7 @@ const AdvanceSearch = (props: Props) => {
                 severity="info"
                 onClose={() => setErrors([])}
               >
-                <ul style={{ margin: 0, paddingLeft: 20 }}>
+                <ul style={{ margin: 0}}>
                   {errors.map((err, idx) => (
                     <li key={idx}>{err}</li>
                   ))}

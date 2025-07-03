@@ -31,7 +31,7 @@ export default function App() {
             <Sidebar handleClickNavMenu={handleClickNavMenu} />
           </div>
 
-          <div className="w-full md:w-[80%] min-h-screen mt-[4em] p-2 border border-r-2">
+          <div className="w-full md:w-[80%] min-h-screen mt-[4em] p-2 border border-gray-300 border-r-2">
             <AppRoutes />
           </div>
         </div>

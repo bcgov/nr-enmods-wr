@@ -2,20 +2,16 @@ import {
   Body,
   Controller,
   Get,
-  HttpStatus,
   Logger,
   Param,
   Post,
   Req,
   Res,
-  UsePipes,
-  ValidationPipe,
 } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import { SearchService } from "./search.service";
 import { Response, Request } from "express";
 import { BasicSearchDto } from "./dto/basicSearch.dto";
-import { validateDto } from "src/validation/validateDto";
 import { unlinkSync } from "fs";
 import * as fs from "fs";
 import { v4 as uuidv4 } from "uuid";
@@ -28,9 +24,7 @@ export class SearchController {
   constructor(private searchService: SearchService) {}
 
   @Post("observationSearch")
-  public async basicSearch(
-    @Res() response: Response,
-    @Body() basicSearchDto: BasicSearchDto,
+  public async basicSearch(@Res() response: Response, @Body() basicSearchDto: BasicSearchDto,
   ) {
     const jobId = uuidv4();
     jobs[jobId] = { id: jobId, status: "pending" };
@@ -42,20 +36,14 @@ export class SearchController {
   }
 
   @Get("observationSearch/status/:jobId")
-  public getJobStatus(
-    @Param("jobId") jobId: string,
-    @Res() response: Response,
-  ) {
+  public getJobStatus(@Param("jobId") jobId: string, @Res() response: Response) {
     const job = jobs[jobId];
     if (!job) return response.status(404).json({ status: "not_found" });
     response.json({ status: job.status, error: job.error });
   }
 
   @Get("observationSearch/download/:jobId")
-  public downloadResult(
-    @Param("jobId") jobId: string,
-    @Res() response: Response,
-  ) {
+  public downloadResult(@Param("jobId") jobId: string, @Res() response: Response) {
     const job = jobs[jobId];
     if (!job || job.status !== "complete" || !job.filePath) {
       return response.status(404).json({ message: "File not ready" });
@@ -73,39 +61,39 @@ export class SearchController {
     });
   }
 
-  private sendCsvResponse(readStream: any, response: Response): void {
-    this.logger.log("Sending CSV response");
-    response.attachment("ObservationSearchResult.csv");
+  // private sendCsvResponse(readStream: any, response: Response): void {
+  //   this.logger.log("Sending CSV response");
+  //   response.attachment("ObservationSearchResult.csv");
 
-    readStream.pipe(response);
+  //   readStream.pipe(response);
 
-    readStream.on("close", () => {
-      this.logger.log("Deleting tmp file: " + readStream.path);
-      try {
-        unlinkSync(readStream.path);
-      } catch (e) {
-        this.logger.warn(`Failed to delete temp file: ${e.message}`);
-      }
-    });
+  //   readStream.on("close", () => {
+  //     this.logger.log("Deleting tmp file: " + readStream.path);
+  //     try {
+  //       unlinkSync(readStream.path);
+  //     } catch (e) {
+  //       this.logger.warn(`Failed to delete temp file: ${e.message}`);
+  //     }
+  //   });
 
-    readStream.on("error", (err) => {
-      this.logger.error("Error streaming CSV file: " + err.message);
-      try {
-        unlinkSync(readStream.path);
-      } catch (e) {
-        this.logger.warn(
-          `Failed to delete temp file after error: ${e.message}`,
-        );
-      }
-      if (!response.headersSent) {
-        response.status(500).send("Failed to stream CSV file.");
-      } else {
-        response.end();
-      }
-    });
+  //   readStream.on("error", (err) => {
+  //     this.logger.error("Error streaming CSV file: " + err.message);
+  //     try {
+  //       unlinkSync(readStream.path);
+  //     } catch (e) {
+  //       this.logger.warn(
+  //         `Failed to delete temp file after error: ${e.message}`,
+  //       );
+  //     }
+  //     if (!response.headersSent) {
+  //       response.status(500).send("Failed to stream CSV file.");
+  //     } else {
+  //       response.end();
+  //     }
+  //   });
 
-    this.logger.log("CSV response sent successfully");
-  }
+  //   this.logger.log("CSV response sent successfully");
+  // }
 
   @Get("getLocationTypes")
   public getLocationTypes() {

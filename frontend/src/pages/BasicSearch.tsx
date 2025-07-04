@@ -148,9 +148,7 @@ const BasicSearch = () => {
               break
           }
         } else {
-          setErrors([
-            "Error! Please contact the system administrator.",
-          ])
+          setErrors(["Error! Please contact the system administrator."])
         }
       }
     } catch (err) {
@@ -355,7 +353,7 @@ const BasicSearch = () => {
                 severity="info"
                 onClose={() => setErrors([])}
               >
-                <ul style={{ margin: 0, paddingLeft: 20 }}>
+                <ul style={{ margin: 0 }}>
                   {errors.map((err, idx) => (
                     <li key={idx}>{err}</li>
                   ))}

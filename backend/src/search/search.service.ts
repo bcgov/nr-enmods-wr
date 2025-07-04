@@ -251,7 +251,7 @@ export class SearchService {
       const fileName = `tmp${Date.now()}.csv`;
       const filePath = join(process.cwd(), `${this.DIR_NAME}${fileName}`);
 
-      const csvStream = fastcsv.format({ headers: true });
+      const csvStream = fastcsv.format({ headers: true, writeBOM: true });
       const writeStream = fs.createWriteStream(filePath);
 
       // Add error and finish listeners for debugging
@@ -822,6 +822,6 @@ export class SearchService {
       "name",
       true,
     );
-    return [...new Map(specimens.map((item: any) => [item["id"], item])).values()];
+    return [...new Map(specimens.map((item: any) => [item["name"], item])).values()];
   }
 }

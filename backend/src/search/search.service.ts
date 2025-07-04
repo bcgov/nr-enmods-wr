@@ -822,6 +822,6 @@ export class SearchService {
       "name",
       true,
     );
-    return [...new Map(specimens.map((item: any) => [item["id"], item])).values()];
+    return [...new Map(specimens.map((item: any) => [item["name"], item])).values()];
   }
 }

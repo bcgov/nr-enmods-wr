@@ -713,9 +713,9 @@ export class SearchService {
       true,
     );
     const arr = this.getExtendedAttribute(specimens, "text");
-    //const workOrderedNos = [...new Map(arr.map((item) => [item.eaParentId, item])).values()]; TODO: make it unique workOrderNO
-    sortArr(arr, "text");
-    return arr;
+    const workOrderedNos = [...new Map(arr.map((item) => [item["id"], item])).values()]; 
+    sortArr(workOrderedNos, "text");
+    return workOrderedNos;
   }
 
   public async getSamplingAgencies(query: string): Promise<any[]> {

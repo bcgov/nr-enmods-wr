@@ -131,7 +131,7 @@ export class SearchController {
 
   @Get("getObservedPropertyGroups")
   public getObservedPropertyGroups(@Req() req: Request) {
-    console.log("gegetObservedPropertyGroupstMediums");
+    console.log("getObservedPropertyGroups");
     const query: any = req.query.search;
     return this.searchService.getObservedPropertyGroups(query);
   }
@@ -173,7 +173,7 @@ export class SearchController {
 
   @Get("getCollectionMethods")
   public getCollectionMethods(@Req() req: Request) {
-    console.log("getSampligetCollectionMethodsngAgencies");
+    console.log("getCollectionMethods");
     const query: any = req.query.search;
     return this.searchService.getCollectionMethods(query);
   }
@@ -201,14 +201,14 @@ export class SearchController {
 
   @Get("getSampleDepths")
   public getSampleDepths(@Req() req: Request) {
-    console.log("getDataCgetSampleDepthslassifications");
+    console.log("getSampleDepths");
     const query: any = req.query.search;
     return this.searchService.getSampleDepths(query);
   }
 
   @Get("getSpecimenIds")
   public getSpecimenIds(@Req() req: Request) {
-    console.log("getDatgetSpecimenIdsaCgetSampleDepthslassifications");
+    console.log("getSpecimenIds");
     const query: any = req.query.search;
     return this.searchService.getSpecimenIds(query);
   }

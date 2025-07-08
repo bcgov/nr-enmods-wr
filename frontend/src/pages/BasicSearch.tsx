@@ -118,7 +118,7 @@ const BasicSearch = () => {
       const url = dropdwnUrl(fieldName, query)
       if (url) {
         const apiData = await apiService.getAxiosInstance().get(url)
-        console.log(apiData);
+        
         if (apiData.status === 200) {
           setErrors([])
           let response = apiData.data
@@ -245,9 +245,7 @@ const BasicSearch = () => {
       pollStatus(res.data.jobId)
 
       console.debug(`Status from observationSearch: ${res.status}`)
-      console.debug(
-        `content-type from observationSearch: ${res.headers["content-type"]}`,
-      )
+      console.debug(`content-type from observationSearch: ${res.headers["content-type"]}`)
 
       const contentType = res.headers["content-type"]
       if (
@@ -284,7 +282,6 @@ const BasicSearch = () => {
   }
 
   const prepareFormData = (formData: { [key: string]: any }) => {
-   // console.log(formData);
     const data = { ...formData }
     for (const key in formData) {
       const arr: string[] = []
@@ -301,8 +298,7 @@ const BasicSearch = () => {
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     window.scroll(0, 0)
-  // console.log(prepareFormData(formData))
-     basicSearch(prepareFormData(formData))
+    basicSearch(prepareFormData(formData))
   }
 
   const dropdwns = {

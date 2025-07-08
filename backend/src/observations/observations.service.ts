@@ -14,10 +14,7 @@ export class ObservationsService {
     private readonly observationRepository: Repository<Observation>,
     private readonly searchService: SearchService,
   ) {
-    console.log(
-      "OBS_REFRESH_CRON value at startup:",
-      process.env.OBS_REFRESH_CRON,
-    );
+    console.log("OBS_REFRESH_CRON value at startup:", process.env.OBS_REFRESH_CRON);
   }
 
   async create(createObservationDto: CreateObservationDto) {
@@ -87,9 +84,7 @@ export class ObservationsService {
         totalCount += batch.length;
         batch = [];
         if (totalCount % 50000 === 0) {
-          console.log(
-            `refreshObservationsTable: Retrieved and upserted ${totalCount} records so far...`,
-          );
+          console.log(`refreshObservationsTable: Retrieved and upserted ${totalCount} records so far...`);
         }
       }
     }
@@ -117,9 +112,7 @@ export class ObservationsService {
             totalCount += batch.length;
             batch = [];
             if (totalCount % 50000 === 0) {
-              console.log(
-                `refreshObservationsTable: Retrieved and upserted ${totalCount} records so far...`,
-              );
+              console.log(`refreshObservationsTable: Retrieved and upserted ${totalCount} records so far...`);
             }
           }
         }
@@ -145,9 +138,7 @@ export class ObservationsService {
     await this.refreshObservationsTable();
     const end = Date.now();
 
-    console.log(
-      `ObservationsService.  Finished refreshing observations table.  Refresh took ${(end - start) / 1000} seconds.`,
-    );
+    console.log(`ObservationsService.  Finished refreshing observations table.  Refresh took ${(end - start) / 1000} seconds.`);
   }
 }
 
@@ -175,6 +166,9 @@ function toMinimalObservation(obs: any) {
     numericResult: {
       sampleFraction: obs.numericResult?.sampleFraction,
     },
+    labResultDetails: {
+      dateReceived: obs?.labResultDetails?.dateReceived
+    }
   };
 }
 

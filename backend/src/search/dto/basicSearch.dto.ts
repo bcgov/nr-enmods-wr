@@ -78,4 +78,6 @@ export class BasicSearchDto {
   public readonly labBatchId?: string;
   
   public readonly specimenId?: any[];
+
+  public readonly observationIds?: string[];
 }

@@ -60,6 +60,7 @@ const AdvanceSearch = (props: Props) => {
   const [isPolling, setIsPolling] = useState(false)
 
   const [formData, setFormData] = useState<AdvanceSearchFormType>({
+    observationIds: [],
     locationName: [],
     locationType: null,
     permitNumber: [],
@@ -217,8 +218,7 @@ const AdvanceSearch = (props: Props) => {
       const url = dropdwnUrl(fieldName, query)
       if (url) {
         const apiData = await apiService.getAxiosInstance().get(url)
-        if(fieldName === SearchAttr.WorkedOrderNo)
-          console.log(apiData.data);
+
         if (apiData.status === 200) {
           setErrors([])
           let response = apiData.data
@@ -387,7 +387,6 @@ const AdvanceSearch = (props: Props) => {
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     window.scroll(0, 0)
-    console.log(prepareFormData(formData));
     advanceSearch(prepareFormData(formData))
   }
 

@@ -5,7 +5,7 @@ import {
   Injectable,
   Logger,
 } from "@nestjs/common";
-import { BehaviorSubject, firstValueFrom } from "rxjs";
+import { firstValueFrom } from "rxjs";
 import { BasicSearchDto } from "./dto/basicSearch.dto";
 import { join } from "path";
 import { sortArr } from "src/util/utility";
@@ -88,8 +88,6 @@ export class SearchService {
     try {
       this.logger.debug(`Exporting observations with search criteria: ${JSON.stringify(basicSearchDto)}`);
 
-      
-
       // check for errors in request to AQS API before streaming
       // this will throw an error if the request is invalid, e.g. too many results
       // or if the API is down, etc.  If we jump right to the streaming we may not see the errors
@@ -104,8 +102,6 @@ export class SearchService {
       // Prepare temp file for streaming the API response
       const tempFileName = `tmp_obs_export_${Date.now()}.csv`;
       const tempFilePath = join(process.cwd(), `${this.DIR_NAME}${tempFileName}`);
-
-      
 
       if (basicSearchDto.units) {
         const observedPropertyIds = await this.getObservedPropIdsFromUnit(basicSearchDto.units);

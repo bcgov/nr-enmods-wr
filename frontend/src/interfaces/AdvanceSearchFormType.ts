@@ -2,6 +2,7 @@ import BasicSearchFormType from "./BasicSearchFormType";
 
 export default interface AdvanceSearchFormType extends BasicSearchFormType {
    
+    observationIds: string[],
     observedProperty: string[],
     workedOrderNo: any,
     samplingAgency: string[],

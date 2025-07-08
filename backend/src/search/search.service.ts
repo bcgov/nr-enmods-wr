@@ -5,7 +5,7 @@ import {
   Injectable,
   Logger,
 } from "@nestjs/common";
-import { firstValueFrom } from "rxjs";
+import { BehaviorSubject, firstValueFrom } from "rxjs";
 import { BasicSearchDto } from "./dto/basicSearch.dto";
 import { join } from "path";
 import { sortArr } from "src/util/utility";
@@ -86,9 +86,9 @@ export class SearchService {
     }
 
     try {
-      this.logger.debug(
-        `Exporting observations with search criteria: ${JSON.stringify(basicSearchDto)}`,
-      );
+      this.logger.debug(`Exporting observations with search criteria: ${JSON.stringify(basicSearchDto)}`);
+
+      
 
       // check for errors in request to AQS API before streaming
       // this will throw an error if the request is invalid, e.g. too many results
@@ -103,12 +103,11 @@ export class SearchService {
 
       // Prepare temp file for streaming the API response
       const tempFileName = `tmp_obs_export_${Date.now()}.csv`;
-      const tempFilePath = join(
-        process.cwd(),
-        `${this.DIR_NAME}${tempFileName}`,
-      );
+      const tempFilePath = join(process.cwd(), `${this.DIR_NAME}${tempFileName}`);
 
-      if (basicSearchDto?.units) {
+      
+
+      if (basicSearchDto.units) {
         const observedPropertyIds = await this.getObservedPropIdsFromUnit(basicSearchDto.units);
         if (observedPropertyIds && observedPropertyIds.length > 0) {
           const totalObservedPropIds = [...basicSearchDto.observedProperty, ...observedPropertyIds];
@@ -116,7 +115,7 @@ export class SearchService {
         }
       }
 
-      if (basicSearchDto?.locationType) {
+      if (basicSearchDto.locationType) {
         const locationIds = await this.getLocationIdsFromType(basicSearchDto?.locationType?.id);
 
         if (locationIds && locationIds.length > 0) {
@@ -125,13 +124,19 @@ export class SearchService {
         }
       }
 
-      let chunk = 50; //50 locationId of string length 36 each at a time to pass to GET params
+      if (basicSearchDto.labArrivalFromDate && basicSearchDto.labArrivalToDate) {
+        const obsIds = await this.getObservationFrmLabArrivalDate(basicSearchDto);
+        if (obsIds && obsIds.length > 0) {
+          basicSearchDto = {...basicSearchDto, observationIds: obsIds}
+        }
+      }
+
+      let chunk = 50; //50 Ids of string length 36 each at a time to pass to GET params
 
       if (basicSearchDto.locationName.length > chunk) {
         const locationIdsPartition = this.partitionArray(basicSearchDto.locationName, chunk);
 
-        for (const ids of locationIdsPartition) {
-          //const totalLocationIds = [...basicSearchDto.locationName, ...ids];
+        for (const ids of locationIdsPartition) {          
           basicSearchDto = {...basicSearchDto, locationName: ids};
           const responseStream = await this.getObservationPromise(basicSearchDto, this.OBSERVATIONS_EXPORT_URL, "", true);
           const writeStream = fs.createWriteStream(tempFilePath, {flags: "a"});
@@ -144,6 +149,41 @@ export class SearchService {
             });
           }
         }
+
+      } else if (basicSearchDto.observedProperty.length > chunk) {
+        const observedPropIdsPartition = this.partitionArray(basicSearchDto.observedProperty, chunk);
+
+        for (const ids of observedPropIdsPartition) {          
+          basicSearchDto = {...basicSearchDto, observedProperty: ids};
+          const responseStream = await this.getObservationPromise(basicSearchDto, this.OBSERVATIONS_EXPORT_URL, "", true);
+          const writeStream = fs.createWriteStream(tempFilePath, {flags: "a"});
+          if (responseStream) {
+            await new Promise((resolve, reject) => {
+              responseStream.pipe(writeStream);
+              writeStream.on("finish", resolve);
+              writeStream.on("error", reject);
+              responseStream.on("error", reject);
+            });
+          }
+        }
+
+      } else if (basicSearchDto.observationIds.length > chunk) {
+        const observationIdsPartition = this.partitionArray(basicSearchDto.observationIds, chunk);
+
+        for (const ids of observationIdsPartition) {          
+          basicSearchDto = {...basicSearchDto, observationIds: ids};
+          const responseStream = await this.getObservationPromise(basicSearchDto, this.OBSERVATIONS_EXPORT_URL, "", true);
+          const writeStream = fs.createWriteStream(tempFilePath, {flags: "a"});
+          if (responseStream) {
+            await new Promise((resolve, reject) => {
+              responseStream.pipe(writeStream);
+              writeStream.on("finish", resolve);
+              writeStream.on("error", reject);
+              responseStream.on("error", reject);
+            });
+          }
+        }
+
       } else {
         const responseStream = await this.getObservationPromise(basicSearchDto, this.OBSERVATIONS_EXPORT_URL, "", true);
 
@@ -201,12 +241,7 @@ export class SearchService {
    * If `asStream` is true, it returns a stream for direct processing.
    * Otherwise, it returns the full response data.
    */
-  public async getObservationPromise(
-    basicSearchDto: BasicSearchDto,
-    url: string,
-    cursor: string,
-    asStream = false,
-  ): Promise<any> {
+  public async getObservationPromise(basicSearchDto: BasicSearchDto, url: string, cursor: string, asStream = false): Promise<any> {
     const params = await this.getUserSearchParams(basicSearchDto, cursor);
 
     if (asStream) {
@@ -415,16 +450,12 @@ export class SearchService {
   }
 
   private async getObservedPropIdsFromUnit(searchedUnit: any): Promise<string[]> {
-    const res = await this.bcApiCall(
-      this.getAbsoluteUrl(process.env.OBSERVED_PROPERTIES_CODE_TABLE_API),
-      null,
-    );
+    const res = await this.bcApiCall(this.getAbsoluteUrl(process.env.OBSERVED_PROPERTIES_CODE_TABLE_API), null);
     if (res.status === HttpStatus.OK) {
       const observedProps = JSON.parse(res.data).domainObjects;
       const observedPropsWithUnit = observedProps.filter(
         (item: any) => "defaultUnit" in item,
       );
-      console.log(observedPropsWithUnit);
       const units = observedPropsWithUnit.filter(
         (item: any) => item.defaultUnit.id === searchedUnit.id,
       );
@@ -434,7 +465,14 @@ export class SearchService {
     return [];
   }
 
+  private async getObservationFrmLabArrivalDate(basicSearchDto: BasicSearchDto): Promise<string[]> {
+    const obsRecords = await this.observationRepository.query("SELECT id, data::json->'labResultDetails'->>'dateReceived' labArrivalDate	FROM public.observations	where data->'labResultDetails'->>'dateReceived' between $1 and $2", 
+      [basicSearchDto.labArrivalFromDate, basicSearchDto.labArrivalToDate]);    
+    return obsRecords.map((item: any) => item.id);
+  }
+
   private async getUserSearchParams(basicSearchDto: BasicSearchDto, cursor: string) {
+
     const queryParams = {
       samplingLocationIds: (basicSearchDto.locationName || "").toString(),
       samplingLocationGroupIds: (basicSearchDto.permitNumber || "").toString(),
@@ -446,30 +484,28 @@ export class SearchService {
       limit: this.MAX_API_DATA_LIMIT,
       cursor: cursor,
       observedPropertyIds: (basicSearchDto?.observedProperty || "").toString(),
-      labResultLaboratoryIds: (
-        basicSearchDto?.analyzingAgency || ""
-      ).toString(),
+      labResultLaboratoryIds: (basicSearchDto?.analyzingAgency || "").toString(),
       analysisMethodIds: (basicSearchDto?.analyticalMethod || "").toString(),
-      "start-resultTime": basicSearchDto?.labArrivalFromDate || "", //TODO
-      "end-resultTime": basicSearchDto?.labArrivalToDate || "", //TODO
       collectionMethodIds: (basicSearchDto?.collectionMethod || "").toString(),
       qualityControlTypes: (basicSearchDto?.qcSampleType || "").toString(),
-      dataClassifications: (
-        basicSearchDto?.dataClassification || ""
-      ).toString(),
+      dataClassifications: (basicSearchDto?.dataClassification || "").toString(),
       depthValue: basicSearchDto?.sampleDepth?.depth?.value
         ? parseFloat(basicSearchDto.sampleDepth.depth.value)
         : undefined,
       specimenIds: (basicSearchDto?.specimenId || "").toString(),
     };
 
-    if (basicSearchDto?.labBatchId)
+    if(basicSearchDto.labArrivalFromDate && basicSearchDto.labArrivalToDate &&
+       basicSearchDto.observationIds && basicSearchDto.observationIds.length > 0)
+        queryParams["ids"] = basicSearchDto?.observationIds.toString();
+    
+    if (basicSearchDto.labBatchId)
       queryParams["EA_Lab Batch ID"] = basicSearchDto?.labBatchId;
 
-    if (basicSearchDto?.workedOrderNo && basicSearchDto?.workedOrderNo.text)
+    if (basicSearchDto.workedOrderNo && basicSearchDto.workedOrderNo.text)
       queryParams["EA_Work Order Number"] = (basicSearchDto?.workedOrderNo.text).toString();
 
-    if (basicSearchDto?.samplingAgency && basicSearchDto?.samplingAgency.length > 0)
+    if (basicSearchDto.samplingAgency && basicSearchDto.samplingAgency.length > 0)
       queryParams["EA_Sampling Agency"] =
         (basicSearchDto?.samplingAgency).toString();
 

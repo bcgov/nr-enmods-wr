@@ -118,7 +118,7 @@ const BasicSearch = () => {
       const url = dropdwnUrl(fieldName, query)
       if (url) {
         const apiData = await apiService.getAxiosInstance().get(url)
-        console.log(apiData);
+        
         if (apiData.status === 200) {
           setErrors([])
           let response = apiData.data

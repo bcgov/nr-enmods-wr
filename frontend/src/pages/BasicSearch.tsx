@@ -2,14 +2,7 @@ import Btn from "@/components/Btn"
 import TitleText from "@/components/TitleText"
 import {
   Alert,
-  Box,
-  Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   Paper,
-  Typography,
 } from "@mui/material"
 import LocationParametersForm from "@/components/search/LocationParametersForm"
 import FilterResultsForm from "@/components/search/FilterResultsForm"
@@ -20,12 +13,11 @@ import type BasicSearchFormType from "@/interfaces/BasicSearchFormType"
 import { Link } from "react-router-dom"
 import { debounce } from "lodash"
 import { SearchAttr } from "@/enum/searchEnum"
-import { API_VERSION, extractFileName } from "@/util/utility"
+import { API_VERSION } from "@/util/utility"
 import { InfoOutlined } from "@mui/icons-material"
 import Loading from "@/components/Loading"
 import LoadingSpinner from "../components/LoadingSpinner"
 import config from "@/config"
-import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline"
 import DownloadReadyDialog from "@/components/search/DownloadReadyDialog"
 
 const BasicSearch = () => {

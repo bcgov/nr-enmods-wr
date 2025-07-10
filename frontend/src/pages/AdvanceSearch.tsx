@@ -14,7 +14,7 @@ import FilterResultsForm from "@/components/search/FilterResultsForm"
 import AdditionalCriteria from "@/components/search/AdditionalCriteria"
 import { SearchAttr } from "@/enum/searchEnum"
 import apiService from "@/service/api-service"
-import { API_VERSION, extractFileName } from "@/util/utility"
+import { API_VERSION } from "@/util/utility"
 import { debounce } from "lodash"
 import Loading from "@/components/Loading"
 import LoadingSpinner from "../components/LoadingSpinner"
@@ -22,7 +22,6 @@ import { InfoOutlined } from "@mui/icons-material"
 import type AdvanceSearchFormType from "@/interfaces/AdvanceSearchFormType"
 import DownloadReadyDialog from "@/components/search/DownloadReadyDialog"
 import config from "@/config"
-import BasicSearch from "./BasicSearch"
 
 type Props = {}
 
@@ -386,7 +385,7 @@ const AdvanceSearch = (props: Props) => {
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    window.scroll(0, 0)
+    window.scroll(0, 0)   
     advanceSearch(prepareFormData(formData))
   }
 
@@ -434,7 +433,7 @@ const AdvanceSearch = (props: Props) => {
     } catch (err: any) {
       setIsDisabled(false)
       setIsLoading(false)
-      console.log(err)
+      console.debug(err)
       setErrors(["An unexpected error occurred..."])
       window.scroll(0, 0)
     }

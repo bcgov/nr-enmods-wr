@@ -387,6 +387,7 @@ const AdvanceSearch = (props: Props) => {
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     window.scroll(0, 0)
+    console.log(prepareFormData(formData));
     advanceSearch(prepareFormData(formData))
   }
 
@@ -434,7 +435,7 @@ const AdvanceSearch = (props: Props) => {
     } catch (err: any) {
       setIsDisabled(false)
       setIsLoading(false)
-      console.log(err)
+      console.debug(err)
       setErrors(["An unexpected error occurred..."])
       window.scroll(0, 0)
     }

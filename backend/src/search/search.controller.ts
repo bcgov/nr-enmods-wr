@@ -12,7 +12,6 @@ import { ApiTags } from "@nestjs/swagger";
 import { SearchService } from "./search.service";
 import { Response, Request } from "express";
 import { BasicSearchDto } from "./dto/basicSearch.dto";
-import { unlinkSync } from "fs";
 import * as fs from "fs";
 import { v4 as uuidv4 } from "uuid";
 import { jobs } from "src/jobs/searchjob";
@@ -60,40 +59,6 @@ export class SearchController {
       delete jobs[jobId];
     });
   }
-
-  // private sendCsvResponse(readStream: any, response: Response): void {
-  //   this.logger.log("Sending CSV response");
-  //   response.attachment("ObservationSearchResult.csv");
-
-  //   readStream.pipe(response);
-
-  //   readStream.on("close", () => {
-  //     this.logger.log("Deleting tmp file: " + readStream.path);
-  //     try {
-  //       unlinkSync(readStream.path);
-  //     } catch (e) {
-  //       this.logger.warn(`Failed to delete temp file: ${e.message}`);
-  //     }
-  //   });
-
-  //   readStream.on("error", (err) => {
-  //     this.logger.error("Error streaming CSV file: " + err.message);
-  //     try {
-  //       unlinkSync(readStream.path);
-  //     } catch (e) {
-  //       this.logger.warn(
-  //         `Failed to delete temp file after error: ${e.message}`,
-  //       );
-  //     }
-  //     if (!response.headersSent) {
-  //       response.status(500).send("Failed to stream CSV file.");
-  //     } else {
-  //       response.end();
-  //     }
-  //   });
-
-  //   this.logger.log("CSV response sent successfully");
-  // }
 
   @Get("getLocationTypes")
   public getLocationTypes() {

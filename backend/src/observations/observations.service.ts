@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { Observation } from "./entities/observation.entity";
@@ -9,12 +9,13 @@ import { Cron, CronExpression } from "@nestjs/schedule";
 
 @Injectable()
 export class ObservationsService {
+  private readonly logger = new Logger("ObservationsService");
   constructor(
     @InjectRepository(Observation)
     private readonly observationRepository: Repository<Observation>,
     private readonly searchService: SearchService,
   ) {
-    console.log("OBS_REFRESH_CRON value at startup:", process.env.OBS_REFRESH_CRON);
+    this.logger.log("OBS_REFRESH_CRON value at startup:", process.env.OBS_REFRESH_CRON);
   }
 
   async create(createObservationDto: CreateObservationDto) {
@@ -84,7 +85,7 @@ export class ObservationsService {
         totalCount += batch.length;
         batch = [];
         if (totalCount % 50000 === 0) {
-          console.log(`refreshObservationsTable: Retrieved and upserted ${totalCount} records so far...`);
+          this.logger.log(`refreshObservationsTable: Retrieved and upserted ${totalCount} records so far...`);
         }
       }
     }
@@ -112,7 +113,7 @@ export class ObservationsService {
             totalCount += batch.length;
             batch = [];
             if (totalCount % 50000 === 0) {
-              console.log(`refreshObservationsTable: Retrieved and upserted ${totalCount} records so far...`);
+              this.logger.log(`refreshObservationsTable: Retrieved and upserted ${totalCount} records so far...`);
             }
           }
         }
@@ -134,17 +135,18 @@ export class ObservationsService {
   })
   async scheduledRefreshObservationsTable() {
     const start = Date.now();
-    console.log("Scheduled refreshObservationsTable running...");
+    this.logger.log("Scheduled refreshObservationsTable running...");
     await this.refreshObservationsTable();
     const end = Date.now();
 
-    console.log(`ObservationsService.  Finished refreshing observations table.  Refresh took ${(end - start) / 1000} seconds.`);
+    this.logger.log(`ObservationsService.  Finished refreshing observations table.  Refresh took ${(end - start) / 1000} seconds.`);
   }
 }
 
 function toMinimalObservation(obs: any) {
   return {
     id: obs.id,
+    samplingLocationId: obs?.samplingLocation?.id,
     fieldVisit: {
       extendedAttributes: obs.fieldVisit?.extendedAttributes,
       project: { name: obs.fieldVisit?.project?.name },
@@ -168,7 +170,8 @@ function toMinimalObservation(obs: any) {
     },
     labResultDetails: {
       dateReceived: obs?.labResultDetails?.dateReceived
-    }
+    },
+    observedPropertyId: obs?.observedProperty?.id,
   };
 }
 
@@ -178,7 +181,7 @@ setInterval(() => {
   const rssMB = mem.rss / 1024 / 1024;
   if (rssMB > 250) {
     /*
-    console.log("[MEMORY USAGE]", {
+    this.logger.log("[MEMORY USAGE]", {
       rss: rssMB.toFixed(2) + " MB",
       heapTotal: (mem.heapTotal / 1024 / 1024).toFixed(2) + " MB",
       heapUsed: (mem.heapUsed / 1024 / 1024).toFixed(2) + " MB",

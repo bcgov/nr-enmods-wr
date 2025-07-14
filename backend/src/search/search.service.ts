@@ -167,7 +167,7 @@ export class SearchService {
       this.logger.debug(`AQI API took ${minutes}m ${seconds}s`);
 
       // Pass the temp file path to prepareCsvExportData
-      const result = await this.prepareCsvExportData(tempFilePath);
+      const result = await this.prepareCsvExportData(tempFilePath, basicSearchDto);
 
       // Delete the temp file after processing
       await unlinkAsync(tempFilePath);
@@ -255,7 +255,7 @@ export class SearchService {
     return chunks;
   }
 
-  private async prepareCsvExportData(tempFilePath: string) {
+  private async prepareCsvExportData(tempFilePath: string, basicSearchDto: BasicSearchDto) {
     const start = Date.now();
     try {
       const fileName = `tmp${Date.now()}.csv`;
@@ -288,13 +288,14 @@ export class SearchService {
       const BATCH_SIZE = 1000;
       let batchRows = [];
       let batchIds = [];
+      let unitDataFound = false;
 
       try {
         for await (const row of parser) {
           const obsId = row[ObsExportCsvHeader.ObservationId];
           processedRows++;
           batchRows.push(row);
-          batchIds.push(obsId);
+          batchIds.push(obsId);          
 
           if (batchRows.length >= BATCH_SIZE) {
             // Fetch all records for this batch
@@ -309,7 +310,14 @@ export class SearchService {
               const obsRecord = obsMap.get(obsId);
               if (obsRecord) {
                 matchedRows++;
-                this.writeToCsv(obsRecord.data, row, csvStream);
+                if(basicSearchDto.units) {
+                  if(row[ObsExportCsvHeader.ResultUnit] === basicSearchDto.units?.customId) {
+                    unitDataFound = true;
+                    this.writeToCsv(obsRecord.data, row, csvStream);
+                  }
+                } else {
+                  this.writeToCsv(obsRecord.data, row, csvStream);
+                }    
               }
             }
 
@@ -324,16 +332,32 @@ export class SearchService {
           const obsRecords = await this.observationRepository.findBy({
             id: In(batchIds),
           });
-          const obsMap = new Map(obsRecords.map((obs) => [obs.id, obs]));
+          const obsMap = new Map(obsRecords.map((obs) => [obs.id, obs]));         
           for (const row of batchRows) {
             const obsId = row[ObsExportCsvHeader.ObservationId];
             const obsRecord = obsMap.get(obsId);
             if (obsRecord) {
               matchedRows++;
-              this.writeToCsv(obsRecord.data, row, csvStream);
+              if(basicSearchDto.units) {
+                if(row[ObsExportCsvHeader.ResultUnit] === basicSearchDto.units?.customId) {
+                  unitDataFound = true;
+                  this.writeToCsv(obsRecord.data, row, csvStream);
+                }
+              } else {
+                this.writeToCsv(obsRecord.data, row, csvStream);
+              }              
             }
           }
         }
+
+        if (basicSearchDto.units && !unitDataFound) {
+          return {
+            data: null,
+            status: 200,
+            message: "No Data Found. Please adjust your search criteria.",
+          };
+        }
+
       } catch (err) {
         this.logger.error("Error during batch processing: " + err.message);
         throw err;

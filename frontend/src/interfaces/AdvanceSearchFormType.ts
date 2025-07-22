@@ -9,13 +9,10 @@ export default interface AdvanceSearchFormType extends BasicSearchFormType {
     analyzingAgency: string[],    
     analyticalMethod: string[],
     collectionMethod: string[],
-    units: any,
     qcSampleType: string[],
     dataClassification: string[],
-    sampleDepth: any,
+    sampleDepth: string,
     labBatchId: string,
-    specimenId: string[],    
-    labArrivalFromDate: Date | null,
-    labArrivalToDate: Date | null,
+    specimenId: string, 
 
 }

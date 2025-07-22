@@ -188,7 +188,7 @@ export default function FilterResultsForm(props: any) {
                     }
                     sx={{ width: 380 }}
                     renderInput={(params) => (
-                      <TextField {...params} label="Worked Order Number" />
+                      <TextField {...params} label="Work Order Number" />
                     )}
                   />
                   {/* <TextField

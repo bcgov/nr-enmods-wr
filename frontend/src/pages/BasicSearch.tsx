@@ -323,7 +323,7 @@ const BasicSearch = () => {
           to="/search/advance"
           className="bg-[#fff] text-[#38598a] border rounded-md p-2 text-sm hover:bg-[#38598a] hover:text-[#fff] cursor-pointer"
         >
-          Advance
+          Advanced
         </Link>
       </div>
       <DownloadReadyDialog

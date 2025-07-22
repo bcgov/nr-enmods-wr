@@ -36,7 +36,6 @@ const AdvanceSearch = (props: Props) => {
   const [alertMsg, setAlertMsg] = useState("")
   const [isDisabled, setIsDisabled] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [isApiLoading, setIsApiLoading] = useState(false)
   const [locationTypes, setLocationTypes] = useState([])
   const [locationNames, setLocationNames] = useState([])
   const [permitNumbers, setPermitNumbers] = useState([])
@@ -72,20 +71,17 @@ const AdvanceSearch = (props: Props) => {
     projects: [],
     analyticalMethod: [],
     collectionMethod: [],
-    units: null,
     qcSampleType: [],
     dataClassification: [],
-    sampleDepth: null,
+    sampleDepth: "",
     labBatchId: "",
-    specimenId: [],
+    specimenId: "",
     fromDate: null,
-    toDate: null,
-    labArrivalFromDate: null,
-    labArrivalToDate: null,
+    toDate: null    
   })
 
   useEffect(() => {
-    setIsApiLoading(true)
+    setIsLoading(true)
     Promise.all([
       getDropdownOptions(SearchAttr.ObservedPropertyGrp, ""),
       getDropdownOptions(SearchAttr.Media, ""),
@@ -105,7 +101,7 @@ const AdvanceSearch = (props: Props) => {
       getDropdownOptions(SearchAttr.DataClassification, ""),
       getDropdownOptions(SearchAttr.SampleDepth, ""),
       getDropdownOptions(SearchAttr.SpecimenId, ""),
-    ]).finally(() => setIsApiLoading(false))
+    ]).finally(() => setIsLoading(false))
   }, [])
 
   const dropdowns = {
@@ -213,7 +209,7 @@ const AdvanceSearch = (props: Props) => {
     query: string,
   ): Promise<void> => {
     try {
-      setIsApiLoading(true)
+      setIsLoading(true)
       const url = dropdwnUrl(fieldName, query)
       if (url) {
         const apiData = await apiService.getAxiosInstance().get(url)
@@ -288,9 +284,7 @@ const AdvanceSearch = (props: Props) => {
       }
     } catch (err) {
       console.error(err)
-    } finally {
-      setIsApiLoading(false)
-    }
+    } 
   }
 
   const clearForm = () => {
@@ -311,16 +305,13 @@ const AdvanceSearch = (props: Props) => {
       projects: [],
       analyticalMethod: [],
       collectionMethod: [],
-      units: null,
       qcSampleType: [],
       dataClassification: [],
-      sampleDepth: null,
+      sampleDepth: "",
       labBatchId: "",
-      specimenId: [],
+      specimenId: "",
       fromDate: null,
-      toDate: null,
-      labArrivalFromDate: null,
-      labArrivalToDate: null,
+      toDate: null
     })
   }
 
@@ -334,7 +325,8 @@ const AdvanceSearch = (props: Props) => {
     setErrors([])
     setAlertMsg("")
 
-    if (attrName === SearchAttr.LabBatchId) val = e.target.value
+    if (attrName === SearchAttr.LabBatchId || 
+      attrName === SearchAttr.SpecimenId || attrName === SearchAttr.SampleDepth) val = e.target.value
 
     setFormData({ ...formData, [attrName]: val })
   }
@@ -348,7 +340,7 @@ const AdvanceSearch = (props: Props) => {
   }
 
   const debounceSearch = debounce(async (query, attrName) => {
-    setIsApiLoading(true)
+    setIsLoading(true)
     switch (attrName) {
       case SearchAttr.LocationName:
         await getDropdownOptions(SearchAttr.LocationName, query)
@@ -380,7 +372,7 @@ const AdvanceSearch = (props: Props) => {
       default:
         break
     }
-    setIsApiLoading(false)
+    setIsLoading(false)
   }, 500)
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -448,9 +440,9 @@ const AdvanceSearch = (props: Props) => {
 
         formData[key].forEach((item) => {
           if (key === SearchAttr.DataClassification)
-            arr.push(item.dataClassification)
-          else if (key === SearchAttr.SampleDepth) arr.push(item.depth.value)
-          else if (key === SearchAttr.QcSampleType) arr.push(item.type)
+            arr.push(item.data_classification)
+          //else if (key === SearchAttr.SampleDepth) arr.push(item.depth.value)
+          else if (key === SearchAttr.QcSampleType) arr.push(item.qc_type)
           else arr.push(item.id)
         })
 
@@ -462,8 +454,7 @@ const AdvanceSearch = (props: Props) => {
 
   return (
     <div className="p-3">
-      <LoadingSpinner isLoading={isApiLoading} />
-      <Loading isLoading={isLoading} />
+      <LoadingSpinner isLoading={isLoading} />
       <div className="flex-row px-1 py-4">
         <Link
           to="/search/basic"
@@ -476,7 +467,7 @@ const AdvanceSearch = (props: Props) => {
           to="/search/advance"
           className="bg-[#38598a] text-[#fff] border rounded-md p-2 text-sm cursor-pointer"
         >
-          Advance
+          Advanced
         </Link>
         <DownloadReadyDialog
           open={!!downloadUrl}

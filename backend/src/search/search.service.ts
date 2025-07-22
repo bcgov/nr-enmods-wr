@@ -96,17 +96,13 @@ export class SearchService {
       // this will throw an error if the request is invalid, e.g. too many results
       // or if the API is down, etc.  If we jump right to the streaming we may not see the errors
       // from the AQS API.  If there's an error, the exception handling will log it correctly
-      if (
-        basicSearchDto.labArrivalFromDate ||
-        basicSearchDto.labArrivalToDate
-      ) {
-        await this.getObservationPromise(
-          basicSearchDto,
-          this.OBSERVATIONS_EXPORT_URL,
-          "",
-          false, // don't stream, just check for errors
-        );
-      }
+      // await this.getObservationPromise(
+      //   basicSearchDto,
+      //   this.OBSERVATIONS_EXPORT_URL,
+      //   "",
+      //   false, // don't stream, just check for errors
+      // );
+    
 
       // Prepare temp file for streaming the API response
       const tempFileName = `tmp_obs_export_${Date.now()}.csv`;
@@ -116,20 +112,20 @@ export class SearchService {
       );
       let observationIds = [];
 
-      if (basicSearchDto.units) {
-        const obsIds = await this.getObsIdsFromUnit(basicSearchDto);
-        if (obsIds && obsIds.length > 0)
-          observationIds = [...observationIds, ...obsIds];
-      }
+      // if (basicSearchDto.units) {
+      //   const obsIds = await this.getObsIdsFromUnit(basicSearchDto);
+      //   if (obsIds && obsIds.length > 0)
+      //     observationIds = [...observationIds, ...obsIds];
+      // }
 
-      if (
-        basicSearchDto.labArrivalFromDate &&
-        basicSearchDto.labArrivalToDate
-      ) {
-        const obsIds = await this.getObsIdsFrmLabArrivalDate(basicSearchDto);
-        if (obsIds && obsIds.length > 0)
-          observationIds = [...observationIds, ...obsIds];
-      }
+      // if (
+      //   basicSearchDto.labArrivalFromDate &&
+      //   basicSearchDto.labArrivalToDate
+      // ) {
+      //   const obsIds = await this.getObsIdsFrmLabArrivalDate(basicSearchDto);
+      //   if (obsIds && obsIds.length > 0)
+      //     observationIds = [...observationIds, ...obsIds];
+      // }
 
       if (basicSearchDto.locationType) {
         const obsIds = await this.getObsIdsFromLocationType(basicSearchDto);
@@ -505,6 +501,7 @@ export class SearchService {
           const data = JSON.parse(res.data);
           currentObsData = currentObsData.concat(data.domainObjects);
           cursor = data.cursor;
+          params = { ...params, cursor: cursor };
           i++;
         }
       }
@@ -532,8 +529,16 @@ export class SearchService {
         process.env.LOCATION_NAME_CODE_TABLE_API,
       );
 
+
+
       if (locations && locations.length > 0) {
         const allLocationIds = locations.map((location) => location.id);
+
+        const query = await this.observationRepository.query(`SELECT distinct id
+	        FROM public.observations where data->>'samplingLocationGroupIds' = ANY($1)`, allLocationIds)
+
+        
+
         const locationIds = [...new Set(allLocationIds)];
         if (locationIds.length > this.MAX_PARAMS_CHUNK) {
           let obsIdsArr = [];
@@ -561,137 +566,139 @@ export class SearchService {
             }
           }
           return obsIdsArr;
-        } else {
-          const locationParam = {
-            ...basicSearchDto,
-            locationName: locationIds,
-          };
-          const params = await this.getUserSearchParams(locationParam, null);
-          const res = await this.bcApiCall(
-            this.getAbsoluteUrl(process.env.OBSERVATIONS_URL),
-            params,
-          );
-          if (res.status === HttpStatus.OK) {
-            const observations = await this.getDataFromPagination(
-              JSON.parse(res.data),
-              params,
-              process.env.OBSERVATIONS_URL,
-            );
-            if (observations && observations.length > 0) {
-              const obsIds = observations.map((item) => item.id);
-              return obsIds;
-            }
-          }
-        }
+        } 
+        
+        // else {
+        //   const locationParam = {
+        //     ...basicSearchDto,
+        //     locationName: locationIds,
+        //   };
+        //   const params = await this.getUserSearchParams(locationParam, null);
+        //   const res = await this.bcApiCall(
+        //     this.getAbsoluteUrl(process.env.OBSERVATIONS_URL),
+        //     params,
+        //   );
+        //   if (res.status === HttpStatus.OK) {
+        //     const observations = await this.getDataFromPagination(
+        //       JSON.parse(res.data),
+        //       params,
+        //       process.env.OBSERVATIONS_URL,
+        //     );
+        //     if (observations && observations.length > 0) {
+        //       const obsIds = observations.map((item) => item.id);
+        //       return obsIds;
+        //     }
+        //   }
+        // }
       }
     }
 
     return [];
   }
 
-  private async getObsIdsFromUnit(
-    basicSearchDto: BasicSearchDto,
-  ): Promise<string[]> {
-    const res = await this.bcApiCall(
-      this.getAbsoluteUrl(process.env.OBSERVED_PROPERTIES_CODE_TABLE_API),
-      null,
-    );
-    if (res.status === HttpStatus.OK) {
-      const observedProps = JSON.parse(res.data).domainObjects;
-      const observedPropsWithUnit = observedProps.filter(
-        (item: any) => item?.defaultUnit,
-      );
-      const units = observedPropsWithUnit.filter(
-        (item: any) => item.defaultUnit.id === basicSearchDto.units.id,
-      );
-      const obsPropIds = units.map((item: any) => item.id);
+  // private async getObsIdsFromUnit(
+  //   basicSearchDto: BasicSearchDto,
+  // ): Promise<string[]> {
+  //   const res = await this.bcApiCall(
+  //     this.getAbsoluteUrl(process.env.OBSERVED_PROPERTIES_CODE_TABLE_API),
+  //     null,
+  //   );
+  //   if (res.status === HttpStatus.OK) {
+  //     const observedProps = JSON.parse(res.data).domainObjects;
+  //     const observedPropsWithUnit = observedProps.filter(
+  //       (item: any) => item?.defaultUnit,
+  //     );
+  //     const units = observedPropsWithUnit.filter(
+  //       (item: any) => item.defaultUnit.id === basicSearchDto.units.id,
+  //     );
+  //     const obsPropIds = units.map((item: any) => item.id);
 
-      if (obsPropIds && obsPropIds.length > 0) {
-        const totalObsPropIds = [
-          ...new Set([...basicSearchDto.observedProperty, ...obsPropIds]),
-        ];
-        if (totalObsPropIds && totalObsPropIds.length > this.MAX_PARAMS_CHUNK) {
-          let obsIdsArr = [];
-          const obsPropPartition = this.partitionArray(
-            totalObsPropIds,
-            this.MAX_PARAMS_CHUNK,
-          );
-          for (const ids of obsPropPartition) {
-            const obsPropParam = { ...basicSearchDto, observedProperty: ids };
-            const params = await this.getUserSearchParams(obsPropParam, null);
-            const res = await this.bcApiCall(
-              this.getAbsoluteUrl(process.env.OBSERVATIONS_URL),
-              params,
-            );
-            if (res.status === HttpStatus.OK) {
-              const observations = await this.getDataFromPagination(
-                JSON.parse(res.data),
-                params,
-                process.env.OBSERVATIONS_URL,
-              );
-              if (observations && observations.length > 0) {
-                const obsIds = observations.map((item) => item.id);
-                obsIdsArr = [...obsIdsArr, ...obsIds];
-              }
-            }
-          }
-          return obsIdsArr;
-        } else {
-          const obsProp = {
-            ...basicSearchDto,
-            observedProperty: totalObsPropIds,
-          };
-          const params = await this.getUserSearchParams(obsProp, null);
-          const res = await this.bcApiCall(
-            this.getAbsoluteUrl(process.env.OBSERVATIONS_URL),
-            params,
-          );
-          if (res.status === HttpStatus.OK) {
-            const observations = await this.getDataFromPagination(
-              JSON.parse(res.data),
-              params,
-              process.env.OBSERVATIONS_URL,
-            );
-            if (observations && observations.length > 0)
-              return observations.map((item) => item.id);
-          }
-        }
-      }
-    }
+  //     if (obsPropIds && obsPropIds.length > 0) {
+  //       const totalObsPropIds = [
+  //         ...new Set([...basicSearchDto.observedProperty, ...obsPropIds]),
+  //       ];
+  //       if (totalObsPropIds && totalObsPropIds.length > this.MAX_PARAMS_CHUNK) {
+  //         let obsIdsArr = [];
+  //         const obsPropPartition = this.partitionArray(
+  //           totalObsPropIds,
+  //           this.MAX_PARAMS_CHUNK,
+  //         );
+  //         for (const ids of obsPropPartition) {
+  //           const obsPropParam = { ...basicSearchDto, observedProperty: ids };
+  //           const params = await this.getUserSearchParams(obsPropParam, null);
+  //           const res = await this.bcApiCall(
+  //             this.getAbsoluteUrl(process.env.OBSERVATIONS_URL),
+  //             params,
+  //           );
+  //           if (res.status === HttpStatus.OK) {
+  //             const observations = await this.getDataFromPagination(
+  //               JSON.parse(res.data),
+  //               params,
+  //               process.env.OBSERVATIONS_URL,
+  //             );
+  //             if (observations && observations.length > 0) {
+  //               const obsIds = observations.map((item) => item.id);
+  //               obsIdsArr = [...obsIdsArr, ...obsIds];
+  //             }
+  //           }
+  //         }
+  //         return obsIdsArr;
+  //       } else {
+  //         const obsProp = {
+  //           ...basicSearchDto,
+  //           observedProperty: totalObsPropIds,
+  //         };
+  //         const params = await this.getUserSearchParams(obsProp, null);
+  //         const res = await this.bcApiCall(
+  //           this.getAbsoluteUrl(process.env.OBSERVATIONS_URL),
+  //           params,
+  //         );
+  //         if (res.status === HttpStatus.OK) {
+  //           const observations = await this.getDataFromPagination(
+  //             JSON.parse(res.data),
+  //             params,
+  //             process.env.OBSERVATIONS_URL,
+  //           );
+  //           if (observations && observations.length > 0)
+  //             return observations.map((item) => item.id);
+  //         }
+  //       }
+  //     }
+  //   }
 
-    return [];
-  }
+  //   return [];
+  // }
 
-  private async getObsIdsFrmLabArrivalDate(
-    basicSearchDto: BasicSearchDto,
-  ): Promise<string[]> {
-    const params = await this.getUserSearchParams(basicSearchDto, null);
-    const res = await this.bcApiCall(
-      this.getAbsoluteUrl(process.env.OBSERVATIONS_URL),
-      params,
-    );
-    if (res.status === HttpStatus.OK) {
-      const observations = await this.getDataFromPagination(
-        JSON.parse(res.data),
-        params,
-        process.env.OBSERVATIONS_URL,
-      );
-      if (observations && observations.length > 0) {
-        const obsWithReceivedDate = observations.filter(
-          (item: any) => item?.labResultDetails?.dateReceived,
-        );
-        const obs = obsWithReceivedDate.filter(
-          (item) =>
-            new Date(basicSearchDto.labArrivalFromDate) <=
-              new Date(item.labResultDetails.dateReceived) &&
-            new Date(basicSearchDto.labArrivalToDate) >
-              new Date(item.labResultDetails.dateReceived),
-        );
-        if (obs && obs.length > 0) return obs.map((item) => item.id);
-      }
-    }
-    return [];
-  }
+  // private async getObsIdsFrmLabArrivalDate(
+  //   basicSearchDto: BasicSearchDto,
+  // ): Promise<string[]> {
+  //   const params = await this.getUserSearchParams(basicSearchDto, null);
+  //   const res = await this.bcApiCall(
+  //     this.getAbsoluteUrl(process.env.OBSERVATIONS_URL),
+  //     params,
+  //   );
+  //   if (res.status === HttpStatus.OK) {
+  //     const observations = await this.getDataFromPagination(
+  //       JSON.parse(res.data),
+  //       params,
+  //       process.env.OBSERVATIONS_URL,
+  //     );
+  //     if (observations && observations.length > 0) {
+  //       const obsWithReceivedDate = observations.filter(
+  //         (item: any) => item?.labResultDetails?.dateReceived,
+  //       );
+  //       const obs = obsWithReceivedDate.filter(
+  //         (item) =>
+  //           new Date(basicSearchDto.labArrivalFromDate) <=
+  //             new Date(item.labResultDetails.dateReceived) &&
+  //           new Date(basicSearchDto.labArrivalToDate) >
+  //             new Date(item.labResultDetails.dateReceived),
+  //       );
+  //       if (obs && obs.length > 0) return obs.map((item) => item.id);
+  //     }
+  //   }
+  //   return [];
+  // }
 
   private async getUserSearchParams(
     basicSearchDto: BasicSearchDto,
@@ -893,7 +900,7 @@ export class SearchService {
     try {
       const params = {};
       if (hasParams) {
-        params["limit"] = this.MAX_DROPDWN_OPTIONS_LIMIT;
+        params["limit"] = this.MAX_DROPDWN_OPTIONS_LIMIT;      
         if (query) params["search"] = query;
       }
 
@@ -901,8 +908,8 @@ export class SearchService {
         this.httpService.get(url, { params: params }),
       );
       if (res.status === HttpStatus.OK) {
-        const dataArr = JSON.parse(res.data).domainObjects;
-        if (sortBy) sortArr(dataArr, sortBy);
+        const dataArr = JSON.parse(res.data);
+        //if (sortBy) sortArr(dataArr, sortBy);
         return dataArr;
       }
     } catch (err) {
@@ -926,12 +933,13 @@ export class SearchService {
       "getLocationTypes called, env:",
       process.env.LOCATION_TYPE_CODE_TABLE_API,
     );
-    return await this.getDropdwnOptionsFrmApi(
+    const data =  await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.LOCATION_TYPE_CODE_TABLE_API),
       null,
       "customId",
       false,
     );
+    return data.domainObjects;
   }
 
   public async getLocationNames(query: string): Promise<any[]> {
@@ -939,21 +947,23 @@ export class SearchService {
       "getLocationNames called, env:",
       process.env.LOCATION_NAME_CODE_TABLE_API,
     );
-    return await this.getDropdwnOptionsFrmApi(
+    const data =  await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.LOCATION_NAME_CODE_TABLE_API),
       query,
       "name",
       true,
     );
+    return data.domainObjects; 
   }
 
   public async getPermitNumbers(query: string): Promise<any[]> {
-    return await this.getDropdwnOptionsFrmApi(
+    const data = await this.getDropdwnOptionsFrmApi(
       this.getAbsoluteUrl(process.env.PERMIT_NUMBER_CODE_TABLE_API),
       query,
       null,
       true,
     );
+    return data.domainObjects;
   }
 
   public async getMediums(query: string): Promise<any[]> {
@@ -963,7 +973,7 @@ export class SearchService {
       null,
       true,
     );
-    return result;
+    return result.domainObjects;
   }
 
   public async getObservedPropertyGroups(query: string): Promise<any[]> {
@@ -973,7 +983,7 @@ export class SearchService {
       null,
       true,
     );
-    return result;
+    return result.domainObjects;
   }
 
   public async getProjects(query: string): Promise<any[]> {
@@ -983,7 +993,7 @@ export class SearchService {
       null,
       true,
     );
-    return result;
+    return result.domainObjects;
   }
 
   public async getAnalyticalMethods(query: string): Promise<any[]> {
@@ -993,7 +1003,7 @@ export class SearchService {
       "name",
       true,
     );
-    return result;
+    return result.domainObjects;
   }
 
   public async getAnalyzingAgencies(query: string): Promise<any[]> {
@@ -1003,7 +1013,7 @@ export class SearchService {
       "name",
       false,
     );
-    return result;
+    return result.domainObjects;
   }
 
   public async getObservedProperties(query: string): Promise<any[]> {
@@ -1013,7 +1023,7 @@ export class SearchService {
       null,
       true,
     );
-    return result;
+    return result.domainObjects;
   }
 
   public async getWorkedOrderNos(query: string): Promise<any[]> {
@@ -1023,7 +1033,8 @@ export class SearchService {
       null,
       true,
     );
-    const arr = this.getExtendedAttribute(specimens, "text");
+    const data = specimens.domainObjects
+    const arr = this.getExtendedAttribute(data, "text");
     const workOrderedNos = [
       ...new Map(arr.map((item) => [item["id"], item])).values(),
     ];
@@ -1038,7 +1049,8 @@ export class SearchService {
       null,
       true,
     );
-    const arr = this.getExtendedAttribute(fieldVisits, "dropDownListItem");
+    const data = fieldVisits.domainObjects;
+    const arr = this.getExtendedAttribute(data, "dropDownListItem");
     const agencies = [
       ...new Map(arr.map((item) => [item["id"], item])).values(),
     ];
@@ -1069,7 +1081,7 @@ export class SearchService {
       null,
       false,
     );
-    return result;
+    return result.domainObjects;
   }
 
   public async getUnits(query: string): Promise<any[]> {
@@ -1079,33 +1091,29 @@ export class SearchService {
       "name",
       false,
     );
-    return result;
+    return result.domainObjects;
   }
 
   public async getQcSampleTypes(query: string): Promise<any[]> {
-    const activities = await this.getDropdwnOptionsFrmApi(
-      this.getAbsoluteUrl(process.env.QC_SAMPLE_TYPE_CODE_TABLE_API),
-      null,
-      null,
-      true,
-    );
-    return [
-      ...new Map(activities.map((item: any) => [item["type"], item])).values(),
-    ];
+    const qcTypes = await this.observationRepository.query(`SELECT distinct data->>'qualityControlType' qc_type
+                    FROM public.observations where data->>'qualityControlType' is not null`);
+    
+    if (qcTypes && qcTypes.length > 0) 
+      return qcTypes
+    
+    return [];
+
   }
 
   public async getDataClassifications(query: string): Promise<any[]> {
-    const observations = await this.getDropdwnOptionsFrmApi(
-      this.getAbsoluteUrl(process.env.DATA_CLASSIFICATION_CODE_TABLE_API),
-      query,
-      null,
-      true,
-    );
-    return [
-      ...new Map(
-        observations.map((item: any) => [item["dataClassification"], item]),
-      ).values(),
-    ];
+
+    const dataClassifications = await this.observationRepository.query(`SELECT distinct data->>'dataClassification' data_classification
+      FROM public.observations where data->>'dataClassification' is not null`);
+
+    if (dataClassifications && dataClassifications.length > 0) 
+    return dataClassifications
+
+    return [];
   }
 
   public async getSampleDepths(query: string): Promise<any[]> {
@@ -1115,7 +1123,8 @@ export class SearchService {
       null,
       true,
     );
-    const obsArr = activities.filter((item: any) =>
+    const data = activities.domainObjects;
+    const obsArr = data.filter((item: any) =>
       Object.hasOwn(item, "depth"),
     );
     const result = [
@@ -1133,8 +1142,10 @@ export class SearchService {
       "name",
       true,
     );
+    const data = specimens.domainObjects;
     return [
-      ...new Map(specimens.map((item: any) => [item["name"], item])).values(),
+      ...new Map(data.map((item: any) => [item["name"], item])).values(),
     ];
   }
 }
+

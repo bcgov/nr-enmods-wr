@@ -199,7 +199,7 @@ export default function FilterResultsForm(props: any) {
                     label="Worked Order Number"
                     sx={{ width: 380 }}
                   /> */}
-                  <TooltipInfo title="Worked Order Number" />
+                  <TooltipInfo title="Work Order Number" />
                 </div>
               </div>
 

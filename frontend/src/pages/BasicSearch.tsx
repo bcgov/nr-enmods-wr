@@ -23,9 +23,7 @@ import DownloadReadyDialog from "@/components/search/DownloadReadyDialog"
 const BasicSearch = () => {
   const apiBase = config.API_BASE_URL
     ? config.API_BASE_URL
-    : import.meta.env.DEV
-      ? "http://localhost:3000/api"
-      : ""
+    : import.meta.env.DEV ? "http://localhost:3000/api" : ""
 
   const [isDisabled, setIsDisabled] = useState(false)
   const [locationTypes, setLocationTypes] = useState([])
@@ -111,7 +109,7 @@ const BasicSearch = () => {
       if (url) {
         const apiData = await apiService.getAxiosInstance().get(url)
         
-        if (apiData.status === 200) {
+        if (apiData?.status === 200) {
           setErrors([])
           let response = apiData.data
           if (!Array.isArray(response)) {

@@ -149,15 +149,15 @@ export class SearchController {
     return this.searchService.getDataClassifications(query);
   }
 
-  @Get("getSampleDepths")
-  public getSampleDepths(@Req() req: Request) {
-    const query: any = req.query.search;
-    return this.searchService.getSampleDepths(query);
-  }
+  // @Get("getSampleDepths")
+  // public getSampleDepths(@Req() req: Request) {
+  //   const query: any = req.query.search;
+  //   return this.searchService.getSampleDepths(query);
+  // }
 
-  @Get("getSpecimenIds")
-  public getSpecimenIds(@Req() req: Request) {
-    const query: any = req.query.search;
-    return this.searchService.getSpecimenIds(query);
-  }
+  // @Get("getSpecimenIds")
+  // public getSpecimenIds(@Req() req: Request) {
+  //   const query: any = req.query.search;
+  //   return this.searchService.getSpecimenIds(query);
+  // }
 }

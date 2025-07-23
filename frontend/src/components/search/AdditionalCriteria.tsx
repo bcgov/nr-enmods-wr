@@ -2,7 +2,6 @@ import * as React from "react"
 import TitleText from "../TitleText"
 import { forwardRef } from "react"
 import TooltipInfo from "../TooltipInfo"
-import DatePicker from "react-datepicker"
 import { Autocomplete, TextField } from "@mui/material"
 import { SearchAttr } from "@/enum/searchEnum"
 

@@ -55,15 +55,15 @@ export class BasicSearchDto {
 
   public readonly analyticalMethod?: any[];
 
-  @ValidateIf((obj) => obj.labArrivalFromDate && obj.labArrivalFromDate !== null)
-  @IsDate({ message: "Please enter valid lab arrival 'From' date" })
-  @Type(() => Date)
-  public readonly labArrivalFromDate?: Date;
+  // @ValidateIf((obj) => obj.labArrivalFromDate && obj.labArrivalFromDate !== null)
+  // @IsDate({ message: "Please enter valid lab arrival 'From' date" })
+  // @Type(() => Date)
+  // public readonly labArrivalFromDate?: Date;
 
-  @ValidateIf((obj) => obj.labArrivalToDate && obj.labArrivalToDate !== null)
-  @IsDate({ message: "Please enter valid lab arrival 'To' date" })
-  @Type(() => Date)
-  public readonly labArrivalToDate?: Date;
+  // @ValidateIf((obj) => obj.labArrivalToDate && obj.labArrivalToDate !== null)
+  // @IsDate({ message: "Please enter valid lab arrival 'To' date" })
+  // @Type(() => Date)
+  // public readonly labArrivalToDate?: Date;
 
   public readonly collectionMethod?: any[];
 
@@ -71,13 +71,13 @@ export class BasicSearchDto {
 
   public readonly dataClassification?: any[];
 
-  public readonly sampleDepth?: any;
+  public readonly sampleDepth?: string;
 
-  public readonly units?: any;
+  //public readonly units?: any;
 
   public readonly labBatchId?: string;
   
-  public readonly specimenId?: any[];
+  public readonly specimenId?: string;
 
   public readonly observationIds?: string[];
 }

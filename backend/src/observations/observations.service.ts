@@ -172,6 +172,8 @@ function toMinimalObservation(obs: any) {
       dateReceived: obs?.labResultDetails?.dateReceived
     },
     observedPropertyId: obs?.observedProperty?.id,
+    qualityControlType: obs?.qualityControlType,
+    dataClassification: obs?.dataClassification
   };
 }
 

@@ -188,7 +188,7 @@ export default function FilterResultsForm(props: any) {
                     }
                     sx={{ width: 380 }}
                     renderInput={(params) => (
-                      <TextField {...params} label="Worked Order Number" />
+                      <TextField {...params} label="Work Order Number" />
                     )}
                   />
                   {/* <TextField
@@ -199,7 +199,7 @@ export default function FilterResultsForm(props: any) {
                     label="Worked Order Number"
                     sx={{ width: 380 }}
                   /> */}
-                  <TooltipInfo title="Worked Order Number" />
+                  <TooltipInfo title="Work Order Number" />
                 </div>
               </div>
 

@@ -33,7 +33,6 @@ const AdvanceSearch = (props: Props) => {
       : ""
 
   const [errors, setErrors] = useState<string[]>([])
-  const [alertMsg, setAlertMsg] = useState("")
   const [isDisabled, setIsDisabled] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [isApiLoading, setIsApiLoading] = useState(false)
@@ -52,8 +51,8 @@ const AdvanceSearch = (props: Props) => {
   const [collectionMethods, setCollectionMethods] = useState([])
   const [qcSampleTypes, setQcSampleTypes] = useState([])
   const [dataClassifications, setDataClassifications] = useState([])
-  const [sampleDepths, setSampleDepths] = useState([])
-  const [specimenIds, setSpecimenIds] = useState([])
+  // const [sampleDepths, setSampleDepths] = useState([])
+  // const [specimenIds, setSpecimenIds] = useState([])
   const [units, setUnits] = useState([])
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null)
   const [isPolling, setIsPolling] = useState(false)
@@ -72,16 +71,13 @@ const AdvanceSearch = (props: Props) => {
     projects: [],
     analyticalMethod: [],
     collectionMethod: [],
-    units: null,
     qcSampleType: [],
     dataClassification: [],
-    sampleDepth: null,
+    sampleDepth: "",
     labBatchId: "",
-    specimenId: [],
+    specimenId: "",
     fromDate: null,
-    toDate: null,
-    labArrivalFromDate: null,
-    labArrivalToDate: null,
+    toDate: null    
   })
 
   useEffect(() => {
@@ -103,8 +99,8 @@ const AdvanceSearch = (props: Props) => {
       getDropdownOptions(SearchAttr.Units, ""),
       getDropdownOptions(SearchAttr.QcSampleType, ""),
       getDropdownOptions(SearchAttr.DataClassification, ""),
-      getDropdownOptions(SearchAttr.SampleDepth, ""),
-      getDropdownOptions(SearchAttr.SpecimenId, ""),
+      // getDropdownOptions(SearchAttr.SampleDepth, ""),
+      // getDropdownOptions(SearchAttr.SpecimenId, ""),
     ]).finally(() => setIsApiLoading(false))
   }, [])
 
@@ -129,9 +125,6 @@ const AdvanceSearch = (props: Props) => {
       collectionMethods: collectionMethods,
       qcSampleTypes: qcSampleTypes,
       dataClassifications: dataClassifications,
-      sampleDepths: sampleDepths,
-      specimenIds: specimenIds,
-      units: units,
     },
   }
 
@@ -140,25 +133,26 @@ const AdvanceSearch = (props: Props) => {
     let status = "pending"
     while (status === "pending") {
       try {
-        const res = await apiService
-          .getAxiosInstance()
-          .get(`/v1/search/observationSearch/status/${jobId}`)
-        status = res.data.status
-        if (status === "complete") {
+        const res = await apiService.getAxiosInstance().get(`/v1/search/observationSearch/status/${jobId}`)
+        status = res.data?.status
+        if (status === "complete") {   
           setIsDisabled(false)
+          setIsApiLoading(false)
           setIsLoading(false)
           setDownloadUrl(
             `${apiBase}/v1/search/observationSearch/download/${jobId}`,
           )
           break
-        } else if (status === "error") {
+        } else if (status === "error") {       
           setIsDisabled(false)
+          setIsApiLoading(false)
           setIsLoading(false)
           setErrors([res.data.error || "Export failed"])
           break
         }
         await new Promise((r) => setTimeout(r, 200))
       } catch (err) {
+        setIsLoading(false)
         setErrors(["Polling failed."])
         break
       }
@@ -199,26 +193,23 @@ const AdvanceSearch = (props: Props) => {
           return `${API_VERSION}/search/getQcSampleTypes?search=${query}`
         case SearchAttr.DataClassification:
           return `${API_VERSION}/search/getDataClassifications?search=${query}`
-        case SearchAttr.SampleDepth:
-          return `${API_VERSION}/search/getSampleDepths?search=${query}`
-        case SearchAttr.SpecimenId:
-          return `${API_VERSION}/search/getSpecimenIds?search=${query}`
+        // case SearchAttr.SampleDepth:
+        //   return `${API_VERSION}/search/getSampleDepths?search=${query}`
+        // case SearchAttr.SpecimenId:
+        //   return `${API_VERSION}/search/getSpecimenIds?search=${query}`
         default:
           break
       }
     }
   }
-  const getDropdownOptions = async (
-    fieldName: string,
-    query: string,
-  ): Promise<void> => {
+  const getDropdownOptions = async (fieldName: string, query: string): Promise<void> => {
     try {
       setIsApiLoading(true)
       const url = dropdwnUrl(fieldName, query)
       if (url) {
         const apiData = await apiService.getAxiosInstance().get(url)
 
-        if (apiData.status === 200) {
+        if (apiData?.status === 200) {
           setErrors([])
           let response = apiData.data
           if (!Array.isArray(response)) {
@@ -273,12 +264,12 @@ const AdvanceSearch = (props: Props) => {
             case SearchAttr.DataClassification:
               setDataClassifications(response)
               break
-            case SearchAttr.SampleDepth:
-              setSampleDepths(response)
-              break
-            case SearchAttr.SpecimenId:
-              setSpecimenIds(response)
-              break
+            // case SearchAttr.SampleDepth:
+            //   setSampleDepths(response)
+            //   break
+            // case SearchAttr.SpecimenId:
+            //   setSpecimenIds(response)
+            //   break
             default:
               break
           }
@@ -288,14 +279,11 @@ const AdvanceSearch = (props: Props) => {
       }
     } catch (err) {
       console.error(err)
-    } finally {
-      setIsApiLoading(false)
-    }
+    } 
   }
 
   const clearForm = () => {
     window.scroll(0, 0)
-    setAlertMsg("")
     setErrors([])
     setFormData({
       ...formData,
@@ -311,30 +299,26 @@ const AdvanceSearch = (props: Props) => {
       projects: [],
       analyticalMethod: [],
       collectionMethod: [],
-      units: null,
       qcSampleType: [],
       dataClassification: [],
-      sampleDepth: null,
+      sampleDepth: "",
       labBatchId: "",
-      specimenId: [],
+      specimenId: "",
       fromDate: null,
-      toDate: null,
-      labArrivalFromDate: null,
-      labArrivalToDate: null,
+      toDate: null
     })
   }
 
   const handleOnChangeDatepicker = (val: any, attrName: string) => {
     setErrors([])
-    setAlertMsg("")
     setFormData({ ...formData, [attrName]: val })
   }
 
   const handleOnChange = (e: any, val: any, attrName: string) => {
     setErrors([])
-    setAlertMsg("")
 
-    if (attrName === SearchAttr.LabBatchId) val = e.target.value
+    if (attrName === SearchAttr.LabBatchId || 
+      attrName === SearchAttr.SpecimenId || attrName === SearchAttr.SampleDepth) val = e.target.value
 
     setFormData({ ...formData, [attrName]: val })
   }
@@ -374,9 +358,9 @@ const AdvanceSearch = (props: Props) => {
       case SearchAttr.AnalyticalMethod:
         await getDropdownOptions(SearchAttr.AnalyticalMethod, query)
         break
-      case SearchAttr.SpecimenId:
-        await getDropdownOptions(SearchAttr.SpecimenId, query)
-        break
+      // case SearchAttr.SpecimenId:
+      //   await getDropdownOptions(SearchAttr.SpecimenId, query)
+      //   break
       default:
         break
     }
@@ -386,7 +370,7 @@ const AdvanceSearch = (props: Props) => {
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     window.scroll(0, 0)   
-    console.log(prepareFormData(formData));
+    //console.log(prepareFormData(formData));
     advanceSearch(prepareFormData(formData))
   }
 
@@ -394,27 +378,19 @@ const AdvanceSearch = (props: Props) => {
     try {
       setIsDisabled(true)
       setIsLoading(true)
-      const res = await apiService
-        .getAxiosInstance()
-        .post("/v1/search/observationSearch", data, {
+      const res = await apiService.getAxiosInstance().post("/v1/search/observationSearch", data, {
           responseType: "json",
           validateStatus: () => true,
         })
       pollStatus(res.data.jobId)
 
       const contentType = res.headers["content-type"]
-      if (
-        res.status >= 200 &&
-        res.status < 300 &&
-        contentType &&
-        contentType.includes("text/csv")
-      ) {
+      if (res.status >= 200 && res.status < 300 && contentType && contentType.includes("text/csv")) {
         // Download CSV
-
         const text = await res.data
         let errorArr: string[] = []
 
-        const json = JSON.parse(text)
+        const json = JSON.parse(text)       
         if (json.message) {
           errorArr = [json.message]
           setIsDisabled(false)
@@ -437,7 +413,7 @@ const AdvanceSearch = (props: Props) => {
       console.debug(err)
       setErrors(["An unexpected error occurred..."])
       window.scroll(0, 0)
-    }
+    } 
   }
 
   const prepareFormData = (formData: { [key: string]: any }) => {
@@ -447,10 +423,8 @@ const AdvanceSearch = (props: Props) => {
         const arr: string[] = []
 
         formData[key].forEach((item) => {
-          if (key === SearchAttr.DataClassification)
-            arr.push(item.dataClassification)
-          else if (key === SearchAttr.SampleDepth) arr.push(item.depth.value)
-          else if (key === SearchAttr.QcSampleType) arr.push(item.type)
+          if (key === SearchAttr.DataClassification) arr.push(item.data_classification)
+          else if (key === SearchAttr.QcSampleType) arr.push(item.qc_type)
           else arr.push(item.id)
         })
 
@@ -462,8 +436,8 @@ const AdvanceSearch = (props: Props) => {
 
   return (
     <div className="p-3">
-      <LoadingSpinner isLoading={isApiLoading} />
       <Loading isLoading={isLoading} />
+      <LoadingSpinner isLoading={isApiLoading} />
       <div className="flex-row px-1 py-4">
         <Link
           to="/search/basic"
@@ -476,12 +450,15 @@ const AdvanceSearch = (props: Props) => {
           to="/search/advance"
           className="bg-[#38598a] text-[#fff] border rounded-md p-2 text-sm cursor-pointer"
         >
-          Advance
+          Advanced
         </Link>
         <DownloadReadyDialog
           open={!!downloadUrl}
           downloadUrl={downloadUrl}
-          onClose={() => setDownloadUrl(null)}
+          onClose={() => {
+            setDownloadUrl(null);
+            setIsLoading(false)}
+          }
         />
       </div>
       <form noValidate onSubmit={onSubmit}>

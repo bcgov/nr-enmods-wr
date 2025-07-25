@@ -110,9 +110,9 @@ export class SearchService {
       
       if (basicSearchDto.locationType) {
         const obsIds = await this.getObsIdsFromLocationType(basicSearchDto);
-        this.logger.log("Total observation to process: " + obsIds.length);
+        this.logger.log("Total observation to process: " + obsIds.length); 
         
-        if (obsIds && obsIds.length > 0) {
+        if (obsIds && obsIds.length > 0) { 
 
           if (obsIds.length > this.MAX_PARAMS_CHUNK) {
             const obsIdsPartition = this.partitionArray(obsIds, this.MAX_PARAMS_CHUNK);

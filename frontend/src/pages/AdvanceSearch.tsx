@@ -135,8 +135,7 @@ const AdvanceSearch = (props: Props) => {
       try {
         const res = await apiService.getAxiosInstance().get(`/v1/search/observationSearch/status/${jobId}`)
         status = res.data?.status
-        if (status === "complete") {
-          console.log("Sd");
+        if (status === "complete") {   
           setIsDisabled(false)
           setIsApiLoading(false)
           setIsLoading(false)
@@ -144,8 +143,7 @@ const AdvanceSearch = (props: Props) => {
             `${apiBase}/v1/search/observationSearch/download/${jobId}`,
           )
           break
-        } else if (status === "error") {
-          console.log("Sddd");
+        } else if (status === "error") {       
           setIsDisabled(false)
           setIsApiLoading(false)
           setIsLoading(false)

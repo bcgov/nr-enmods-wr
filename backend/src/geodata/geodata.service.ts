@@ -659,14 +659,8 @@ export class GeodataService {
 
       if (transformedData.features.length > 0) {
         // Write GeoJSON to disk
-        const geojsonPath = path.join(
-          this.tempDir,
-          `location_groups_${timestamp}.geojson`,
-        );
-        const gpkgPath = path.join(
-          this.tempDir,
-          `location_groups_${timestamp}.gpkg`,
-        );
+        const geojsonPath = path.join(this.tempDir, `location_groups.geojson`);
+        const gpkgPath = path.join(this.tempDir, `location_groups.gpkg`);
         fs.writeFileSync(geojsonPath, JSON.stringify(transformedData), "utf-8");
         // Convert to GPKG
         this.logger.log(
@@ -700,14 +694,8 @@ export class GeodataService {
     this.logger.debug("Generating location group GDB and CSV");
 
     // Define output file paths
-    const locationGroupGdbPath = path.join(
-      this.tempDir,
-      `location_groups_${timestamp}.gdb`,
-    );
-    const locationGroupCsvPath = path.join(
-      this.tempDir,
-      `location_groups_${timestamp}.csv`,
-    );
+    const locationGroupGdbPath = path.join(this.tempDir, `location_groups.gdb`);
+    const locationGroupCsvPath = path.join(this.tempDir, `location_groups.csv`);
 
     // Layer name in the GPKG
     const layerName = "location_groups";
@@ -789,27 +777,15 @@ export class GeodataService {
       `intersect_${timestamp}.gpkg`,
     );
     // final combined gpkg data path
-    const gpkgPath = path.join(
-      this.tempDir,
-      `sampling_locations_${timestamp}.gpkg`,
-    );
+    const gpkgPath = path.join(this.tempDir, `sampling_locations.gpkg`);
     // vrt file path, used for intersecting the watershed gdb with the transformed data gpkg
     const vrtPath = path.join(this.tempDir, `watershed_geo_${timestamp}.vrt`);
     // gdb file path
-    const gdbPath = path.join(
-      this.tempDir,
-      `sampling_locations_${timestamp}.gdb`,
-    );
+    const gdbPath = path.join(this.tempDir, `sampling_locations.gdb`);
     // csv file path
-    const csvPath = path.join(
-      this.tempDir,
-      `sampling_locations_${timestamp}.csv`,
-    );
+    const csvPath = path.join(this.tempDir, `sampling_locations.csv`);
     // intersected geoJson path
-    const geoJsonPath = path.join(
-      this.tempDir,
-      `sampling_locations_${timestamp}.geojson`,
-    );
+    const geoJsonPath = path.join(this.tempDir, `sampling_locations.geojson`);
 
     // New data & previously generated file, UPSERT new data into old
     if (newGpkgPath && latestFilePath) {

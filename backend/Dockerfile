@@ -25,7 +25,7 @@ ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/src/util/watersheds_3005.gpkg ./dist/geodata/watersheds_3005.gpkg
+COPY --from=builder /app/src/util/watersheds_3005.gpkg ./dist/util/watersheds_3005.gpkg
 
 # Change ownership to non-root user and switch to it
 RUN chown -R appuser:appgroup /app

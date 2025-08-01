@@ -761,10 +761,10 @@ export class GeodataService {
     const { timestamp, newGpkgPath, latestFilePath, intersectedLayerName } =
       params;
 
-    // Watershed GDB variables
-    const watershedGdbPath = path.resolve(
+    // Watershed GPKG variables
+    const watershedGpkgPath = path.resolve(
       __dirname,
-      "FWA_WATERSHED_GROUPS_POLY.gdb",
+      "../util/watersheds_3005.gpkg",
     );
     const watershedLayer = "WHSE_BASEMAPPING_FWA_WATERSHED_GROUPS_POLY";
 
@@ -800,7 +800,7 @@ export class GeodataService {
           <LayerSRS>EPSG:3005</LayerSRS>
         </OGRVRTLayer>
         <OGRVRTLayer name="${watershedLayer}">
-          <SrcDataSource>${watershedGdbPath}</SrcDataSource>
+          <SrcDataSource>${watershedGpkgPath}</SrcDataSource>
           <SrcLayer>${watershedLayer}</SrcLayer>
           <GeometryType>wkbPolygon</GeometryType>
           <LayerSRS>EPSG:3005</LayerSRS>
@@ -882,7 +882,7 @@ export class GeodataService {
           <LayerSRS>EPSG:3005</LayerSRS>
         </OGRVRTLayer>
         <OGRVRTLayer name="${watershedLayer}">
-          <SrcDataSource>/app/dist/geodata/watersheds_3005.gpkg</SrcDataSource>
+          <SrcDataSource>${watershedGpkgPath}</SrcDataSource>
           <SrcLayer>${watershedLayer}</SrcLayer>
           <GeometryType>wkbPolygon</GeometryType>
           <LayerSRS>EPSG:3005</LayerSRS>

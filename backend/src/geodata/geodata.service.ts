@@ -247,7 +247,7 @@ export class GeodataService {
     }
     // 3. Save that file to /tmp/geodata/
     // The tempDir is '/tmp/geodata' and is ensured to exist in the constructor.
-    const filePath = path.join(this.tempDir, fileName);
+    const filePath = path.join(this.tempDir, `previous_${fileName}`);
 
     try {
       // Create a write stream for the file

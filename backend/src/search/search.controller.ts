@@ -5,6 +5,7 @@ import {
   Logger,
   Param,
   Post,
+  Query,
   Req,
   Res,
 } from "@nestjs/common";
@@ -22,9 +23,35 @@ export class SearchController {
   private readonly logger = new Logger("SearchController");
   constructor(private searchService: SearchService) {}
 
+  @Get("downloadReport")
+  public async search(@Res() response: Response, @Query() query: Record<string,any>) {
+    const params: BasicSearchDto =  JSON.parse(JSON.stringify(query));
+
+    const jobId = uuidv4();
+    jobs[jobId] = { id: jobId, status: "pending" };
+
+    await this.searchService.runExportJob(params, jobId);
+  
+    const job = jobs[jobId];
+    if (!job || job.status !== "complete" || !job.filePath) {
+      return response.status(404).json({ message: job.error });
+    }
+    response.attachment("ObservationSearchResult.csv");
+    const stream = fs.createReadStream(job.filePath);
+    stream.pipe(response);
+    stream.on("close", () => {
+      fs.unlinkSync(job.filePath);
+      delete jobs[jobId];
+    });
+    stream.on("error", () => {
+      response.status(500).send("Failed to stream file.");
+      delete jobs[jobId];
+    });
+
+  }
+
   @Post("observationSearch")
-  public async basicSearch(@Res() response: Response, @Body() basicSearchDto: BasicSearchDto,
-  ) {
+  public async basicSearch(@Res() response: Response, @Body() basicSearchDto: BasicSearchDto) {
     const jobId = uuidv4();
     jobs[jobId] = { id: jobId, status: "pending" };
 

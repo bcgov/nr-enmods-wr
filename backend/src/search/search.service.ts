@@ -34,8 +34,7 @@ export class SearchService {
   private readonly MAX_DROPDWN_OPTIONS_LIMIT = 100;
   private readonly MAX_API_DATA_LIMIT = 50_000;
   private readonly OBSERVATIONS_URL = process.env.OBSERVATIONS_URL;
-  private readonly OBSERVATIONS_EXPORT_URL =
-    process.env.OBSERVATIONS_EXPORT_URL;
+  private readonly OBSERVATIONS_EXPORT_URL = process.env.OBSERVATIONS_EXPORT_URL;
   private readonly MAX_PARAMS_CHUNK = 50;
 
   /** Runs the export job in a thread so that it doesn't block the frontend */
@@ -49,6 +48,7 @@ export class SearchService {
         jobs[jobId].status = "error";
         jobs[jobId].error = result.message || "Unknown error";
       }
+
     } catch (err) {
       jobs[jobId].status = "error";
       jobs[jobId].error = err?.message || "Unknown error";
@@ -405,7 +405,7 @@ export class SearchService {
 
     if (totalRecordCount > currentObsData.length && cursor) {
       const noOfLoop = Math.ceil(totalRecordCount / currentObsData.length);
-      let i = 0;
+      let i = 0; 
 
       while (i < noOfLoop) {
         this.logger.log("Cursor for the next record: " + cursor);

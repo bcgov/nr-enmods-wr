@@ -5,6 +5,7 @@ import {
   AccordionDetails,
   AccordionSummary,
   Alert,
+  TextField,
 } from "@mui/material"
 import { GridExpandMoreIcon } from "@mui/x-data-grid"
 import TitleText from "@/components/TitleText"
@@ -56,6 +57,7 @@ const AdvanceSearch = (props: Props) => {
   const [units, setUnits] = useState([])
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null)
   const [isPolling, setIsPolling] = useState(false)
+  const [params, setParams] = useState<any>("");
 
   const [formData, setFormData] = useState<AdvanceSearchFormType>({
     observationIds: [],
@@ -103,6 +105,49 @@ const AdvanceSearch = (props: Props) => {
       // getDropdownOptions(SearchAttr.SpecimenId, ""),
     ]).finally(() => setIsApiLoading(false))
   }, [])
+
+
+  useEffect(() => {
+    let params = prepareFormData(formData);
+    
+    // Object.keys(params).forEach(key=> {
+    //   if(params[key]) {
+    //     if(Array.isArray(params[key])) {
+    //       params = {...params, key: params[key].toString()}
+    //     } else if(key === 'locationType' || key === 'workedOrderNo') {
+    //       params = {...params, key: params[key].id || ""}
+    //     } else {
+    //       params = {...params, key: params[key]}
+    //     }
+    //   }
+    // })
+    
+    params = {...params, 
+      locationName: params.locationName.toString(),
+      locationType: params.locationType?.id || "",
+      permitNumber: params.permitNumber.toString(),
+      media: params.media.toString(),
+      observedPropertyGrp: params.observedPropertyGrp.toString(),
+      observedProperty: params.observedProperty.toString(),
+      workedOrderNo: params.workedOrderNo?.id || "",
+      samplingAgency: params.samplingAgency.toString(),
+      analyzingAgency: params.analyzingAgency.toString(),
+      projects: params.projects.toString(),
+      analyticalMethod: params.analyticalMethod.toString(),
+      collectionMethod: params.collectionMethod.toString(),
+      qcSampleType: params.qcSampleType.toString(),
+      dataClassification: params.dataClassification.toString(),
+      sampleDepth: params?.sampleDepth,
+      labBatchId:  params?.labBatchId,
+      specimenId:  params?.specimenId,
+      fromDate: params?.fromDate,
+      toDate: params?.toDate   
+    }
+
+    const url = `${apiBase}/v1/search/downloadReport?locationName=${params?.locationName}&locationType=${params?.locationType}&permitNumber=${params?.permitNumber}&media=${params?.media}&observedPropertyGrp=${params?.observedPropertyGrp}&observedProperty=${params?.observedProperty}&workedOrderNo=${params?.workedOrderNo || ""}&samplingAgency=${params?.samplingAgency}&analyzingAgency=${params?.analyzingAgency}&projects=${params?.projects}&analyticalMethod=${params?.analyticalMethod}&collectionMethod=${params?.collectionMethod}&qcSampleType=${params?.qcSampleType}&dataClassification=${params?.dataClassification}&sampleDepth=${params?.sampleDepth}&labBatchId=${params?.labBatchId}&specimenId=${params?.specimenId}&fromDate=${params?.fromDate || ''}&toDate=${params?.toDate || ''}`;
+    setParams(encodeURI(url))
+ 
+  }, [formData]);
 
   const dropdowns = {
     location: {
@@ -320,7 +365,7 @@ const AdvanceSearch = (props: Props) => {
     if (attrName === SearchAttr.LabBatchId || 
       attrName === SearchAttr.SpecimenId || attrName === SearchAttr.SampleDepth) val = e.target.value
 
-    setFormData({ ...formData, [attrName]: val })
+    setFormData({ ...formData, [attrName]: val })    
   }
 
   const handleInputChange = (
@@ -461,6 +506,11 @@ const AdvanceSearch = (props: Props) => {
           }
         />
       </div>
+
+      <div className="py-4">
+        <TextField fullWidth disabled value={params}/>
+      </div>
+      
       <form noValidate onSubmit={onSubmit}>
         <div>
           <div>

@@ -417,6 +417,7 @@ export class SearchService {
           cursor = data.cursor;
           params = { ...params, cursor: cursor };
           i++;
+         // if (currentObsData.length === this.MAX_API_DATA_LIMIT) break; Note: added limit max record 50,000
         }
       }
     }

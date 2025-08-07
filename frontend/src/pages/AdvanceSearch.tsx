@@ -23,6 +23,7 @@ import { InfoOutlined } from "@mui/icons-material"
 import type AdvanceSearchFormType from "@/interfaces/AdvanceSearchFormType"
 import DownloadReadyDialog from "@/components/search/DownloadReadyDialog"
 import config from "@/config"
+import { fontWeight } from "~/@mui/system"
 
 type Props = {}
 
@@ -57,7 +58,7 @@ const AdvanceSearch = (props: Props) => {
   const [units, setUnits] = useState([])
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null)
   const [isPolling, setIsPolling] = useState(false)
-  const [params, setParams] = useState<any>("");
+  const [params, setParams] = useState<any>("")
 
   const [formData, setFormData] = useState<AdvanceSearchFormType>({
     observationIds: [],
@@ -79,7 +80,7 @@ const AdvanceSearch = (props: Props) => {
     labBatchId: "",
     specimenId: "",
     fromDate: null,
-    toDate: null    
+    toDate: null,
   })
 
   useEffect(() => {
@@ -106,12 +107,12 @@ const AdvanceSearch = (props: Props) => {
     ]).finally(() => setIsApiLoading(false))
   }, [])
 
-
   useEffect(() => {
-    let params = prepareFormData(formData);       
-    params = {...params, 
+    let params = prepareFormData(formData)
+    params = {
+      ...params,
       locationName: params.locationName.toString(),
-      locationType: params.locationType ? params.locationType?.id : '',
+      locationType: params.locationType ? params.locationType?.id : "",
       permitNumber: params.permitNumber.toString(),
       media: params.media.toString(),
       observedPropertyGrp: params.observedPropertyGrp.toString(),
@@ -125,28 +126,30 @@ const AdvanceSearch = (props: Props) => {
       qcSampleType: params.qcSampleType.toString(),
       dataClassification: params.dataClassification.toString(),
       sampleDepth: params?.sampleDepth,
-      labBatchId:  params?.labBatchId,
-      specimenId:  params?.specimenId,
+      labBatchId: params?.labBatchId,
+      specimenId: params?.specimenId,
       fromDate: params?.fromDate,
       toDate: params?.toDate,
-      locationTypeCustomId: params.locationType ? params.locationType?.customId : '',
-      workOrderNoText: params.workedOrderNo ? params.workedOrderNo?.text : '',
-    };
+      locationTypeCustomId: params.locationType
+        ? params.locationType?.customId
+        : "",
+      workOrderNoText: params.workedOrderNo ? params.workedOrderNo?.text : "",
+    }
 
-    let urlString = "" 
-    for(const key in params) {
-      if(key !=="observationIds" && params[key]) {
-        urlString = urlString.concat(key, "=", params[key],"&")
+    let urlString = ""
+    for (const key in params) {
+      if (key !== "observationIds" && params[key]) {
+        urlString = urlString.concat(key, "=", params[key], "&")
       }
     }
-   
-    if(urlString)
-      urlString =  urlString.substring(0, urlString.length-1)
 
-    const url = urlString ? `${apiBase}/v1/search/downloadReport?${urlString}` : `${apiBase}/v1/search/downloadReport`;
+    if (urlString) urlString = urlString.substring(0, urlString.length - 1)
+
+    const url = urlString
+      ? `${apiBase}/v1/search/downloadReport?${urlString}`
+      : `${apiBase}/v1/search/downloadReport`
     setParams(encodeURI(url))
-
-  }, [formData]);
+  }, [formData])
 
   const dropdowns = {
     location: {
@@ -177,9 +180,11 @@ const AdvanceSearch = (props: Props) => {
     let status = "pending"
     while (status === "pending") {
       try {
-        const res = await apiService.getAxiosInstance().get(`/v1/search/observationSearch/status/${jobId}`)
+        const res = await apiService
+          .getAxiosInstance()
+          .get(`/v1/search/observationSearch/status/${jobId}`)
         status = res.data?.status
-        if (status === "complete") {   
+        if (status === "complete") {
           setIsDisabled(false)
           setIsApiLoading(false)
           setIsLoading(false)
@@ -187,7 +192,7 @@ const AdvanceSearch = (props: Props) => {
             `${apiBase}/v1/search/observationSearch/download/${jobId}`,
           )
           break
-        } else if (status === "error") {       
+        } else if (status === "error") {
           setIsDisabled(false)
           setIsApiLoading(false)
           setIsLoading(false)
@@ -246,7 +251,10 @@ const AdvanceSearch = (props: Props) => {
       }
     }
   }
-  const getDropdownOptions = async (fieldName: string, query: string): Promise<void> => {
+  const getDropdownOptions = async (
+    fieldName: string,
+    query: string,
+  ): Promise<void> => {
     try {
       setIsApiLoading(true)
       const url = dropdwnUrl(fieldName, query)
@@ -323,7 +331,7 @@ const AdvanceSearch = (props: Props) => {
       }
     } catch (err) {
       console.error(err)
-    } 
+    }
   }
 
   const clearForm = () => {
@@ -349,7 +357,7 @@ const AdvanceSearch = (props: Props) => {
       labBatchId: "",
       specimenId: "",
       fromDate: null,
-      toDate: null
+      toDate: null,
     })
   }
 
@@ -361,10 +369,14 @@ const AdvanceSearch = (props: Props) => {
   const handleOnChange = (e: any, val: any, attrName: string) => {
     setErrors([])
 
-    if (attrName === SearchAttr.LabBatchId || 
-      attrName === SearchAttr.SpecimenId || attrName === SearchAttr.SampleDepth) val = e.target.value
+    if (
+      attrName === SearchAttr.LabBatchId ||
+      attrName === SearchAttr.SpecimenId ||
+      attrName === SearchAttr.SampleDepth
+    )
+      val = e.target.value
 
-    setFormData({ ...formData, [attrName]: val })    
+    setFormData({ ...formData, [attrName]: val })
   }
 
   const handleInputChange = (
@@ -413,8 +425,7 @@ const AdvanceSearch = (props: Props) => {
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    window.scroll(0, 0)   
-    //console.log(prepareFormData(formData));
+    window.scroll(0, 0)
     advanceSearch(prepareFormData(formData))
   }
 
@@ -422,19 +433,26 @@ const AdvanceSearch = (props: Props) => {
     try {
       setIsDisabled(true)
       setIsLoading(true)
-      const res = await apiService.getAxiosInstance().post("/v1/search/observationSearch", data, {
+      const res = await apiService
+        .getAxiosInstance()
+        .post("/v1/search/observationSearch", data, {
           responseType: "json",
           validateStatus: () => true,
         })
       pollStatus(res.data.jobId)
 
       const contentType = res.headers["content-type"]
-      if (res.status >= 200 && res.status < 300 && contentType && contentType.includes("text/csv")) {
+      if (
+        res.status >= 200 &&
+        res.status < 300 &&
+        contentType &&
+        contentType.includes("text/csv")
+      ) {
         // Download CSV
         const text = await res.data
         let errorArr: string[] = []
 
-        const json = JSON.parse(text)       
+        const json = JSON.parse(text)
         if (json.message) {
           errorArr = [json.message]
           setIsDisabled(false)
@@ -457,7 +475,7 @@ const AdvanceSearch = (props: Props) => {
       console.debug(err)
       setErrors(["An unexpected error occurred..."])
       window.scroll(0, 0)
-    } 
+    }
   }
 
   const prepareFormData = (formData: { [key: string]: any }) => {
@@ -467,14 +485,15 @@ const AdvanceSearch = (props: Props) => {
         const arr: string[] = []
 
         formData[key].forEach((item) => {
-          if (key === SearchAttr.DataClassification) arr.push(item.data_classification)
+          if (key === SearchAttr.DataClassification)
+            arr.push(item.data_classification)
           else if (key === SearchAttr.QcSampleType) arr.push(item.qc_type)
           else arr.push(item.id)
         })
 
-        data[key] = arr;
+        data[key] = arr
       } else if (key === "fromDate" || key === "toDate") {
-        data[key] = formData[key] ? formData[key].toISOString() : '';
+        data[key] = formData[key] ? formData[key].toISOString() : ""
       }
     }
     return data
@@ -485,47 +504,51 @@ const AdvanceSearch = (props: Props) => {
       <Loading isLoading={isLoading} />
       <LoadingSpinner isLoading={isApiLoading} />
       <div className="flex-row px-1 py-4">
-        <Link to="/search/basic"
-          className="bg-[#fff] text-[#38598a] border rounded-md p-2 text-sm hover:bg-[#38598a] hover:text-[#fff] cursor-pointer">
+        <Link
+          to="/search/basic"
+          className="bg-[#fff] text-[#38598a] border rounded-md p-2 text-sm hover:bg-[#38598a] hover:text-[#fff] cursor-pointer"
+        >
           Basic
         </Link>
 
-        <Link to="/search/advance"
-          className="bg-[#38598a] text-[#fff] border rounded-md p-2 text-sm cursor-pointer">
+        <Link
+          to="/search/advance"
+          className="bg-[#38598a] text-[#fff] border rounded-md p-2 text-sm cursor-pointer"
+        >
           Advanced
         </Link>
         <DownloadReadyDialog
           open={!!downloadUrl}
           downloadUrl={downloadUrl}
           onClose={() => {
-            setDownloadUrl(null);
-            setIsLoading(false)}
-          }
+            setDownloadUrl(null)
+            setIsLoading(false)
+          }}
         />
+      </div>
+      <div>
+        {errors && errors.length > 0 && (
+          <Alert
+            sx={{ my: 1 }}
+            icon={<InfoOutlined fontSize="inherit" />}
+            severity="info"
+            onClose={() => setErrors([])}
+          >
+            <ul style={{ margin: 0 }}>
+              {errors.map((err, idx) => (
+                <li key={idx}>{err}</li>
+              ))}
+            </ul>
+          </Alert>
+        )}
       </div>
 
       <div className="py-4">
-        <TextField fullWidth size="small" disabled value={params}/>
+        <TextField fullWidth size="small" disabled value={params} />
       </div>
-      
+
       <form noValidate onSubmit={onSubmit}>
         <div>
-          <div>
-            {errors && errors.length > 0 && (
-              <Alert
-                sx={{ my: 1 }}
-                icon={<InfoOutlined fontSize="inherit" />}
-                severity="info"
-                onClose={() => setErrors([])}
-              >
-                <ul style={{ margin: 0}}>
-                  {errors.map((err, idx) => (
-                    <li key={idx}>{err}</li>
-                  ))}
-                </ul>
-              </Alert>
-            )}
-          </div>
           <div>
             <TitleText
               text="Specify location paramerters, data source, date range, and sampling filters to to apply
@@ -537,15 +560,15 @@ const AdvanceSearch = (props: Props) => {
           {/* Select Location Parameter  */}
           <Accordion defaultExpanded>
             <AccordionSummary
-              expandIcon={<GridExpandMoreIcon />}
+              expandIcon={<GridExpandMoreIcon sx={{ color: "#fff" }} />}
               aria-controls="select-location-parameter-content"
               id="select-location-parameter"
-              sx={{ background: "#f7f7f7" }}
+              sx={{ background: "#38598a", color: "#fff" }}
             >
               <TitleText
-                variant="subtitle1"
-                sx={{ fontWeight: 600 }}
-                text="Select Location Parameters"
+                variant="h6"
+                sx={{ fontWeight: 500 }}
+                text="Location Parameters"
               />
             </AccordionSummary>
             <AccordionDetails>
@@ -562,45 +585,47 @@ const AdvanceSearch = (props: Props) => {
           </Accordion>
 
           {/* Filter Results */}
-          <Accordion>
-            <AccordionSummary
-              expandIcon={<GridExpandMoreIcon />}
-              aria-controls="filter-results-content"
-              id="filter-results"
-              sx={{ background: "#f7f7f7" }}
-            >
-              <TitleText
-                variant="subtitle1"
-                sx={{ fontWeight: 600 }}
-                text="Select Filter Results"
-              />
-            </AccordionSummary>
-            <AccordionDetails>
-              <div className="mb-5">
-                <FilterResultsForm
-                  formData={formData}
-                  filterResultDrpdwns={dropdowns.filterResult}
-                  handleInputChange={handleInputChange}
-                  handleOnChange={handleOnChange}
-                  handleOnChangeDatepicker={handleOnChangeDatepicker}
-                  searchType="advance"
+          <div className="my-1">
+            <Accordion>
+              <AccordionSummary
+                expandIcon={<GridExpandMoreIcon sx={{ color: "#fff" }} />}
+                aria-controls="filter-results-content"
+                id="filter-results"
+                sx={{ background: "#38598a", color: "#fff" }}
+              >
+                <TitleText
+                  variant="h6"
+                  sx={{ fontWeight: 500 }}
+                  text="Filter Results"
                 />
-              </div>
-            </AccordionDetails>
-          </Accordion>
+              </AccordionSummary>
+              <AccordionDetails>
+                <div className="mb-5">
+                  <FilterResultsForm
+                    formData={formData}
+                    filterResultDrpdwns={dropdowns.filterResult}
+                    handleInputChange={handleInputChange}
+                    handleOnChange={handleOnChange}
+                    handleOnChangeDatepicker={handleOnChangeDatepicker}
+                    searchType="advance"
+                  />
+                </div>
+              </AccordionDetails>
+            </Accordion>
+          </div>
 
           {/* Additional Criteria */}
           <Accordion>
             <AccordionSummary
-              expandIcon={<GridExpandMoreIcon />}
+              expandIcon={<GridExpandMoreIcon sx={{ color: "#fff" }} />}
               aria-controls="additional-criteria-content"
               id="additional-criteria"
-              sx={{ background: "#f7f7f7" }}
+              sx={{ background: "#38598a", color: "#fff" }}
             >
               <TitleText
-                variant="subtitle1"
-                sx={{ fontWeight: 600 }}
-                text="Select Additional Criteria"
+                variant="h6"
+                sx={{ fontWeight: 500 }}
+                text="Additional Criteria"
               />
             </AccordionSummary>
             <AccordionDetails>
@@ -615,17 +640,17 @@ const AdvanceSearch = (props: Props) => {
           </Accordion>
         </div>
 
-        <div className="flex flex-row pt-6 ">
+        <div className="flex gap-2 pt-6">
           <Btn
-            text={"Clear Search"}
+            text={"Clear"}
             type="button"
             handleClick={clearForm}
             sx={{
               background: "#fff",
               color: "#0B5394",
-              fontSize: "8pt",
+              fontSize: "9pt",
               "&:hover": {
-                color: "#fff",
+                fontWeight: 600,
               },
             }}
           />
@@ -633,7 +658,12 @@ const AdvanceSearch = (props: Props) => {
             disabled={isDisabled}
             text={"Search"}
             type={"submit"}
-            sx={{ fontSize: "8pt" }}
+            sx={{
+              fontSize: "9pt",
+              "&:hover": {
+                fontWeight: 600,
+              },
+            }}
           />
         </div>
       </form>

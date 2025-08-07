@@ -38,9 +38,7 @@ export default function AdditionalCriteria(props: any) {
 
   return (
     <div>
-      <div className="heading-section">
-        <TitleText text={"Additional Criteria"} variant="h6" />
-      </div>
+     
       <div className="py-4">
         {/* <div>
           <TitleText

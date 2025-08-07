@@ -71,7 +71,7 @@ const BasicSearch = () => {
   }
 
   // Pseudocode for polling
-  const pollStatus = async (jobId) => {
+  const pollStatus = async (jobId: string) => {
     let status = "pending"
     while (status === "pending") {
       const res = await apiService
@@ -291,7 +291,6 @@ const BasicSearch = () => {
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     window.scroll(0, 0)
-    //console.log(prepareFormData(formData));
     basicSearch(prepareFormData(formData))
   }
 
@@ -353,7 +352,7 @@ const BasicSearch = () => {
           </div>
           <div className="py-4">
             <TitleText
-              variant="subtitle1"
+              variant="h6"
               text="Download Water Quality Data"
               sx={{ fontWeight: 700 }}
             />

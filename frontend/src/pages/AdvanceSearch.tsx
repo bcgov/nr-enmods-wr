@@ -558,40 +558,52 @@ const AdvanceSearch = (props: Props) => {
             />
           </div>
           {/* Select Location Parameter  */}
-          <Accordion defaultExpanded>
-            <AccordionSummary
-              expandIcon={<GridExpandMoreIcon sx={{ color: "#fff" }} />}
-              aria-controls="select-location-parameter-content"
-              id="select-location-parameter"
-              sx={{ background: "#38598a", color: "#fff" }}
-            >
-              <TitleText
-                variant="h6"
-                sx={{ fontWeight: 500 }}
-                text="Location Parameters"
-              />
-            </AccordionSummary>
-            <AccordionDetails>
-              <div className="mb-0">
-                <LocationParametersForm
-                  formData={formData}
-                  locationDropdwns={dropdowns.location}
-                  handleInputChange={handleInputChange}
-                  handleOnChange={handleOnChange}
-                  searchType="advance"
+          <div className="mb-1">
+            <Accordion defaultExpanded>
+              <AccordionSummary
+                expandIcon={<GridExpandMoreIcon sx={{ color: "#fff" }} />}
+                aria-controls="select-location-parameter-content"
+                id="select-location-parameter"
+                sx={{
+                  background: "#38598a",
+                  color: "#fff",
+                  borderTopRightRadius: ".3rem",
+                  borderTopLeftRadius: ".3rem",
+                }}
+              >
+                <TitleText
+                  variant="h6"
+                  sx={{ fontWeight: 500 }}
+                  text="Location Parameters"
                 />
-              </div>
-            </AccordionDetails>
-          </Accordion>
+              </AccordionSummary>
+              <AccordionDetails>
+                <div className="mb-0">
+                  <LocationParametersForm
+                    formData={formData}
+                    locationDropdwns={dropdowns.location}
+                    handleInputChange={handleInputChange}
+                    handleOnChange={handleOnChange}
+                    searchType="advance"
+                  />
+                </div>
+              </AccordionDetails>
+            </Accordion>
+          </div>
 
           {/* Filter Results */}
-          <div className="my-1">
+          <div className="mb-1">
             <Accordion>
               <AccordionSummary
                 expandIcon={<GridExpandMoreIcon sx={{ color: "#fff" }} />}
                 aria-controls="filter-results-content"
                 id="filter-results"
-                sx={{ background: "#38598a", color: "#fff" }}
+                sx={{
+                  background: "#38598a",
+                  color: "#fff",
+                  borderTopRightRadius: ".3rem",
+                  borderTopLeftRadius: ".3rem",
+                }}
               >
                 <TitleText
                   variant="h6"
@@ -600,7 +612,7 @@ const AdvanceSearch = (props: Props) => {
                 />
               </AccordionSummary>
               <AccordionDetails>
-                <div className="mb-5">
+                <div className="mb-0">
                   <FilterResultsForm
                     formData={formData}
                     filterResultDrpdwns={dropdowns.filterResult}
@@ -615,29 +627,38 @@ const AdvanceSearch = (props: Props) => {
           </div>
 
           {/* Additional Criteria */}
-          <Accordion>
-            <AccordionSummary
-              expandIcon={<GridExpandMoreIcon sx={{ color: "#fff" }} />}
-              aria-controls="additional-criteria-content"
-              id="additional-criteria"
-              sx={{ background: "#38598a", color: "#fff" }}
-            >
-              <TitleText
-                variant="h6"
-                sx={{ fontWeight: 500 }}
-                text="Additional Criteria"
-              />
-            </AccordionSummary>
-            <AccordionDetails>
-              <AdditionalCriteria
-                handleInputChange={handleInputChange}
-                handleOnChange={handleOnChange}
-                handleOnChangeDatepicker={handleOnChangeDatepicker}
-                formData={formData}
-                additionalCriteriaDrpdwns={dropdowns.additionalCriteria}
-              />
-            </AccordionDetails>
-          </Accordion>
+          <div className="mb-1">
+            <Accordion>
+              <AccordionSummary
+                expandIcon={<GridExpandMoreIcon sx={{ color: "#fff" }} />}
+                aria-controls="additional-criteria-content"
+                id="additional-criteria"
+                sx={{
+                  background: "#38598a",
+                  color: "#fff",
+                  borderTopRightRadius: ".3rem",
+                  borderTopLeftRadius: ".3rem",
+                }}
+              >
+                <TitleText
+                  variant="h6"
+                  sx={{ fontWeight: 500 }}
+                  text="Additional Criteria"
+                />
+              </AccordionSummary>
+              <AccordionDetails>
+                <div className="mb-0">
+                  <AdditionalCriteria
+                    handleInputChange={handleInputChange}
+                    handleOnChange={handleOnChange}
+                    handleOnChangeDatepicker={handleOnChangeDatepicker}
+                    formData={formData}
+                    additionalCriteriaDrpdwns={dropdowns.additionalCriteria}
+                  />
+                </div>
+              </AccordionDetails>
+            </Accordion>
+          </div>
         </div>
 
         <div className="flex gap-2 pt-6">

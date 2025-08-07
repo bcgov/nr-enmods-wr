@@ -24,8 +24,31 @@ export class SearchController {
   constructor(private searchService: SearchService) {}
 
   @Get("downloadReport")
-  public async search(@Res() response: Response, @Query() query: Record<string,any>) {
-    const params: BasicSearchDto =  JSON.parse(JSON.stringify(query));
+  public async search(@Res() response: Response, @Query() query: Record<string,any>) {  
+    
+    const queryParams=  JSON.parse(JSON.stringify(query));
+    let params: BasicSearchDto = {
+      locationType: queryParams.locationType ? {id: queryParams.locationType, customId: queryParams.locationTypeCustomId} : '',
+      locationName: queryParams.locationName ? queryParams.locationName : '',
+      permitNumber: queryParams.permitNumber ? queryParams.permitNumber : '',
+      fromDate: queryParams.fromDate ? queryParams.fromDate : '',
+      toDate: queryParams.toDate ? queryParams.toDate : '',
+      media: queryParams.media ? queryParams.media : '',
+      observedPropertyGrp: queryParams.observedPropertyGrp ? queryParams.observedPropertyGrp : '',
+      observedProperty: queryParams.observedProperty ? queryParams.observedProperty : '',
+      projects: queryParams.projects ? queryParams.projects : '',
+      workedOrderNo: queryParams.workedOrderNo ? {id: queryParams.workedOrderNo, text: queryParams.workOrderNoText} : '',
+      samplingAgency: queryParams.samplingAgency ? queryParams.samplingAgency : '',
+      analyzingAgency: queryParams.analyzingAgency ? queryParams.analyzingAgency : '',
+      analyticalMethod: queryParams.analyticalMethod ? queryParams.analyticalMethod : '',
+      collectionMethod: queryParams.collectionMethod ? queryParams.collectionMethod : '',
+      qcSampleType: queryParams.qcSampleType ? queryParams.qcSampleType : '',
+      dataClassification: queryParams.data_classification ? queryParams.data_classification : '',
+      sampleDepth: queryParams.sampleDepth ? queryParams.sampleDepth : '',
+      labBatchId: queryParams.labBatchId ? queryParams.labBatchId : '',
+      specimenId: queryParams.specimenId ? queryParams.specimenId : '',
+      fileFormat: ''
+    }
 
     const jobId = uuidv4();
     jobs[jobId] = { id: jobId, status: "pending" };

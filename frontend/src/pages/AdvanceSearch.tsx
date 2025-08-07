@@ -108,23 +108,10 @@ const AdvanceSearch = (props: Props) => {
 
 
   useEffect(() => {
-    let params = prepareFormData(formData);
-    
-    // Object.keys(params).forEach(key=> {
-    //   if(params[key]) {
-    //     if(Array.isArray(params[key])) {
-    //       params = {...params, key: params[key].toString()}
-    //     } else if(key === 'locationType' || key === 'workedOrderNo') {
-    //       params = {...params, key: params[key].id || ""}
-    //     } else {
-    //       params = {...params, key: params[key]}
-    //     }
-    //   }
-    // })
-    
+    let params = prepareFormData(formData);       
     params = {...params, 
       locationName: params.locationName.toString(),
-      locationType: params.locationType?.id || "",
+      locationType: params.locationType ? params.locationType?.id : '',
       permitNumber: params.permitNumber.toString(),
       media: params.media.toString(),
       observedPropertyGrp: params.observedPropertyGrp.toString(),
@@ -141,12 +128,24 @@ const AdvanceSearch = (props: Props) => {
       labBatchId:  params?.labBatchId,
       specimenId:  params?.specimenId,
       fromDate: params?.fromDate,
-      toDate: params?.toDate   
-    }
+      toDate: params?.toDate,
+      locationTypeCustomId: params.locationType ? params.locationType?.customId : '',
+      workOrderNoText: params.workedOrderNo ? params.workedOrderNo?.text : '',
+    };
 
-    const url = `${apiBase}/v1/search/downloadReport?locationName=${params?.locationName}&locationType=${params?.locationType}&permitNumber=${params?.permitNumber}&media=${params?.media}&observedPropertyGrp=${params?.observedPropertyGrp}&observedProperty=${params?.observedProperty}&workedOrderNo=${params?.workedOrderNo || ""}&samplingAgency=${params?.samplingAgency}&analyzingAgency=${params?.analyzingAgency}&projects=${params?.projects}&analyticalMethod=${params?.analyticalMethod}&collectionMethod=${params?.collectionMethod}&qcSampleType=${params?.qcSampleType}&dataClassification=${params?.dataClassification}&sampleDepth=${params?.sampleDepth}&labBatchId=${params?.labBatchId}&specimenId=${params?.specimenId}&fromDate=${params?.fromDate || ''}&toDate=${params?.toDate || ''}`;
+    let urlString = "" 
+    for(const key in params) {
+      if(key !=="observationIds" && params[key]) {
+        urlString = urlString.concat(key, "=", params[key],"&")
+      }
+    }
+   
+    if(urlString)
+      urlString =  urlString.substring(0, urlString.length-1)
+
+    const url = urlString ? `${apiBase}/v1/search/downloadReport?${urlString}` : `${apiBase}/v1/search/downloadReport`;
     setParams(encodeURI(url))
- 
+
   }, [formData]);
 
   const dropdowns = {
@@ -473,7 +472,9 @@ const AdvanceSearch = (props: Props) => {
           else arr.push(item.id)
         })
 
-        data[key] = arr
+        data[key] = arr;
+      } else if (key === "fromDate" || key === "toDate") {
+        data[key] = formData[key] ? formData[key].toISOString() : '';
       }
     }
     return data
@@ -484,17 +485,13 @@ const AdvanceSearch = (props: Props) => {
       <Loading isLoading={isLoading} />
       <LoadingSpinner isLoading={isApiLoading} />
       <div className="flex-row px-1 py-4">
-        <Link
-          to="/search/basic"
-          className="bg-[#fff] text-[#38598a] border rounded-md p-2 text-sm hover:bg-[#38598a] hover:text-[#fff] cursor-pointer"
-        >
+        <Link to="/search/basic"
+          className="bg-[#fff] text-[#38598a] border rounded-md p-2 text-sm hover:bg-[#38598a] hover:text-[#fff] cursor-pointer">
           Basic
         </Link>
 
-        <Link
-          to="/search/advance"
-          className="bg-[#38598a] text-[#fff] border rounded-md p-2 text-sm cursor-pointer"
-        >
+        <Link to="/search/advance"
+          className="bg-[#38598a] text-[#fff] border rounded-md p-2 text-sm cursor-pointer">
           Advanced
         </Link>
         <DownloadReadyDialog
@@ -508,7 +505,7 @@ const AdvanceSearch = (props: Props) => {
       </div>
 
       <div className="py-4">
-        <TextField fullWidth disabled value={params}/>
+        <TextField fullWidth size="small" disabled value={params}/>
       </div>
       
       <form noValidate onSubmit={onSubmit}>

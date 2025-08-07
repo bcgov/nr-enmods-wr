@@ -280,7 +280,9 @@ const BasicSearch = () => {
           arr.push(item.id)
         })
         data[key] = arr
-      } 
+      } else if (key === "fromDate" || key === "toDate") {
+        data[key] = formData[key] ? formData[key].toISOString() : '';
+      }
     }
     return data
   }
@@ -288,6 +290,7 @@ const BasicSearch = () => {
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     window.scroll(0, 0)
+    //console.log(prepareFormData(formData));
     basicSearch(prepareFormData(formData))
   }
 

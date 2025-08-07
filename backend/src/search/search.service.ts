@@ -396,9 +396,9 @@ export class SearchService {
 
     return isDataFound;
   }
-
+ 
   private async getDataFromPagination(attribute: any, params: any, url: string): Promise<any[]> {
-    const totalRecordCount = attribute.totalCount;
+    const totalRecordCount = attribute.totalCount; 
     let currentObsData = attribute.domainObjects;
     let cursor = attribute.cursor;
     params = {...params, cursor: cursor };
@@ -453,9 +453,9 @@ export class SearchService {
           for (const ids of locationIdsPartition) {
             const locationParam = { ...basicSearchDto, locationName: ids };
             const params = await this.getUserSearchParams(locationParam, null);
-            const res = await this.bcApiCall(this.getAbsoluteUrl(process.env.OBSERVATIONS_URL),
-              params,
-            );
+
+            const res = await this.bcApiCall(this.getAbsoluteUrl(process.env.OBSERVATIONS_URL), params);
+
             if (res.status === HttpStatus.OK) {
               const observations = await this.getDataFromPagination(JSON.parse(res.data),
                 params,
@@ -492,18 +492,15 @@ export class SearchService {
     }
   }
 
-  private async getUserSearchParams(
-    basicSearchDto: BasicSearchDto,
-    cursor: string,
-  ) {
+  private async getUserSearchParams(basicSearchDto: BasicSearchDto, cursor: string) {
     const queryParams = {
       samplingLocationIds: (basicSearchDto.locationName || "").toString(),
       samplingLocationGroupIds: (basicSearchDto.permitNumber || "").toString(),
       media: (basicSearchDto.media || "").toString(),
       analyticalGroupIds: (basicSearchDto.observedPropertyGrp || "").toString(),
       projectIds: (basicSearchDto.projects || "").toString(),
-      "start-observedTime": basicSearchDto.fromDate || "",
-      "end-observedTime": basicSearchDto.toDate || "",
+      "start-observedTime": basicSearchDto.fromDate ? new Date(basicSearchDto.fromDate) : "",
+      "end-observedTime": basicSearchDto.toDate ? new Date(new Date(basicSearchDto.toDate).setHours(23,59,0,0)) : "",     
       limit: this.MAX_API_DATA_LIMIT,
       cursor: cursor,
       observedPropertyIds: (basicSearchDto?.observedProperty || "").toString(),
@@ -539,13 +536,12 @@ export class SearchService {
 
   private async bcApiCall(url: string, params: any): Promise<any> {
     try {
-      const res = await firstValueFrom(
-        this.httpService.get(url, {
-          params: params,
-        }),
-      );
+
+      const res = await firstValueFrom(this.httpService.get(url, { params: params}));
       if (res.status === HttpStatus.OK) return res;
+
     } catch (err) {
+      this.logger.log(err);
       if (err.response.data) {
         const errResponse = JSON.parse(err.response.data);
         let errMsg = [];
@@ -555,6 +551,7 @@ export class SearchService {
           error: errMsg,
         });
       }
+
     }
   }
 

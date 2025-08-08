@@ -35,7 +35,7 @@ export class SearchService {
   private readonly MAX_API_DATA_LIMIT = 50_000;
   private readonly OBSERVATIONS_URL = process.env.OBSERVATIONS_URL;
   private readonly OBSERVATIONS_EXPORT_URL = process.env.OBSERVATIONS_EXPORT_URL;
-  private readonly MAX_PARAMS_CHUNK = 50;
+  private readonly MAX_PARAMS_CHUNK = 55;
 
   /** Runs the export job in a thread so that it doesn't block the frontend */
   public async runExportJob(basicSearchDto: BasicSearchDto, jobId: string) {
@@ -417,7 +417,7 @@ export class SearchService {
           cursor = data.cursor;
           params = { ...params, cursor: cursor };
           i++;
-         // if (currentObsData.length === this.MAX_API_DATA_LIMIT) break; Note: added limit max record 50,000
+          //if (currentObsData.length === this.MAX_API_DATA_LIMIT) break; //Note: added limit max record 50,000
         }
       }
     }
@@ -442,6 +442,8 @@ export class SearchService {
         params,
         process.env.LOCATION_NAME_CODE_TABLE_API,
       );
+      
+      this.logger.log("Total location from location type: " + locations.length);
 
       if (locations && locations.length > 0) {
         const allLocationIds = locations.map((location) => location.id);
@@ -450,7 +452,7 @@ export class SearchService {
         if (locationIds.length > this.MAX_PARAMS_CHUNK) {
           let obsIdsArr = [];
           const locationIdsPartition = this.partitionArray(locationIds, this.MAX_PARAMS_CHUNK);
-
+          let recordCounter = 0;
           for (const ids of locationIdsPartition) {
             const locationParam = { ...basicSearchDto, locationName: ids };
             const params = await this.getUserSearchParams(locationParam, null);
@@ -462,14 +464,18 @@ export class SearchService {
                 params,
                 process.env.OBSERVATIONS_URL,
               );
+
+              this.logger.log("Observation length: " + observations.length);
+ 
               if (observations && observations.length > 0) {
                 const obsIds = observations.map((item) => item.id);
-                obsIdsArr = [...obsIdsArr, ...obsIds];
+                obsIdsArr = [...new Set([...obsIdsArr, ...obsIds])];
+                if(obsIdsArr.length >= this.MAX_API_DATA_LIMIT) break;
               }
             }
           }
           
-          return obsIdsArr;
+          return obsIdsArr.splice(0, this.MAX_API_DATA_LIMIT);  //NOTE: max. no. of record
         } else {
           const locationParam = {...basicSearchDto, locationName: locationIds};
           const params = await this.getUserSearchParams(locationParam, null);

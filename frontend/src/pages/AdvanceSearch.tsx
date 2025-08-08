@@ -499,6 +499,14 @@ const AdvanceSearch = (props: Props) => {
     return data
   }
 
+  const copyText = async() => {
+   try {
+    await navigator.clipboard.writeText(params);
+   } catch(err) {
+    console.error(err)
+   }
+  }
+
   return (
     <div className="p-3">
       <Loading isLoading={isLoading} />
@@ -543,8 +551,18 @@ const AdvanceSearch = (props: Props) => {
         )}
       </div>
 
-      <div className="py-4">
-        <TextField fullWidth size="small" disabled value={params} />
+      <div className="py-4 flex gap-2">
+        <TextField fullWidth size="small" id="urlText" disabled value={params} />
+        <Btn text={"Copy"}
+            type="button"        
+            handleClick={copyText}
+            sx={{             
+              color: "#fff",
+              fontSize: "9pt",
+              "&:hover": {
+                fontWeight: 600,
+              },
+            }}/>
       </div>
 
       <form noValidate onSubmit={onSubmit}>

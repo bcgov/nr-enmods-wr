@@ -8,7 +8,7 @@ export default function LocationParametersForm(props: any) {
     props
   return (
     <>
-      <div className="py-1">
+      <div className="pt-1 pb-3">
         <TitleText
           text={
             "Specify location parameters to describe the spatial extent of the desired dataset."

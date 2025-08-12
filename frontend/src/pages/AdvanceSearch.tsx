@@ -23,7 +23,6 @@ import { InfoOutlined } from "@mui/icons-material"
 import type AdvanceSearchFormType from "@/interfaces/AdvanceSearchFormType"
 import DownloadReadyDialog from "@/components/search/DownloadReadyDialog"
 import config from "@/config"
-import { fontWeight } from "~/@mui/system"
 
 type Props = {}
 

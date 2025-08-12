@@ -1,9 +1,10 @@
-import { List, ListItemButton, ListItemText } from "@mui/material"
+import { Divider, List, ListItemButton, ListItemText } from "@mui/material"
 import { NavLink } from "react-router-dom"
+import { Home, Search } from "@mui/icons-material"
 
 const items = [
-  { name: "Home", link: "/home" },
-  { name: "Search", link: "/search" },
+  { name: "Home", link: "/home", icon: <Home /> },
+  { name: "Search", link: "/search", icon: <Search /> },
 ]
 
 const sidebar = ({ handleClickNavMenu }) => {
@@ -12,9 +13,12 @@ const sidebar = ({ handleClickNavMenu }) => {
       <div className={"hidden md:block "}>
         <List>
           {items.map((items, index) => (
-            <ListItemButton key={index} component={NavLink} to={items.link}>
-              <ListItemText primary={items.name} />
+            <div key={index}>
+            <ListItemButton  component={NavLink} to={items.link} sx={{display: "flex", gap: ".5rem"}}>              
+                <span>{items.icon}</span> <ListItemText primary={items.name} />            
             </ListItemButton>
+            <Divider/>
+            </div>
           ))}
         </List>
       </div>
@@ -27,7 +31,7 @@ const sidebar = ({ handleClickNavMenu }) => {
               to={items.link}
               onClick={handleClickNavMenu}
             >
-              <ListItemText primary={items.name} />
+              {items.icon} <ListItemText primary={items.name} />
             </ListItemButton>
           ))}
         </List>

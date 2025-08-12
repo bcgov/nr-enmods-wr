@@ -1,9 +1,6 @@
 import Btn from "@/components/Btn"
 import TitleText from "@/components/TitleText"
-import {
-  Alert,
-  Paper,
-} from "@mui/material"
+import { Alert, Paper } from "@mui/material"
 import LocationParametersForm from "@/components/search/LocationParametersForm"
 import FilterResultsForm from "@/components/search/FilterResultsForm"
 import DownloadForm from "@/components/search/DownloadForm"
@@ -23,7 +20,9 @@ import DownloadReadyDialog from "@/components/search/DownloadReadyDialog"
 const BasicSearch = () => {
   const apiBase = config.API_BASE_URL
     ? config.API_BASE_URL
-    : import.meta.env.DEV ? "http://localhost:3000/api" : ""
+    : import.meta.env.DEV
+      ? "http://localhost:3000/api"
+      : ""
 
   const [isDisabled, setIsDisabled] = useState(false)
   const [locationTypes, setLocationTypes] = useState([])
@@ -72,7 +71,7 @@ const BasicSearch = () => {
   }
 
   // Pseudocode for polling
-  const pollStatus = async (jobId) => {
+  const pollStatus = async (jobId: string) => {
     let status = "pending"
     while (status === "pending") {
       const res = await apiService
@@ -108,7 +107,7 @@ const BasicSearch = () => {
       const url = dropdwnUrl(fieldName, query)
       if (url) {
         const apiData = await apiService.getAxiosInstance().get(url)
-        
+
         if (apiData?.status === 200) {
           setErrors([])
           let response = apiData.data
@@ -235,7 +234,9 @@ const BasicSearch = () => {
       pollStatus(res.data.jobId)
 
       console.debug(`Status from observationSearch: ${res.status}`)
-      console.debug(`content-type from observationSearch: ${res.headers["content-type"]}`)
+      console.debug(
+        `content-type from observationSearch: ${res.headers["content-type"]}`,
+      )
 
       const contentType = res.headers["content-type"]
       if (
@@ -275,12 +276,14 @@ const BasicSearch = () => {
     const data = { ...formData }
     for (const key in formData) {
       const arr: string[] = []
-      if (Array.isArray(formData[key])) {        
+      if (Array.isArray(formData[key])) {
         formData[key].forEach((item) => {
           arr.push(item.id)
         })
         data[key] = arr
-      } 
+      } else if (key === "fromDate" || key === "toDate") {
+        data[key] = formData[key] ? formData[key].toISOString() : ""
+      }
     }
     return data
   }
@@ -349,12 +352,15 @@ const BasicSearch = () => {
           </div>
           <div className="py-4">
             <TitleText
-              variant="subtitle1"
+              variant="h6"
               text="Download Water Quality Data"
               sx={{ fontWeight: 700 }}
             />
           </div>
           <div className="mb-5">
+            <div className="heading-section">
+              <TitleText text={"Location Parameters"} variant="h6" />
+            </div>
             <Paper elevation={2}>
               <LocationParametersForm
                 formData={formData}
@@ -365,6 +371,9 @@ const BasicSearch = () => {
             </Paper>
           </div>
           <div className="mb-5">
+            <div className="heading-section">
+              <TitleText text={"Filter Results"} variant="h6" />
+            </div>
             <Paper elevation={2}>
               <FilterResultsForm
                 formData={formData}
@@ -376,21 +385,24 @@ const BasicSearch = () => {
             </Paper>
           </div>
           <div className="mb-5">
+            <div className="heading-section">
+              <TitleText text={"Download"} variant="h6" />
+            </div>
             <Paper elevation={2}>
               <DownloadForm formData={formData} />
             </Paper>
           </div>
-          <div className="flex flex-row ">
+          <div className="flex py-2 gap-2">
             <Btn
-              text={"Clear Search"}
+              text={"Clear"}
               type="button"
               handleClick={clearForm}
               sx={{
                 background: "#fff",
                 color: "#0B5394",
-                fontSize: "8pt",
+                fontSize: "9pt",
                 "&:hover": {
-                  color: "#fff",
+                  fontWeight: 600,
                 },
               }}
             />
@@ -398,7 +410,12 @@ const BasicSearch = () => {
               disabled={isDisabled}
               text={"Search"}
               type={"submit"}
-              sx={{ fontSize: "8pt" }}
+              sx={{
+                fontSize: "9pt",
+                "&:hover": {
+                  fontWeight: 600,
+                },
+              }}
             />
           </div>
         </div>

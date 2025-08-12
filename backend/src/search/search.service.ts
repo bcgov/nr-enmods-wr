@@ -32,7 +32,7 @@ export class SearchService {
   private readonly logger = new Logger("ObservationSearchService");
   private readonly DIR_NAME = "/data/";
   private readonly MAX_DROPDWN_OPTIONS_LIMIT = 100;
-  private readonly MAX_API_DATA_LIMIT = 10_000; 
+  private readonly MAX_API_DATA_LIMIT = 100_000; 
   private readonly OBSERVATIONS_URL = process.env.OBSERVATIONS_URL;
   private readonly OBSERVATIONS_EXPORT_URL = process.env.OBSERVATIONS_EXPORT_URL;
   private readonly MAX_PARAMS_CHUNK = 50;

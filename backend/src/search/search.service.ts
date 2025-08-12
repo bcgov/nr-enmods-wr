@@ -32,10 +32,11 @@ export class SearchService {
   private readonly logger = new Logger("ObservationSearchService");
   private readonly DIR_NAME = "/data/";
   private readonly MAX_DROPDWN_OPTIONS_LIMIT = 100;
-  private readonly MAX_API_DATA_LIMIT = 10_000; 
+  private readonly MAX_API_DATA_LIMIT = 100_000; 
   private readonly OBSERVATIONS_URL = process.env.OBSERVATIONS_URL;
   private readonly OBSERVATIONS_EXPORT_URL = process.env.OBSERVATIONS_EXPORT_URL;
-  private readonly MAX_PARAMS_CHUNK = 55;
+  private readonly MAX_PARAMS_CHUNK = 50;
+  private TOTAL_RECORD = 0;
 
   /** Runs the export job in a thread so that it doesn't block the frontend */
   public async runExportJob(basicSearchDto: BasicSearchDto, jobId: string) {
@@ -88,21 +89,7 @@ export class SearchService {
     }
 
     try {
-      this.logger.debug(
-        `Exporting observations with search criteria: ${JSON.stringify(basicSearchDto)}`,
-      );
-
-      // check for errors in request to AQS API before streaming
-      // this will throw an error if the request is invalid, e.g. too many results
-      // or if the API is down, etc.  If we jump right to the streaming we may not see the errors
-      // from the AQS API.  If there's an error, the exception handling will log it correctly
-      // await this.getObservationPromise(
-      //   basicSearchDto,
-      //   this.OBSERVATIONS_EXPORT_URL,
-      //   "",
-      //   false, // don't stream, just check for errors
-      // );
-    
+      this.logger.debug(`Exporting observations with search criteria: ${JSON.stringify(basicSearchDto)}`);
 
       // Prepare temp file for streaming the API response
       const tempFileName = `tmp_obs_export_${Date.now()}.csv`;
@@ -110,47 +97,15 @@ export class SearchService {
       
       if (basicSearchDto.locationType) {
 
-        const obsIds = await this.getObsIdsFromLocationType(basicSearchDto);
+         await this.getObsIdsFromLocationType(basicSearchDto, tempFilePath);
 
-        this.logger.log("Total observation to process: " + obsIds.length); 
-        
-        if (obsIds && obsIds.length > 0) { 
-
-          if (obsIds.length > this.MAX_PARAMS_CHUNK) {
-            const obsIdsPartition = this.partitionArray(obsIds, this.MAX_PARAMS_CHUNK);
-
-            for (const ids of obsIdsPartition) {
-              const params = { ...basicSearchDto, observationIds: ids };
-              const responseStream = await this.getObservationPromise(params,
-                this.OBSERVATIONS_EXPORT_URL,
-                "",
-                true,
-              );
-              const writeStream = fs.createWriteStream(tempFilePath, {flags: "a"});
-              if (responseStream) {
-                await new Promise((resolve, reject) => {
-                  responseStream.pipe(writeStream);
-                  writeStream.on("finish", resolve);
-                  writeStream.on("error", reject);
-                  responseStream.on("error", reject);
-                });
-              }
-            }
-          } else {
-            const paramsDto = {
-              ...basicSearchDto,
-              observationIds: obsIds,
+         if(this.TOTAL_RECORD === 0) {
+            return {
+                  data: null,
+                  status: 200,
+                  message: "No Data Found. Please adjust your search criteria.",
             };
-            await this.prepareTempCsv(paramsDto, tempFilePath);
-          }
-        } else {
-          this.logger.debug("No observations found for export (empty stream)");
-          return {
-            data: null,
-            status: 200,
-            message: "No Data Found. Please adjust your search criteria.",
-          };
-        }
+         }
 
       } else {
         await this.prepareTempCsv(basicSearchDto, tempFilePath);
@@ -162,13 +117,11 @@ export class SearchService {
       this.logger.debug(`AQI API took ${minutes}m ${seconds}s`);
 
       // Pass the temp file path to prepareCsvExportData
-      const result = await this.prepareCsvExportData(
-        tempFilePath,
-        basicSearchDto,
-      );
+      const result = await this.prepareCsvExportData(tempFilePath, basicSearchDto);
 
       // Delete the temp file after processing
-      await unlinkAsync(tempFilePath);
+      if (fs.existsSync(tempFilePath))
+        await unlinkAsync(tempFilePath);
 
       return result;
     } catch (err) {
@@ -235,143 +188,151 @@ export class SearchService {
     for (let i = 0; i < arr.length; i += size) {
       chunks.push(arr.slice(i, i + size));
     }
-    return chunks;
-  }
+    return chunks; 
+  } 
 
   private async prepareCsvExportData(tempFilePath: string, basicSearchDto: BasicSearchDto) {
     const start = Date.now();
+
     try {
-      const fileName = `tmp${Date.now()}.csv`;
-      const filePath = join(process.cwd(), `${this.DIR_NAME}${fileName}`);
+      if (fs.existsSync(tempFilePath)) {
+        const fileName = `tmp${Date.now()}.csv`;
+        const filePath = join(process.cwd(), `${this.DIR_NAME}${fileName}`);
 
-      const csvStream = fastcsv.format({ headers: true, writeBOM: true });
-      const writeStream = fs.createWriteStream(filePath);
+        const csvStream = fastcsv.format({ headers: true, writeBOM: true });
+        const writeStream = fs.createWriteStream(filePath);
 
-      // Add error and finish listeners for debugging
-      csvStream.on("error", (err) =>
-        this.logger.error("CSV Stream error: " + err.message),
-      );
-      writeStream.on("error", (err) =>
-        this.logger.error("Write Stream error: " + err.message),
-      );
-      writeStream.on("finish", () => this.logger.log("Write stream finished"));
-      csvStream.on("end", () => this.logger.log("CSV stream ended"));
+        // Add error and finish listeners for debugging
+        csvStream.on("error", (err) =>
+          this.logger.error("CSV Stream error: " + err.message),
+        );
+        writeStream.on("error", (err) =>
+          this.logger.error("Write Stream error: " + err.message),
+        );
+        writeStream.on("finish", () => this.logger.log("Write stream finished"));
+        csvStream.on("end", () => this.logger.log("CSV stream ended"));
 
-      csvStream.pipe(writeStream);
+        csvStream.pipe(writeStream);
 
-      // Stream from the temp file instead of a string
-      const parser = parse({ columns: true, bom: true, trim: true });
-      const readStream = fs.createReadStream(tempFilePath);
-      readStream.pipe(parser);
+        // Stream from the temp file instead of a string
+        const parser = parse({ columns: true, bom: true, trim: true });
+        const readStream = fs.createReadStream(tempFilePath);
+        readStream.pipe(parser);
 
-      let processedRows = 0;
-      let matchedRows = 0;
+        let processedRows = 0;
+        let matchedRows = 0;
 
-      // batch processing of database requests
-      const BATCH_SIZE = 1000;
-      let batchRows = [];
-      let batchIds = [];
-      let isDataFound: boolean = false;
+        // batch processing of database requests
+        const BATCH_SIZE = 1000;
+        let batchRows = [];
+        let batchIds = [];
+        let isDataFound: boolean = false;
 
-      try {
-        for await (const row of parser) {
-          const obsId = row[ObsExportCsvHeader.ObservationId];
-          processedRows++;
-          batchRows.push(row);
-          batchIds.push(obsId);
+        try {
+          for await (const row of parser) {
+            const obsId = row[ObsExportCsvHeader.ObservationId];
+            processedRows++;
+            batchRows.push(row);
+            batchIds.push(obsId);
 
-          if (batchRows.length >= BATCH_SIZE) {
-            // Fetch all records for this batch
+            if (batchRows.length >= BATCH_SIZE) {
+              // Fetch all records for this batch
+              const obsRecords = await this.observationRepository.findBy({
+                id: In(batchIds),
+              });
+              const obsMap = new Map(obsRecords.map((obs) => [obs.id, obs]));
+
+              // Process the batch
+              for (const row of batchRows) {
+                const obsId = row[ObsExportCsvHeader.ObservationId];
+                const obsRecord = obsMap.get(obsId);
+                if (obsRecord) {
+                  matchedRows++;
+                  isDataFound = this.filterDataBeforeWriteToCsv(basicSearchDto, row, obsRecord, csvStream, isDataFound) 
+                }
+              }
+
+              // Reset for next batch
+              batchRows = [];
+              batchIds = [];
+            }
+          }
+
+          // Process any remaining rows
+          if (batchRows.length > 0) {
             const obsRecords = await this.observationRepository.findBy({
               id: In(batchIds),
             });
             const obsMap = new Map(obsRecords.map((obs) => [obs.id, obs]));
-
-            // Process the batch
             for (const row of batchRows) {
               const obsId = row[ObsExportCsvHeader.ObservationId];
               const obsRecord = obsMap.get(obsId);
               if (obsRecord) {
                 matchedRows++;
-                isDataFound = this.filterDataBeforeWriteToCsv(basicSearchDto, row, obsRecord, csvStream, isDataFound) 
+                isDataFound = this.filterDataBeforeWriteToCsv(basicSearchDto, row, obsRecord, csvStream, isDataFound)            
               }
             }
-
-            // Reset for next batch
-            batchRows = [];
-            batchIds = [];
           }
+
+          if (basicSearchDto.locationType && !isDataFound) {
+            return {
+              data: null,
+              status: 200,
+              message: "No Data Found. Please adjust your search criteria.",
+            };
+          }
+        } catch (err) {
+          this.logger.error("Error during batch processing: " + err.message);
+          throw err;
+        } finally {
+          csvStream.end();
         }
 
-        // Process any remaining rows
-        if (batchRows.length > 0) {
-          const obsRecords = await this.observationRepository.findBy({
-            id: In(batchIds),
-          });
-          const obsMap = new Map(obsRecords.map((obs) => [obs.id, obs]));
-          for (const row of batchRows) {
-            const obsId = row[ObsExportCsvHeader.ObservationId];
-            const obsRecord = obsMap.get(obsId);
-            if (obsRecord) {
-              matchedRows++;
-              isDataFound = this.filterDataBeforeWriteToCsv(basicSearchDto, row, obsRecord, csvStream, isDataFound)            
-            }
-          }
-        }
+        this.logger.log(
+          `Finished processing CSV export, processed ${processedRows} rows.  Found ${matchedRows} matching observations.`,
+        );
 
-        if (basicSearchDto.locationType && !isDataFound) {
+        if (matchedRows === 0) {
+          this.logger.debug(
+            "No matching observations found, returning message instead of CSV.",
+          );
+
+          await unlinkAsync(filePath);
+
           return {
             data: null,
             status: 200,
             message: "No Data Found. Please adjust your search criteria.",
           };
         }
-      } catch (err) {
-        this.logger.error("Error during batch processing: " + err.message);
-        throw err;
-      } finally {
-        csvStream.end();
-      }
 
-      this.logger.log(
-        `Finished processing CSV export, processed ${processedRows} rows.  Found ${matchedRows} matching observations.`,
-      );
+        this.logger.log("CSV stream ended, waiting for writeStream to finish...");
+        await new Promise((resolve, reject) => {
+          writeStream.on("finish", resolve);
+          writeStream.on("error", reject);
+        });
 
-      if (matchedRows === 0) {
-        this.logger.debug(
-          "No matching observations found, returning message instead of CSV.",
+        // Now it's safe to create the read stream and return it
+        const reportReadStream = fs.createReadStream(filePath);
+
+        const ms = Date.now() - start;
+        const min = Math.floor(ms / 60000);
+        const sec = ((ms % 60000) / 1000).toFixed(1);
+        this.logger.log(
+          `prepareCsvExportData completed in ${min}m ${sec}s (${ms} ms)`,
         );
 
-        await unlinkAsync(filePath);
-
+        return {
+          data: reportReadStream,
+          status: HttpStatus.OK,
+        };
+      } else {
         return {
           data: null,
           status: 200,
           message: "No Data Found. Please adjust your search criteria.",
         };
       }
-
-      this.logger.log("CSV stream ended, waiting for writeStream to finish...");
-      await new Promise((resolve, reject) => {
-        writeStream.on("finish", resolve);
-        writeStream.on("error", reject);
-      });
-
-      // Now it's safe to create the read stream and return it
-      const reportReadStream = fs.createReadStream(filePath);
-
-      const ms = Date.now() - start;
-      const min = Math.floor(ms / 60000);
-      const sec = ((ms % 60000) / 1000).toFixed(1);
-      this.logger.log(
-        `prepareCsvExportData completed in ${min}m ${sec}s (${ms} ms)`,
-      );
-
-      return {
-        data: reportReadStream,
-        status: HttpStatus.OK,
-      };
-
     } catch (err) {
       this.logger.error(err);
       const ms = Date.now() - start;
@@ -399,40 +360,14 @@ export class SearchService {
 
     return isDataFound;
   }
- 
-  private async getDataFromPagination(attribute: any, params: any, url: string): Promise<any[]> {
-    const totalRecordCount = attribute.totalCount; 
-    let currentObsData = attribute.domainObjects;
-    let cursor = attribute.cursor;
-    params = {...params, cursor: cursor };
 
-    if (totalRecordCount > currentObsData.length && cursor) {
-      const noOfLoop = Math.ceil(totalRecordCount / currentObsData.length);
-      let i = 0; 
-
-      while (i < noOfLoop) {
-        this.logger.log("Cursor for the next record: " + cursor);
-        const res = await this.bcApiCall(this.getAbsoluteUrl(url), params);
-        
-        if (res.status === HttpStatus.OK) {
-          const data = JSON.parse(res.data);
-          currentObsData = currentObsData.concat(data.domainObjects);
-          cursor = data.cursor;
-          params = { ...params, cursor: cursor };
-          i++;
-          if (currentObsData.length >= this.MAX_API_DATA_LIMIT) break; //Note: limit to Max. record
-        }
-      }
-    }
-    return currentObsData;
-  }
-
-  private async getObsIdsFromLocationType(basicSearchDto: BasicSearchDto): Promise<string[]> {
+  private async getObsIdsFromLocationType(basicSearchDto: BasicSearchDto, 
+                                          tempFilePath: string): Promise<any> {
 
     let locationTypeIds: string[] = [];
     locationTypeIds.push(basicSearchDto.locationType?.id);
 
-    const params = { locationTypeIds: locationTypeIds.toString(), limit: 1000 }; // max. limit of api is 1000
+    const params = { locationTypeIds: locationTypeIds.toString(), limit: 1000 };
 
     const res = await this.bcApiCall(
       this.getAbsoluteUrl(process.env.LOCATION_NAME_CODE_TABLE_API),
@@ -444,67 +379,135 @@ export class SearchService {
         JSON.parse(res.data),
         params,
         process.env.LOCATION_NAME_CODE_TABLE_API,
+        basicSearchDto,
+        tempFilePath,
+        "location"
       );
-      
+    
       this.logger.log("Total location from location type: " + locations.length);
-
-      if (locations && locations.length > 0) {        
+ 
+      if (locations && locations.length > 0) {
         const locationIds = locations.map((location) => location.id);        
-
-        if (locationIds.length > this.MAX_PARAMS_CHUNK) {
-          return await this.getObsIdFromLocationIdChunk(locationIds, basicSearchDto);         
-
-        } else {
-          const locationParam = {...basicSearchDto, locationName: locationIds};
-          const params = await this.getUserSearchParams(locationParam, null);
-          const res = await this.bcApiCall(this.getAbsoluteUrl(process.env.OBSERVATIONS_URL),
-            params,
-          );
-          if (res.status === HttpStatus.OK) {
-            const observations = await this.getDataFromPagination(
-              JSON.parse(res.data),
-              params,
-              process.env.OBSERVATIONS_URL,
-            );
-            if (observations && observations.length > 0) {
-              const obsIds = observations.map((item) => item.id);
-              return obsIds;
-            }
-          }
-        }      
-      }
-      return [];
+        if (locationIds.length > this.MAX_PARAMS_CHUNK) 
+          await this.getObsIdFromLocationIdChunk(locationIds, basicSearchDto, tempFilePath);        
+        else 
+          await this.getObservation(locationIds, basicSearchDto, tempFilePath); 
+      }     
     }
   }
 
-  private async getObsIdFromLocationIdChunk(locationIds: string[], basicSearchDto: BasicSearchDto): Promise<string[]> {
-    let obsIdsArr = [];
+  private async getObsIdFromLocationIdChunk(locationIds: string[], 
+                                            basicSearchDto: BasicSearchDto, 
+                                            tempFilePath: string): Promise<void> {
+
     const locationIdsPartition = this.partitionArray(locationIds, this.MAX_PARAMS_CHUNK);
     
-    for (const ids of locationIdsPartition) {
-      const locationParam = { ...basicSearchDto, locationName: ids };
+    for (const ids of locationIdsPartition) {   
+      if (this.TOTAL_RECORD >= this.MAX_API_DATA_LIMIT) break;
+      await this.getObservation(ids, basicSearchDto, tempFilePath);
+    }
+  
+  }
+
+  private async getObservation(locationIds: string[], 
+                               basicSearchDto: BasicSearchDto, 
+                               tempFilePath: string) : Promise<any> {
+    try {                               
+      const locationParam = { ...basicSearchDto, locationName: locationIds };
       const params = await this.getUserSearchParams(locationParam, null);
 
       const res = await this.bcApiCall(this.getAbsoluteUrl(process.env.OBSERVATIONS_URL), params);
 
       if (res.status === HttpStatus.OK) {
-        const observations = await this.getDataFromPagination(JSON.parse(res.data),
-          params,
-          process.env.OBSERVATIONS_URL,
-        );
-
-        this.logger.log("Observation length: " + observations.length);
-
-        if (observations && observations.length > 0) {
-          const obsIds = observations.map((item) => item.id);
-          obsIdsArr = [...new Set([...obsIdsArr, ...obsIds])];      
-
-          if(obsIdsArr.length >= this.MAX_API_DATA_LIMIT) break; //Note: limit to Max. record
+        const data = JSON.parse(res.data);
+        if (data?.totalCount > 0) {
+          await this.getDataFromPagination(data,
+            params,
+            process.env.OBSERVATIONS_URL,
+            basicSearchDto,
+            tempFilePath,
+            "observation"
+          );
         }
       }
+    } catch(err) {
+      this.logger.log(err)
     }
-    
-    return obsIdsArr.splice(0, this.MAX_API_DATA_LIMIT);  
+  }
+
+  private async getDataFromPagination(attribute: any, 
+                                      params: any, 
+                                      url: string, 
+                                      basicSearchDto: BasicSearchDto, 
+                                      tempFilePath: string,
+                                      paginationName: string): Promise<any[]> {
+
+    const apiTotalRecordCount = attribute.totalCount; 
+    let currentObsData = attribute.domainObjects;
+    let cursor = attribute.cursor;
+    params = {...params, cursor: cursor };
+
+    if (apiTotalRecordCount >= currentObsData.length && cursor) {
+      const noOfLoop = Math.ceil(apiTotalRecordCount / currentObsData.length);
+      let i = 0; 
+
+      while (i < noOfLoop) {
+        this.logger.log("Cursor for the next record: " + cursor);
+        const res = await this.bcApiCall(this.getAbsoluteUrl(url), params);
+        
+        if (res.status === HttpStatus.OK) {
+          const data = JSON.parse(res.data);
+          currentObsData = currentObsData.concat(data.domainObjects);          
+          cursor = data.cursor;
+          params = { ...params, cursor: cursor };
+          i++;
+          
+          if (paginationName === 'observation') {            
+            if (this.TOTAL_RECORD >= this.MAX_API_DATA_LIMIT) break;
+            await this.processObsData(currentObsData, basicSearchDto, tempFilePath);
+            this.TOTAL_RECORD += currentObsData.length;
+            currentObsData = []            
+          }         
+        }
+      }
+      
+    }
+    return currentObsData;
+  }
+
+  private async processObsData(observations: any[], 
+                               basicSearchDto: BasicSearchDto, 
+                               tempFilePath: string): Promise<void> {
+                            
+    const obsIds = observations.map((item) => item.id);
+    if (obsIds && obsIds.length > 0) {
+      if (obsIds.length > this.MAX_PARAMS_CHUNK) {
+        const obsIdsPartition = this.partitionArray(obsIds, this.MAX_PARAMS_CHUNK);
+
+        for (const ids of obsIdsPartition) {
+          const params = { ...basicSearchDto, observationIds: ids };
+          const responseStream = await this.getObservationPromise(params,
+            this.OBSERVATIONS_EXPORT_URL,
+            "",
+            true,
+          );
+          
+          if (responseStream) {
+            const writeStream = fs.createWriteStream(tempFilePath, {flags: "a"});
+            await new Promise((resolve, reject) => {
+              responseStream.pipe(writeStream);
+              writeStream.on("finish", resolve);
+              writeStream.on("error", reject);
+              responseStream.on("error", reject);
+            });
+          }
+        }
+      } else {
+        const paramsDto = {...basicSearchDto, observationIds: obsIds};
+        await this.prepareTempCsv(paramsDto, tempFilePath);
+      }
+    }
+
   }
 
   private async getUserSearchParams(basicSearchDto: BasicSearchDto, cursor: string) {
@@ -897,37 +900,5 @@ export class SearchService {
 
     return [];
   }
-
-  // public async getSampleDepths(query: string): Promise<any[]> {
-  //   const activities = await this.getDropdwnOptionsFrmApi(
-  //     this.getAbsoluteUrl(process.env.SAMPLE_DEPTH_CODE_TABLE_API),
-  //     null,
-  //     null,
-  //     true,
-  //   );
-  //   const data = activities.domainObjects;
-  //   const obsArr = data.filter((item: any) =>
-  //     Object.hasOwn(item, "depth"),
-  //   );
-  //   const result = [
-  //     ...new Map(
-  //       obsArr.map((item: any) => [item["depth"].value, item]),
-  //     ).values(),
-  //   ].sort((a: any, b: any) => a.depth.value - b.depth.value);
-  //   return result;
-  // }
-
-  // public async getSpecimenIds(query: string): Promise<any[]> {
-  //   const specimens = await this.getDropdwnOptionsFrmApi(
-  //     this.getAbsoluteUrl(process.env.SPECIMEN_ID_CODE_TABLE_API),
-  //     query,
-  //     "name",
-  //     true,
-  //   );
-  //   const data = specimens.domainObjects;
-  //   return [
-  //     ...new Map(data.map((item: any) => [item["name"], item])).values(),
-  //   ];
-  // }
 }
 

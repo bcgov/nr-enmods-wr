@@ -102,28 +102,35 @@ export class SearchService {
       //   "",
       //   false, // don't stream, just check for errors
       // );
-    
 
       // Prepare temp file for streaming the API response
       const tempFileName = `tmp_obs_export_${Date.now()}.csv`;
-      const tempFilePath = join(process.cwd(), `${this.DIR_NAME}${tempFileName}`);
-      
+      const tempFilePath = join(
+        process.cwd(),
+        `${this.DIR_NAME}${tempFileName}`,
+      );
+
       if (basicSearchDto.locationType) {
         const obsIds = await this.getObsIdsFromLocationType(basicSearchDto);
-        this.logger.log("Total observation to process: " + obsIds.length); 
-        
-        if (obsIds && obsIds.length > 0) { 
+        this.logger.log("Total observation to process: " + obsIds.length);
 
+        if (obsIds && obsIds.length > 0) {
           if (obsIds.length > this.MAX_PARAMS_CHUNK) {
-            const obsIdsPartition = this.partitionArray(obsIds, this.MAX_PARAMS_CHUNK);
+            const obsIdsPartition = this.partitionArray(
+              obsIds,
+              this.MAX_PARAMS_CHUNK,
+            );
             for (const ids of obsIdsPartition) {
               const params = { ...basicSearchDto, observationIds: ids };
-              const responseStream = await this.getObservationPromise(params,
+              const responseStream = await this.getObservationPromise(
+                params,
                 this.OBSERVATIONS_EXPORT_URL,
                 "",
                 true,
               );
-              const writeStream = fs.createWriteStream(tempFilePath, {flags: "a"});
+              const writeStream = fs.createWriteStream(tempFilePath, {
+                flags: "a",
+              });
               if (responseStream) {
                 await new Promise((resolve, reject) => {
                   responseStream.pipe(writeStream);
@@ -148,7 +155,6 @@ export class SearchService {
             message: "No Data Found. Please adjust your search criteria.",
           };
         }
-
       } else {
         await this.prepareTempCsv(basicSearchDto, tempFilePath);
       }
@@ -170,7 +176,8 @@ export class SearchService {
       return result;
     } catch (err) {
       this.logger.error(err);
-      let apiMsg = Array.isArray(err.response?.error) && err.response?.error.length > 0
+      let apiMsg =
+        Array.isArray(err.response?.error) && err.response?.error.length > 0
           ? err.response.error.join(" ")
           : err.response?.data?.message ||
             err.response?.data?.error ||
@@ -185,8 +192,16 @@ export class SearchService {
     }
   }
 
-  private async prepareTempCsv(basicSearchDto: BasicSearchDto, tempFilePath: string) {
-    const responseStream = await this.getObservationPromise(basicSearchDto, this.OBSERVATIONS_EXPORT_URL, "", true);
+  private async prepareTempCsv(
+    basicSearchDto: BasicSearchDto,
+    tempFilePath: string,
+  ) {
+    const responseStream = await this.getObservationPromise(
+      basicSearchDto,
+      this.OBSERVATIONS_EXPORT_URL,
+      "",
+      true,
+    );
 
     if (!responseStream) {
       this.logger.debug("No observations found for export (empty stream)");
@@ -212,17 +227,31 @@ export class SearchService {
    * If `asStream` is true, it returns a stream for direct processing.
    * Otherwise, it returns the full response data.
    */
-  public async getObservationPromise( basicSearchDto: BasicSearchDto, url: string, cursor: string, asStream = false): Promise<any> {
+  public async getObservationPromise(
+    basicSearchDto: BasicSearchDto,
+    url: string,
+    cursor: string,
+    asStream = false,
+    startModificationTime?: string, //optional param to only retrieve records modified after this time
+  ): Promise<any> {
     const params = await this.getUserSearchParams(basicSearchDto, cursor);
 
-    if (asStream) {
-      // Use axiosRef directly for streaming
-      const absoluteUrl = this.getAbsoluteUrl(url);
+    // Add startModificationTime to params if provided
+    if (startModificationTime) {
+      params["startModificationTime"] = startModificationTime;
+      this.logger.debug(
+        `Looking for records modified after: ${startModificationTime}`,
+      );
+    }
 
-      const response = await this.httpService.axiosRef.get(absoluteUrl, {params, responseType: "stream"});
-      return response.data; // This is the stream
+    if (asStream) {
+      const absoluteUrl = this.getAbsoluteUrl(url);
+      const response = await this.httpService.axiosRef.get(absoluteUrl, {
+        params,
+        responseType: "stream",
+      });
+      return response.data;
     } else {
-      // Default behavior (non-stream)
       return this.bcApiCall(this.getAbsoluteUrl(url), params);
     }
   }
@@ -235,7 +264,10 @@ export class SearchService {
     return chunks;
   }
 
-  private async prepareCsvExportData(tempFilePath: string, basicSearchDto: BasicSearchDto) {
+  private async prepareCsvExportData(
+    tempFilePath: string,
+    basicSearchDto: BasicSearchDto,
+  ) {
     const start = Date.now();
     try {
       const fileName = `tmp${Date.now()}.csv`;
@@ -290,7 +322,13 @@ export class SearchService {
               const obsRecord = obsMap.get(obsId);
               if (obsRecord) {
                 matchedRows++;
-                isDataFound = this.filterDataBeforeWriteToCsv(basicSearchDto, row, obsRecord, csvStream, isDataFound) 
+                isDataFound = this.filterDataBeforeWriteToCsv(
+                  basicSearchDto,
+                  row,
+                  obsRecord,
+                  csvStream,
+                  isDataFound,
+                );
               }
             }
 
@@ -311,7 +349,13 @@ export class SearchService {
             const obsRecord = obsMap.get(obsId);
             if (obsRecord) {
               matchedRows++;
-              isDataFound = this.filterDataBeforeWriteToCsv(basicSearchDto, row, obsRecord, csvStream, isDataFound)            
+              isDataFound = this.filterDataBeforeWriteToCsv(
+                basicSearchDto,
+                row,
+                obsRecord,
+                csvStream,
+                isDataFound,
+              );
             }
           }
         }
@@ -368,7 +412,6 @@ export class SearchService {
         data: reportReadStream,
         status: HttpStatus.OK,
       };
-
     } catch (err) {
       this.logger.error(err);
       const ms = Date.now() - start;
@@ -384,9 +427,18 @@ export class SearchService {
     }
   }
 
-  private filterDataBeforeWriteToCsv(basicSearchDto: BasicSearchDto, row: any, obsRecord: Observation, csvStream: any, isDataFound: boolean): boolean {        
+  private filterDataBeforeWriteToCsv(
+    basicSearchDto: BasicSearchDto,
+    row: any,
+    obsRecord: Observation,
+    csvStream: any,
+    isDataFound: boolean,
+  ): boolean {
     if (basicSearchDto.locationType) {
-      if (row[ObsExportCsvHeader.LocationType].trim() === basicSearchDto.locationType?.customId) {
+      if (
+        row[ObsExportCsvHeader.LocationType].trim() ===
+        basicSearchDto.locationType?.customId
+      ) {
         isDataFound = true;
         this.writeToCsv(obsRecord.data, row, csvStream);
       }
@@ -397,11 +449,15 @@ export class SearchService {
     return isDataFound;
   }
 
-  private async getDataFromPagination(attribute: any, params: any, url: string): Promise<any[]> {
+  private async getDataFromPagination(
+    attribute: any,
+    params: any,
+    url: string,
+  ): Promise<any[]> {
     const totalRecordCount = attribute.totalCount;
     let currentObsData = attribute.domainObjects;
     let cursor = attribute.cursor;
-    params = {...params, cursor: cursor };
+    params = { ...params, cursor: cursor };
 
     if (totalRecordCount > currentObsData.length && cursor) {
       const noOfLoop = Math.ceil(totalRecordCount / currentObsData.length);
@@ -410,7 +466,7 @@ export class SearchService {
       while (i < noOfLoop) {
         this.logger.log("Cursor for the next record: " + cursor);
         const res = await this.bcApiCall(this.getAbsoluteUrl(url), params);
-        
+
         if (res.status === HttpStatus.OK) {
           const data = JSON.parse(res.data);
           currentObsData = currentObsData.concat(data.domainObjects);
@@ -423,8 +479,9 @@ export class SearchService {
     return currentObsData;
   }
 
-  private async getObsIdsFromLocationType(basicSearchDto: BasicSearchDto): Promise<string[]> {
-
+  private async getObsIdsFromLocationType(
+    basicSearchDto: BasicSearchDto,
+  ): Promise<string[]> {
     let locationTypeIds: string[] = [];
     locationTypeIds.push(basicSearchDto.locationType?.id);
 
@@ -448,16 +505,21 @@ export class SearchService {
 
         if (locationIds.length > this.MAX_PARAMS_CHUNK) {
           let obsIdsArr = [];
-          const locationIdsPartition = this.partitionArray(locationIds, this.MAX_PARAMS_CHUNK);
+          const locationIdsPartition = this.partitionArray(
+            locationIds,
+            this.MAX_PARAMS_CHUNK,
+          );
 
           for (const ids of locationIdsPartition) {
             const locationParam = { ...basicSearchDto, locationName: ids };
             const params = await this.getUserSearchParams(locationParam, null);
-            const res = await this.bcApiCall(this.getAbsoluteUrl(process.env.OBSERVATIONS_URL),
+            const res = await this.bcApiCall(
+              this.getAbsoluteUrl(process.env.OBSERVATIONS_URL),
               params,
             );
             if (res.status === HttpStatus.OK) {
-              const observations = await this.getDataFromPagination(JSON.parse(res.data),
+              const observations = await this.getDataFromPagination(
+                JSON.parse(res.data),
                 params,
                 process.env.OBSERVATIONS_URL,
               );
@@ -467,12 +529,16 @@ export class SearchService {
               }
             }
           }
-          
+
           return obsIdsArr;
         } else {
-          const locationParam = {...basicSearchDto, locationName: locationIds};
+          const locationParam = {
+            ...basicSearchDto,
+            locationName: locationIds,
+          };
           const params = await this.getUserSearchParams(locationParam, null);
-          const res = await this.bcApiCall(this.getAbsoluteUrl(process.env.OBSERVATIONS_URL),
+          const res = await this.bcApiCall(
+            this.getAbsoluteUrl(process.env.OBSERVATIONS_URL),
             params,
           );
           if (res.status === HttpStatus.OK) {
@@ -486,7 +552,7 @@ export class SearchService {
               return obsIds;
             }
           }
-        }      
+        }
       }
       return [];
     }
@@ -516,12 +582,16 @@ export class SearchService {
       dataClassifications: (
         basicSearchDto?.dataClassification || ""
       ).toString(),
-      depthValue: basicSearchDto?.sampleDepth ? parseFloat(basicSearchDto.sampleDepth)
+      depthValue: basicSearchDto?.sampleDepth
+        ? parseFloat(basicSearchDto.sampleDepth)
         : undefined,
       specimenName: basicSearchDto?.specimenId,
     };
 
-    if (basicSearchDto.observationIds && basicSearchDto.observationIds.length > 0)
+    if (
+      basicSearchDto.observationIds &&
+      basicSearchDto.observationIds.length > 0
+    )
       queryParams["ids"] = basicSearchDto?.observationIds.toString();
 
     if (basicSearchDto.labBatchId)
@@ -531,8 +601,12 @@ export class SearchService {
       queryParams["EA_Work Order Number"] =
         (basicSearchDto?.workedOrderNo.text).toString();
 
-    if (basicSearchDto.samplingAgency && basicSearchDto.samplingAgency.length > 0)
-      queryParams["EA_Sampling Agency"] = (basicSearchDto?.samplingAgency).toString();
+    if (
+      basicSearchDto.samplingAgency &&
+      basicSearchDto.samplingAgency.length > 0
+    )
+      queryParams["EA_Sampling Agency"] =
+        (basicSearchDto?.samplingAgency).toString();
 
     return queryParams;
   }
@@ -546,13 +620,27 @@ export class SearchService {
       );
       if (res.status === HttpStatus.OK) return res;
     } catch (err) {
-      if (err.response.data) {
-        const errResponse = JSON.parse(err.response.data);
+      // Safely handle missing err.response or err.response.data
+      const errData = err?.response?.data;
+      if (errData) {
         let errMsg = [];
-        errMsg.push(errResponse.message);
+        try {
+          const errResponse =
+            typeof errData === "string" ? JSON.parse(errData) : errData;
+          errMsg.push(
+            errResponse.message || errResponse.error || "Unknown error",
+          );
+        } catch {
+          errMsg.push("Unknown error");
+        }
         throw new BadRequestException({
           status: HttpStatus.BAD_REQUEST,
           error: errMsg,
+        });
+      } else {
+        throw new BadRequestException({
+          status: HttpStatus.BAD_REQUEST,
+          error: err?.message || "Unknown error",
         });
       }
     }
@@ -684,7 +772,7 @@ export class SearchService {
     try {
       const params = {};
       if (hasParams) {
-        params["limit"] = this.MAX_DROPDWN_OPTIONS_LIMIT;      
+        params["limit"] = this.MAX_DROPDWN_OPTIONS_LIMIT;
         if (query) params["search"] = query;
       }
 
@@ -722,7 +810,7 @@ export class SearchService {
       null,
       "customId",
       false,
-    );    
+    );
   }
 
   public async getLocationNames(query: string): Promise<any[]> {
@@ -735,7 +823,7 @@ export class SearchService {
       query,
       "name",
       true,
-    );    
+    );
   }
 
   public async getPermitNumbers(query: string): Promise<any[]> {
@@ -744,7 +832,7 @@ export class SearchService {
       query,
       null,
       true,
-    );   
+    );
   }
 
   public async getMediums(query: string): Promise<any[]> {
@@ -753,7 +841,7 @@ export class SearchService {
       query,
       null,
       true,
-    );    
+    );
   }
 
   public async getObservedPropertyGroups(query: string): Promise<any[]> {
@@ -762,7 +850,7 @@ export class SearchService {
       query,
       null,
       true,
-    );    
+    );
   }
 
   public async getProjects(query: string): Promise<any[]> {
@@ -771,7 +859,7 @@ export class SearchService {
       query,
       null,
       true,
-    );    
+    );
   }
 
   public async getAnalyticalMethods(query: string): Promise<any[]> {
@@ -780,7 +868,7 @@ export class SearchService {
       query,
       "name",
       true,
-    );    
+    );
   }
 
   public async getAnalyzingAgencies(query: string): Promise<any[]> {
@@ -789,7 +877,7 @@ export class SearchService {
       null,
       "name",
       false,
-    );    
+    );
   }
 
   public async getObservedProperties(query: string): Promise<any[]> {
@@ -798,7 +886,7 @@ export class SearchService {
       query,
       null,
       true,
-    );    
+    );
   }
 
   public async getWorkedOrderNos(query: string): Promise<any[]> {
@@ -807,7 +895,7 @@ export class SearchService {
       query,
       null,
       true,
-    );    
+    );
     const arr = this.getExtendedAttribute(specimens, "text");
     const workOrderedNos = [
       ...new Map(arr.map((item) => [item["id"], item])).values(),
@@ -822,7 +910,7 @@ export class SearchService {
       query,
       null,
       true,
-    );   
+    );
     const arr = this.getExtendedAttribute(fieldVisits, "dropDownListItem");
     const agencies = [
       ...new Map(arr.map((item) => [item["id"], item])).values(),
@@ -853,7 +941,7 @@ export class SearchService {
       null,
       null,
       false,
-    );    
+    );
   }
 
   public async getUnits(query: string): Promise<any[]> {
@@ -862,26 +950,26 @@ export class SearchService {
       null,
       "name",
       false,
-    );    
+    );
   }
 
   public async getQcSampleTypes(query: string): Promise<any[]> {
-    const qcTypes = await this.observationRepository.query(`SELECT distinct data->>'qualityControlType' qc_type
+    const qcTypes = await this.observationRepository
+      .query(`SELECT distinct data->>'qualityControlType' qc_type
                     FROM public.observations where data->>'qualityControlType' is not null`);
-    
-    if (qcTypes && qcTypes.length > 0) 
-      return qcTypes
-    
-    return [];
 
+    if (qcTypes && qcTypes.length > 0) return qcTypes;
+
+    return [];
   }
 
   public async getDataClassifications(query: string): Promise<any[]> {
-    const dataClassifications = await this.observationRepository.query(`SELECT distinct data->>'dataClassification' data_classification
+    const dataClassifications = await this.observationRepository
+      .query(`SELECT distinct data->>'dataClassification' data_classification
       FROM public.observations where data->>'dataClassification' is not null`);
 
-    if (dataClassifications && dataClassifications.length > 0) 
-    return dataClassifications
+    if (dataClassifications && dataClassifications.length > 0)
+      return dataClassifications;
 
     return [];
   }
@@ -918,4 +1006,3 @@ export class SearchService {
   //   ];
   // }
 }
-

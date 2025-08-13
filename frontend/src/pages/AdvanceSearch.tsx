@@ -52,8 +52,6 @@ const AdvanceSearch = (props: Props) => {
   const [collectionMethods, setCollectionMethods] = useState([])
   const [qcSampleTypes, setQcSampleTypes] = useState([])
   const [dataClassifications, setDataClassifications] = useState([])
-  // const [sampleDepths, setSampleDepths] = useState([])
-  // const [specimenIds, setSpecimenIds] = useState([])
   const [units, setUnits] = useState([])
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null)
   const [isPolling, setIsPolling] = useState(false)
@@ -550,20 +548,6 @@ const AdvanceSearch = (props: Props) => {
         )}
       </div>
 
-      <div className="py-4 flex gap-2">
-        <TextField fullWidth size="small" id="urlText" disabled value={params} />
-        <Btn text={"Copy"}
-            type="button"        
-            handleClick={copyText}
-            sx={{             
-              color: "#fff",
-              fontSize: "9pt",
-              "&:hover": {
-                fontWeight: 600,
-              },
-            }}/>
-      </div>
-
       <form noValidate onSubmit={onSubmit}>
         <div>
           <div>
@@ -705,6 +689,19 @@ const AdvanceSearch = (props: Props) => {
           />
         </div>
       </form>
+      <div className="py-8 flex gap-2">
+        <TextField fullWidth size="small" id="urlText" disabled value={params} />
+        <Btn text={"Copy"}
+            type="button"        
+            handleClick={copyText}
+            sx={{             
+              color: "#fff",
+              fontSize: "9pt",
+              "&:hover": {
+                fontWeight: 600,
+              },
+            }}/>
+      </div>
     </div>
   )
 }

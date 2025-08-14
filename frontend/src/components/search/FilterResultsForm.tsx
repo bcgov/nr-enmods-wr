@@ -53,7 +53,7 @@ export default function FilterResultsForm(props: any) {
         <div className="px-2 pt-2">
           <TitleText
             variant="body2"
-            sx={{ fontSize: "9pt", px: 1 }}
+            sx={{ fontSize: "9pt", p: 1 }}
             text="Date Range Format: mm-dd-yyyy"
           />
         </div>

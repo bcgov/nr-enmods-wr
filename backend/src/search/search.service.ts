@@ -36,7 +36,6 @@ export class SearchService {
   private readonly OBSERVATIONS_URL = process.env.OBSERVATIONS_URL;
   private readonly OBSERVATIONS_EXPORT_URL = process.env.OBSERVATIONS_EXPORT_URL;
   private readonly MAX_PARAMS_CHUNK = 50;
-  private TOTAL_RECORD = 0;
 
   /** Runs the export job in a thread so that it doesn't block the frontend */
   public async runExportJob(basicSearchDto: BasicSearchDto, jobId: string) {
@@ -95,18 +94,17 @@ export class SearchService {
       const tempFileName = `tmp_obs_export_${Date.now()}.csv`;
       const tempFilePath = join(process.cwd(), `${this.DIR_NAME}${tempFileName}`);
       
-      if (basicSearchDto.locationType) {
-        this.TOTAL_RECORD = 0;
-         await this.getObsIdsFromLocationType(basicSearchDto, tempFilePath);
+      if (basicSearchDto.locationType) {     
+         const isRecordExceedLimit = await this.getObsIdsFromLocationType(basicSearchDto, tempFilePath);
 
-         if(this.TOTAL_RECORD === 0) {
-            return {
-                  data: null,
-                  status: 200,
-                  message: "No Data Found. Please adjust your search criteria.",
-            };
+         if (isRecordExceedLimit) {
+          return {
+            data: null,
+            status: 400,
+            message: "This export cannot proceed because it would result in a set of items larger than the imposed limit of 100000 items. Please restrict the data set further by adding filters.",
+          }
          }
-
+        
       } else {
         await this.prepareTempCsv(basicSearchDto, tempFilePath);
       }
@@ -362,7 +360,7 @@ export class SearchService {
   }
 
   private async getObsIdsFromLocationType(basicSearchDto: BasicSearchDto, 
-                                          tempFilePath: string): Promise<any> {
+                                          tempFilePath: string): Promise<Boolean> {
 
     let locationTypeIds: string[] = [];
     locationTypeIds.push(basicSearchDto.locationType?.id);
@@ -389,24 +387,53 @@ export class SearchService {
       if (locations && locations.length > 0) {
         const locationIds = locations.map((location) => location.id);        
         if (locationIds.length > this.MAX_PARAMS_CHUNK) 
-          await this.getObsIdFromLocationIdChunk(locationIds, basicSearchDto, tempFilePath);        
+          return await this.getObsIdFromLocationIdChunk(locationIds, basicSearchDto, tempFilePath);        
         else 
           await this.getObservation(locationIds, basicSearchDto, tempFilePath); 
       }     
-    }
+    }    
+    return false;
   }
 
   private async getObsIdFromLocationIdChunk(locationIds: string[], 
                                             basicSearchDto: BasicSearchDto, 
-                                            tempFilePath: string): Promise<void> {
+                                            tempFilePath: string): Promise<Boolean> {
 
     const locationIdsPartition = this.partitionArray(locationIds, this.MAX_PARAMS_CHUNK);
+    let totalRecord = 0;
+    
+    //Checking if the total records exceeds the max. limit
+    for (const ids of locationIdsPartition) { 
+      const count = await this.getTotalObservationCount(ids, basicSearchDto);
+      totalRecord += count
+      if (totalRecord >= this.MAX_API_DATA_LIMIT) break;
+    }
+
+    if (totalRecord >= this.MAX_API_DATA_LIMIT) return true;
     
     for (const ids of locationIdsPartition) {   
-      if (this.TOTAL_RECORD >= this.MAX_API_DATA_LIMIT) break;
       await this.getObservation(ids, basicSearchDto, tempFilePath);
     }
-  
+    
+    return false;
+  }
+
+  private async getTotalObservationCount(locationIds: string[], basicSearchDto: BasicSearchDto): Promise<any> {
+    let totalRecord = 0;
+    try {
+      const locationParam = { ...basicSearchDto, locationName: locationIds };
+      const params = await this.getUserSearchParams(locationParam, null);
+
+      const res = await this.bcApiCall(this.getAbsoluteUrl(process.env.OBSERVATIONS_URL), params);
+
+      if (res.status === HttpStatus.OK) {
+        const data = JSON.parse(res.data);
+        totalRecord += data?.totalCount;
+        return totalRecord;
+      }
+    } catch(err) {
+      this.logger.log(err)
+    }
   }
 
   private async getObservation(locationIds: string[], 
@@ -415,12 +442,11 @@ export class SearchService {
     try {                               
       const locationParam = { ...basicSearchDto, locationName: locationIds };
       const params = await this.getUserSearchParams(locationParam, null);
-
       const res = await this.bcApiCall(this.getAbsoluteUrl(process.env.OBSERVATIONS_URL), params);
-
+ 
       if (res.status === HttpStatus.OK) {
         const data = JSON.parse(res.data);
-        if (data?.totalCount > 0) {
+        if (data?.totalCount > 0 && data?.totalCount < this.MAX_API_DATA_LIMIT) {
           await this.getDataFromPagination(data,
             params,
             process.env.OBSERVATIONS_URL,
@@ -462,10 +488,11 @@ export class SearchService {
           params = { ...params, cursor: cursor };
           i++;
           
-          if (paginationName === 'observation') {            
-            if (this.TOTAL_RECORD >= this.MAX_API_DATA_LIMIT) break;
+          if (paginationName === 'observation') { 
+            this.logger.log("noOfLoop" + noOfLoop)           
+           // if (this.TOTAL_RECORD >= this.MAX_API_DATA_LIMIT) break;
             await this.processObsData(currentObsData, basicSearchDto, tempFilePath);
-            this.TOTAL_RECORD += currentObsData.length;
+            //this.TOTAL_RECORD += currentObsData.length;
             currentObsData = []            
           }         
         }

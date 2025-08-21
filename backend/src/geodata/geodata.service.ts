@@ -19,6 +19,7 @@ export class GeodataService {
     @InjectRepository(FileInfo)
     private readonly fileInfoRepository: Repository<FileInfo>,
   ) {
+    console.log("~~~ DEBUG ~~~");
     // Ensure temp directory exists
     if (!fs.existsSync(this.tempDir)) {
       fs.mkdirSync(this.tempDir, { recursive: true });
@@ -89,14 +90,11 @@ export class GeodataService {
       await this.saveNewFileInfo(path.basename(gpkgPath), newDate);
 
       const samplingLocationGroupGpkgPath =
-        await this.generateSamplingLocationGroupGpkg(timestamp, geoJsonPath);
+        await this.generateSamplingLocationGroupGpkg(geoJsonPath);
       this.logger.debug("samplingLocationGroupGpkgPath");
       this.logger.debug(samplingLocationGroupGpkgPath);
       const { locationGroupGdbPath, locationGroupCsvPath } =
-        await this.generateLocationGroupGdbCsv(
-          timestamp,
-          samplingLocationGroupGpkgPath,
-        );
+        await this.generateLocationGroupGdbCsv(samplingLocationGroupGpkgPath);
 
       await this.uploadFiles(
         locationGroupGdbPath,
@@ -606,10 +604,7 @@ export class GeodataService {
     return null;
   }
 
-  async generateSamplingLocationGroupGpkg(
-    timestamp: string,
-    samplingLocationGeojsonPath: string,
-  ) {
+  async generateSamplingLocationGroupGpkg(samplingLocationGeojsonPath: string) {
     try {
       // Fetch group metadata
       const rawSamplingLocationGroups =
@@ -688,7 +683,6 @@ export class GeodataService {
   }
 
   private async generateLocationGroupGdbCsv(
-    timestamp: string,
     samplingLocationGroupGpkgPath: string,
   ): Promise<{ locationGroupGdbPath: string; locationGroupCsvPath: string }> {
     this.logger.debug("Generating location group GDB and CSV");
@@ -1071,6 +1065,7 @@ export class GeodataService {
     };
 
     try {
+      this.logger.log(`Pushing to S3: ${file.originalname}`);
       if (file.path && fs.existsSync(file.path)) {
         const fileStream = fs.createReadStream(file.path);
         const response = await axios({

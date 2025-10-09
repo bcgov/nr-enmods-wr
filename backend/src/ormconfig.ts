@@ -16,6 +16,7 @@ import { MvAqiAnalyzingAgency } from "./materialized-views/mv_aqi_analyzing_agen
 import { MvAqiAnalysisMethod } from "./materialized-views/mv_aqi_analysis_method.entity";
 import { MvAqiLabBatchId } from "./materialized-views/mv_aqi_lab_batch_id.entity";
 import { MvAqiQcType } from "./materialized-views/mv_aqi_qc_type.entity";
+import { S3SyncLog } from "./s3_sync_log/entities/s3_sync_log.entity";
 
 const ormconfig: TypeOrmModuleOptions = {
   logging: ["error"],
@@ -43,6 +44,7 @@ const ormconfig: TypeOrmModuleOptions = {
     MvAqiAnalysisMethod,
     MvAqiLabBatchId,
     MvAqiQcType,
+    S3SyncLog,
   ],
   synchronize: false,
 };

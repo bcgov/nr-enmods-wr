@@ -232,13 +232,13 @@ const AdvanceSearch = (props: Props) => {
         case SearchAttr.SamplingAgency:
           return `${API_VERSION}/search/getSamplingAgencies`
         case SearchAttr.CollectionMethod:
-          return `${API_VERSION}/search/getCollectionMethods?search=${query}`
+          return `${API_VERSION}/search/getCollectionMethods`
         case SearchAttr.Units:
           return `${API_VERSION}/search/getUnits?search=${query}`
         case SearchAttr.QcSampleType:
-          return `${API_VERSION}/search/getQcSampleTypes?search=${query}`
+          return `${API_VERSION}/search/getQcSampleTypes`
         case SearchAttr.DataClassification:
-          return `${API_VERSION}/search/getDataClassifications?search=${query}`
+          return `${API_VERSION}/search/getDataClassifications`
         // case SearchAttr.SampleDepth:
         //   return `${API_VERSION}/search/getSampleDepths?search=${query}`
         // case SearchAttr.SpecimenId:

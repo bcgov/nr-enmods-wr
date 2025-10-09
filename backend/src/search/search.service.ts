@@ -955,7 +955,9 @@ export class SearchService {
   }
 
   public async getProjects(): Promise<any[]> {
-    this.logger.log("getProjects called, querying materialized view mv_aqi_project");
+    this.logger.log(
+      "getProjects called, querying materialized view mv_aqi_project",
+    );
     // Use TypeORM to query the materialized view entity and return raw data
     const repo =
       this["observationRepository"].manager.getRepository("mv_aqi_project");
@@ -1082,13 +1084,22 @@ export class SearchService {
     return arr;
   }
 
-  public async getCollectionMethods(query: string): Promise<any[]> {
-    return await this.getDropdwnOptionsFrmApi(
-      this.getAbsoluteUrl(process.env.COLLECTION_METHOD_CODE_TABLE_API),
-      null,
-      null,
-      false,
+  public async getCollectionMethods(): Promise<any[]> {
+    this.logger.log(
+      "getCollectionMethods called, querying materialized view mv_aqi_collection_method",
     );
+    const repo = this["observationRepository"].manager.getRepository(
+      "mv_aqi_collection_method",
+    );
+    const raw = await repo
+      .createQueryBuilder()
+      .select()
+      .orderBy("MvAqiCollectionMethod.collection_method", "ASC")
+      .getRawMany();
+    // Return as array of objects for frontend dropdown compatibility
+    return raw.map((item) => ({
+      customId: item.MvAqiCollectionMethod_collection_method,
+    }));
   }
 
   public async getUnits(query: string): Promise<any[]> {
@@ -1100,24 +1111,38 @@ export class SearchService {
     );
   }
 
-  public async getQcSampleTypes(query: string): Promise<any[]> {
-    const qcTypes = await this.observationRepository
-      .query(`SELECT distinct data->>'qualityControlType' qc_type
-                    FROM public.observations where data->>'qualityControlType' is not null`);
-
-    if (qcTypes && qcTypes.length > 0) return qcTypes;
-
-    return [];
+  public async getQcSampleTypes(): Promise<any[]> {
+    this.logger.log(
+      "getQcSampleTypes called, querying materialized view mv_aqi_qc_type",
+    );
+    const repo =
+      this["observationRepository"].manager.getRepository("mv_aqi_qc_type");
+    const raw = await repo
+      .createQueryBuilder()
+      .select()
+      .orderBy("MvAqiQcType.qc_type", "ASC")
+      .getRawMany();
+    // Return as array of objects for frontend dropdown compatibility
+    return raw.map((item) => ({
+      qc_type: item.MvAqiQcType_qc_type,
+    }));
   }
 
-  public async getDataClassifications(query: string): Promise<any[]> {
-    const dataClassifications = await this.observationRepository
-      .query(`SELECT distinct data->>'dataClassification' data_classification
-      FROM public.observations where data->>'dataClassification' is not null`);
-
-    if (dataClassifications && dataClassifications.length > 0)
-      return dataClassifications;
-
-    return [];
+  public async getDataClassifications(): Promise<any[]> {
+    this.logger.log(
+      "getDataClassifications called, querying materialized view mv_aqi_data_classification",
+    );
+    const repo = this["observationRepository"].manager.getRepository(
+      "mv_aqi_data_classification",
+    );
+    const raw = await repo
+      .createQueryBuilder()
+      .select()
+      .orderBy("MvAqiDataClassification.data_classification", "ASC")
+      .getRawMany();
+    // Return as array of objects for frontend dropdown compatibility
+    return raw.map((item) => ({
+      data_classification: item.MvAqiDataClassification_data_classification,
+    }));
   }
 }

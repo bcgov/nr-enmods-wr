@@ -7,9 +7,6 @@ import { forwardRef, useEffect } from "react"
 import { SearchAttr } from "@/enum/searchEnum"
 
 export default function FilterResultsForm(props: any) {
-     useEffect(() => {
-    console.log("Location Id:", props.filterResultDrpdwns)
-    }, [])
   const {
     formData,
     handleInputChange,

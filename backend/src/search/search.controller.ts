@@ -166,9 +166,8 @@ export class SearchController {
   }
 
   @Get("getCollectionMethods")
-  public getCollectionMethods(@Req() req: Request) {
-    const query: any = req.query.search;
-    return this.searchService.getCollectionMethods(query);
+  public getCollectionMethods() {
+    return this.searchService.getCollectionMethods();
   }
 
   @Get("getUnits")
@@ -178,15 +177,13 @@ export class SearchController {
   }
 
   @Get("getQcSampleTypes")
-  public getQcSampleTypes(@Req() req: Request) {
-    const query: any = req.query.search;
-    return this.searchService.getQcSampleTypes(query);
+  public getQcSampleTypes() {
+    return this.searchService.getQcSampleTypes();
   }
 
   @Get("getDataClassifications")
-  public getDataClassifications(@Req() req: Request) {
-    const query: any = req.query.search;
-    return this.searchService.getDataClassifications(query);
+  public getDataClassifications() {
+    return this.searchService.getDataClassifications();
   }
 
   // @Get("getSampleDepths")

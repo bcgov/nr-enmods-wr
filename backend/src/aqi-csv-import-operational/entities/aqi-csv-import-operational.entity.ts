@@ -1,0 +1,73 @@
+import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';
+
+@Entity('AQI_CSV_IMPORT_OPERATIONAL')
+export class AqiCsvImportOperational {
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @Column({ nullable: true }) Ministry_Contact: string;
+  @Column({ nullable: true }) Sampling_Agency: string;
+  @Column({ nullable: true }) Project: string;
+  @Column({ nullable: true }) Project_Name: string;
+  @Column({ nullable: true }) Work_Order_Number: string;
+  @Column({ nullable: true }) Location_ID: string;
+  @Column({ nullable: true }) Location_Name: string;
+  @Column({ nullable: true }) Location_Type: string;
+  @Column({ nullable: true }) Location_Latitude: string;
+  @Column({ nullable: true }) Location_Longitude: string;
+  @Column({ nullable: true }) Location_Elevation: string;
+  @Column({ nullable: true }) Location_Elevation_Unit: string;
+  @Column({ nullable: true }) Location_Groups: string;
+  @Column({ nullable: true }) Field_Visit_Start_Time: Date;
+  @Column({ nullable: true }) Field_Visit_End_Time: Date;
+  @Column({ nullable: true }) Field_Visit_Participants: string;
+  @Column({ nullable: true }) Field_Visit_Comments: string;
+  @Column({ nullable: true }) Field_Filtered: string;
+  @Column({ nullable: true }) Field_Filtered_Comment: string;
+  @Column({ nullable: true }) Field_Preservative: string;
+  @Column({ nullable: true }) Field_Device_ID: string;
+  @Column({ nullable: true }) Field_Device_Type: string;
+  @Column({ nullable: true }) Sampling_Context_Tag: string;
+  @Column({ nullable: true }) Collection_Method: string;
+  @Column({ nullable: true }) Medium: string;
+  @Column({ nullable: true }) Taxonomy: string;
+  @Column({ nullable: true }) Taxonomy_Common_Name: string;
+  @Column({ nullable: true }) Depth_Upper: string;
+  @Column({ nullable: true }) Depth_Lower: string;
+  @Column({ nullable: true }) Depth_Unit: string;
+  @Column({ nullable: true }) Observed_Date_Time_Start: Date;
+  @Column({ nullable: true }) Observed_Date_Time_End: Date;
+  @Column({ nullable: true }) Observed_Property_Id: string;
+  @Column({ nullable: true }) Observed_Property_Description: string;
+  @Column({ nullable: true }) Observed_Property_Analysis_Type: string;
+  @Column({ nullable: true }) Observed_Property_Result_Type: string;
+  @Column({ nullable: true }) Observed_Property_Name: string;
+  @Column({ nullable: true }) CAS_Number: string;
+  @Column({ nullable: true }) Result_Value: string;
+  @Column({ nullable: true }) Method_Detection_Limit: string;
+  @Column({ nullable: true }) Method_Reporting_Limit: string;
+  @Column({ nullable: true }) Result_Unit: string;
+  @Column({ nullable: true }) Detection_Condition: string;
+  @Column({ nullable: true }) Composite_Stat: string;
+  @Column({ nullable: true }) Fraction: string;
+  @Column({ nullable: true }) Data_Classification: string;
+  @Column({ nullable: true }) Analyzing_Agency: string;
+  @Column({ nullable: true }) Analyzing_Agency_Full_Name: string;
+  @Column({ nullable: true }) Analysis_Method: string;
+  @Column({ nullable: true }) Analyzed_Method_Name: string;
+  @Column({ nullable: true }) Analyzed_Date_Time: Date;
+  @Column({ nullable: true }) Result_Status: string;
+  @Column({ nullable: true }) Result_Grade: string;
+  @Column({ nullable: true }) Activity_Name: string;
+  @Column({ nullable: true }) Tissue_Type: string;
+  @Column({ nullable: true }) Lab_Arrival_Temp: string;
+  @Column({ nullable: true }) Specimen_Name: string;
+  @Column({ nullable: true }) Lab_Quality_Flag: string;
+  @Column({ nullable: true }) Lab_Prepared_Date_Time: Date;
+  @Column({ nullable: true }) Lab_Sample_ID: string;
+  @Column({ nullable: true }) Lab_Dilution_Factor: string;
+  @Column({ nullable: true }) Lab_Comment: string;
+  @Column({ nullable: true }) Lab_Batch_ID: string;
+  @Column({ nullable: true }) QC_Type: string;
+  @Column({ nullable: true }) QC_Source_Activity_Name: string;
+}

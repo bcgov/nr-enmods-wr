@@ -116,15 +116,13 @@ export class SearchController {
   }
 
   @Get("getLocationNames")
-  public getLocacationNames(@Req() req: Request) {
-    const query: any = req.query.search;
-    return this.searchService.getLocationNames(query);
+  public getLocationNames() {
+    return this.searchService.getLocationNames();
   }
 
-  @Get("getPermitNumbers")
-  public getPermitNumbers(@Req() req: Request) {
-    const query: any = req.query.search;
-    return this.searchService.getPermitNumbers(query);
+  @Get("getLocationGroups")
+  public getLocationGroups(@Req() req: Request) {
+    return this.searchService.getLocationGroups();
   }
 
   @Get("getProjects")

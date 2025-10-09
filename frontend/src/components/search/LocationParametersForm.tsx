@@ -2,8 +2,15 @@ import { Autocomplete, TextField } from "@mui/material"
 import TooltipInfo from "../TooltipInfo"
 import { SearchAttr } from "@/enum/searchEnum"
 import TitleText from "../TitleText"
+import { useEffect, useState } from "react"
+
 
 export default function LocationParametersForm(props: any) {
+
+   useEffect(() => {
+    console.log("Location Id:", props.locationDropdwns)
+    }, [])
+
   const { formData, handleInputChange, handleOnChange, locationDropdwns } =
     props
   return (
@@ -94,7 +101,7 @@ export default function LocationParametersForm(props: any) {
             isOptionEqualToValue={(option, selectedValue) =>
               option.id === selectedValue.id
             }
-            getOptionLabel={(option) => option?.customId || ""}
+            getOptionLabel={(option) => option?.id || ""}
             onInputChange={(e, val) =>
               handleInputChange(e, val, SearchAttr.LocationName)
             }

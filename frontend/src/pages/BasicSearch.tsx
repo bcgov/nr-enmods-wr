@@ -49,21 +49,21 @@ const BasicSearch = () => {
     fileFormat: null,
   })
 
-  const dropdwnUrl = (fieldName: string, query: string): string | undefined => {
+  const dropdwnUrl = (fieldName: string): string | undefined => {
     if (fieldName) {
       switch (fieldName) {
         case SearchAttr.ObservedPropertyGrp:
-          return `${API_VERSION}/search/getObservedPropertyGroups?search=${query}`
+          return `${API_VERSION}/search/getObservedPropertyGroups`
         case SearchAttr.Media:
-          return `${API_VERSION}/search/getMediums?search=${query}`
+          return `${API_VERSION}/search/getMediums`
         case SearchAttr.PermitNo:
-          return `${API_VERSION}/search/getPermitNumbers?search=${query}`
+          return `${API_VERSION}/search/getLocationGroups`
         case SearchAttr.LocationName:
-          return `${API_VERSION}/search/getLocationNames?search=${query}`
+          return `${API_VERSION}/search/getLocationNames`
         case SearchAttr.LocationType:
           return `${API_VERSION}/search/getLocationTypes`
         case SearchAttr.Projects:
-          return `${API_VERSION}/search/getProjects?search=${query}`
+          return `${API_VERSION}/search/getProjects`
         default:
           break
       }

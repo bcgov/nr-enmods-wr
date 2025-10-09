@@ -32,9 +32,10 @@ export class SearchService {
   private readonly logger = new Logger("ObservationSearchService");
   private readonly DIR_NAME = "/data/";
   private readonly MAX_DROPDWN_OPTIONS_LIMIT = 100;
-  private readonly MAX_API_DATA_LIMIT = 100_000; 
+  private readonly MAX_API_DATA_LIMIT = 100_000;
   private readonly OBSERVATIONS_URL = process.env.OBSERVATIONS_URL;
-  private readonly OBSERVATIONS_EXPORT_URL = process.env.OBSERVATIONS_EXPORT_URL;
+  private readonly OBSERVATIONS_EXPORT_URL =
+    process.env.OBSERVATIONS_EXPORT_URL;
   private readonly MAX_PARAMS_CHUNK = 50;
 
   /** Runs the export job in a thread so that it doesn't block the frontend */
@@ -48,7 +49,6 @@ export class SearchService {
         jobs[jobId].status = "error";
         jobs[jobId].error = result.message || "Unknown error";
       }
-
     } catch (err) {
       jobs[jobId].status = "error";
       jobs[jobId].error = err?.message || "Unknown error";
@@ -88,23 +88,31 @@ export class SearchService {
     }
 
     try {
-      this.logger.debug(`Exporting observations with search criteria: ${JSON.stringify(basicSearchDto)}`);
+      this.logger.debug(
+        `Exporting observations with search criteria: ${JSON.stringify(basicSearchDto)}`,
+      );
 
       // Prepare temp file for streaming the API response
       const tempFileName = `tmp_obs_export_${Date.now()}.csv`;
-      const tempFilePath = join(process.cwd(), `${this.DIR_NAME}${tempFileName}`);
-      
-      if (basicSearchDto.locationType) {     
-         const isRecordExceedLimit = await this.getObsIdsFromLocationType(basicSearchDto, tempFilePath);
+      const tempFilePath = join(
+        process.cwd(),
+        `${this.DIR_NAME}${tempFileName}`,
+      );
 
-         if (isRecordExceedLimit) {
+      if (basicSearchDto.locationType) {
+        const isRecordExceedLimit = await this.getObsIdsFromLocationType(
+          basicSearchDto,
+          tempFilePath,
+        );
+
+        if (isRecordExceedLimit) {
           return {
             data: null,
             status: 400,
-            message: "This export cannot proceed because it would result in a set of items larger than the imposed limit of 100000 items. Please restrict the data set further by adding filters.",
-          }
-         }
-        
+            message:
+              "This export cannot proceed because it would result in a set of items larger than the imposed limit of 100000 items. Please restrict the data set further by adding filters.",
+          };
+        }
       } else {
         await this.prepareTempCsv(basicSearchDto, tempFilePath);
       }
@@ -115,16 +123,19 @@ export class SearchService {
       this.logger.debug(`AQI API took ${minutes}m ${seconds}s`);
 
       // Pass the temp file path to prepareCsvExportData
-      const result = await this.prepareCsvExportData(tempFilePath, basicSearchDto);
+      const result = await this.prepareCsvExportData(
+        tempFilePath,
+        basicSearchDto,
+      );
 
       // Delete the temp file after processing
-      if (fs.existsSync(tempFilePath))
-        await unlinkAsync(tempFilePath);
+      if (fs.existsSync(tempFilePath)) await unlinkAsync(tempFilePath);
 
       return result;
     } catch (err) {
       this.logger.error(err);
-      let apiMsg = Array.isArray(err.response?.error) && err.response?.error.length > 0
+      let apiMsg =
+        Array.isArray(err.response?.error) && err.response?.error.length > 0
           ? err.response.error.join(" ")
           : err.response?.data?.message ||
             err.response?.data?.error ||
@@ -139,8 +150,16 @@ export class SearchService {
     }
   }
 
-  private async prepareTempCsv(basicSearchDto: BasicSearchDto, tempFilePath: string) {
-    const responseStream = await this.getObservationPromise(basicSearchDto, this.OBSERVATIONS_EXPORT_URL, "", true);
+  private async prepareTempCsv(
+    basicSearchDto: BasicSearchDto,
+    tempFilePath: string,
+  ) {
+    const responseStream = await this.getObservationPromise(
+      basicSearchDto,
+      this.OBSERVATIONS_EXPORT_URL,
+      "",
+      true,
+    );
 
     if (!responseStream) {
       this.logger.debug("No observations found for export (empty stream)");
@@ -166,14 +185,22 @@ export class SearchService {
    * If `asStream` is true, it returns a stream for direct processing.
    * Otherwise, it returns the full response data.
    */
-  public async getObservationPromise( basicSearchDto: BasicSearchDto, url: string, cursor: string, asStream = false): Promise<any> {
+  public async getObservationPromise(
+    basicSearchDto: BasicSearchDto,
+    url: string,
+    cursor: string,
+    asStream = false,
+  ): Promise<any> {
     const params = await this.getUserSearchParams(basicSearchDto, cursor);
 
     if (asStream) {
       // Use axiosRef directly for streaming
       const absoluteUrl = this.getAbsoluteUrl(url);
 
-      const response = await this.httpService.axiosRef.get(absoluteUrl, {params, responseType: "stream"});
+      const response = await this.httpService.axiosRef.get(absoluteUrl, {
+        params,
+        responseType: "stream",
+      });
       return response.data; // This is the stream
     } else {
       // Default behavior (non-stream)
@@ -186,10 +213,13 @@ export class SearchService {
     for (let i = 0; i < arr.length; i += size) {
       chunks.push(arr.slice(i, i + size));
     }
-    return chunks; 
-  } 
+    return chunks;
+  }
 
-  private async prepareCsvExportData(tempFilePath: string, basicSearchDto: BasicSearchDto) {
+  private async prepareCsvExportData(
+    tempFilePath: string,
+    basicSearchDto: BasicSearchDto,
+  ) {
     const start = Date.now();
 
     try {
@@ -207,7 +237,9 @@ export class SearchService {
         writeStream.on("error", (err) =>
           this.logger.error("Write Stream error: " + err.message),
         );
-        writeStream.on("finish", () => this.logger.log("Write stream finished"));
+        writeStream.on("finish", () =>
+          this.logger.log("Write stream finished"),
+        );
         csvStream.on("end", () => this.logger.log("CSV stream ended"));
 
         csvStream.pipe(writeStream);
@@ -246,7 +278,13 @@ export class SearchService {
                 const obsRecord = obsMap.get(obsId);
                 if (obsRecord) {
                   matchedRows++;
-                  isDataFound = this.filterDataBeforeWriteToCsv(basicSearchDto, row, obsRecord, csvStream, isDataFound) 
+                  isDataFound = this.filterDataBeforeWriteToCsv(
+                    basicSearchDto,
+                    row,
+                    obsRecord,
+                    csvStream,
+                    isDataFound,
+                  );
                 }
               }
 
@@ -267,7 +305,13 @@ export class SearchService {
               const obsRecord = obsMap.get(obsId);
               if (obsRecord) {
                 matchedRows++;
-                isDataFound = this.filterDataBeforeWriteToCsv(basicSearchDto, row, obsRecord, csvStream, isDataFound)            
+                isDataFound = this.filterDataBeforeWriteToCsv(
+                  basicSearchDto,
+                  row,
+                  obsRecord,
+                  csvStream,
+                  isDataFound,
+                );
               }
             }
           }
@@ -304,7 +348,9 @@ export class SearchService {
           };
         }
 
-        this.logger.log("CSV stream ended, waiting for writeStream to finish...");
+        this.logger.log(
+          "CSV stream ended, waiting for writeStream to finish...",
+        );
         await new Promise((resolve, reject) => {
           writeStream.on("finish", resolve);
           writeStream.on("error", reject);
@@ -346,9 +392,18 @@ export class SearchService {
     }
   }
 
-  private filterDataBeforeWriteToCsv(basicSearchDto: BasicSearchDto, row: any, obsRecord: Observation, csvStream: any, isDataFound: boolean): boolean {        
+  private filterDataBeforeWriteToCsv(
+    basicSearchDto: BasicSearchDto,
+    row: any,
+    obsRecord: Observation,
+    csvStream: any,
+    isDataFound: boolean,
+  ): boolean {
     if (basicSearchDto.locationType) {
-      if (row[ObsExportCsvHeader.LocationType].trim() === basicSearchDto.locationType?.customId) {
+      if (
+        row[ObsExportCsvHeader.LocationType].trim() ===
+        basicSearchDto.locationType?.customId
+      ) {
         isDataFound = true;
         this.writeToCsv(obsRecord.data, row, csvStream);
       }
@@ -359,9 +414,10 @@ export class SearchService {
     return isDataFound;
   }
 
-  private async getObsIdsFromLocationType(basicSearchDto: BasicSearchDto, 
-                                          tempFilePath: string): Promise<Boolean> {
-
+  private async getObsIdsFromLocationType(
+    basicSearchDto: BasicSearchDto,
+    tempFilePath: string,
+  ): Promise<Boolean> {
     let locationTypeIds: string[] = [];
     locationTypeIds.push(basicSearchDto.locationType?.id);
 
@@ -379,148 +435,182 @@ export class SearchService {
         process.env.LOCATION_NAME_CODE_TABLE_API,
         basicSearchDto,
         tempFilePath,
-        "location"
+        "location",
       );
-    
+
       this.logger.log("Total location from location type: " + locations.length);
- 
+
       if (locations && locations.length > 0) {
-        const locationIds = locations.map((location) => location.id);        
-        if (locationIds.length > this.MAX_PARAMS_CHUNK) 
-          return await this.getObsIdFromLocationIdChunk(locationIds, basicSearchDto, tempFilePath);        
-        else 
-          await this.getObservation(locationIds, basicSearchDto, tempFilePath); 
-      }     
-    }    
+        const locationIds = locations.map((location) => location.id);
+        if (locationIds.length > this.MAX_PARAMS_CHUNK)
+          return await this.getObsIdFromLocationIdChunk(
+            locationIds,
+            basicSearchDto,
+            tempFilePath,
+          );
+        else
+          await this.getObservation(locationIds, basicSearchDto, tempFilePath);
+      }
+    }
     return false;
   }
 
-  private async getObsIdFromLocationIdChunk(locationIds: string[], 
-                                            basicSearchDto: BasicSearchDto, 
-                                            tempFilePath: string): Promise<Boolean> {
-
-    const locationIdsPartition = this.partitionArray(locationIds, this.MAX_PARAMS_CHUNK);
+  private async getObsIdFromLocationIdChunk(
+    locationIds: string[],
+    basicSearchDto: BasicSearchDto,
+    tempFilePath: string,
+  ): Promise<Boolean> {
+    const locationIdsPartition = this.partitionArray(
+      locationIds,
+      this.MAX_PARAMS_CHUNK,
+    );
     let totalRecord = 0;
-    
+
     //Checking if the total records exceeds the max. limit
-    for (const ids of locationIdsPartition) { 
+    for (const ids of locationIdsPartition) {
       const count = await this.getTotalObservationCount(ids, basicSearchDto);
-      totalRecord += count
+      totalRecord += count;
       if (totalRecord >= this.MAX_API_DATA_LIMIT) break;
     }
 
     if (totalRecord >= this.MAX_API_DATA_LIMIT) return true;
-    
-    for (const ids of locationIdsPartition) {   
+
+    for (const ids of locationIdsPartition) {
       await this.getObservation(ids, basicSearchDto, tempFilePath);
     }
-    
+
     return false;
   }
 
-  private async getTotalObservationCount(locationIds: string[], basicSearchDto: BasicSearchDto): Promise<any> {
+  private async getTotalObservationCount(
+    locationIds: string[],
+    basicSearchDto: BasicSearchDto,
+  ): Promise<any> {
     let totalRecord = 0;
     try {
       const locationParam = { ...basicSearchDto, locationName: locationIds };
       const params = await this.getUserSearchParams(locationParam, null);
 
-      const res = await this.bcApiCall(this.getAbsoluteUrl(process.env.OBSERVATIONS_URL), params);
+      const res = await this.bcApiCall(
+        this.getAbsoluteUrl(process.env.OBSERVATIONS_URL),
+        params,
+      );
 
       if (res.status === HttpStatus.OK) {
         const data = JSON.parse(res.data);
         totalRecord += data?.totalCount;
         return totalRecord;
       }
-    } catch(err) {
-      this.logger.log(err)
+    } catch (err) {
+      this.logger.log(err);
     }
   }
 
-  private async getObservation(locationIds: string[], 
-                               basicSearchDto: BasicSearchDto, 
-                               tempFilePath: string) : Promise<any> {
-    try {                               
+  private async getObservation(
+    locationIds: string[],
+    basicSearchDto: BasicSearchDto,
+    tempFilePath: string,
+  ): Promise<any> {
+    try {
       const locationParam = { ...basicSearchDto, locationName: locationIds };
       const params = await this.getUserSearchParams(locationParam, null);
-      const res = await this.bcApiCall(this.getAbsoluteUrl(process.env.OBSERVATIONS_URL), params);
- 
+      const res = await this.bcApiCall(
+        this.getAbsoluteUrl(process.env.OBSERVATIONS_URL),
+        params,
+      );
+
       if (res.status === HttpStatus.OK) {
         const data = JSON.parse(res.data);
-        if (data?.totalCount > 0 && data?.totalCount < this.MAX_API_DATA_LIMIT) {
-          await this.getDataFromPagination(data,
+        if (
+          data?.totalCount > 0 &&
+          data?.totalCount < this.MAX_API_DATA_LIMIT
+        ) {
+          await this.getDataFromPagination(
+            data,
             params,
             process.env.OBSERVATIONS_URL,
             basicSearchDto,
             tempFilePath,
-            "observation"
+            "observation",
           );
         }
       }
-    } catch(err) {
-      this.logger.log(err)
+    } catch (err) {
+      this.logger.log(err);
     }
   }
 
-  private async getDataFromPagination(attribute: any, 
-                                      params: any, 
-                                      url: string, 
-                                      basicSearchDto: BasicSearchDto, 
-                                      tempFilePath: string,
-                                      paginationName: string): Promise<any[]> {
-
-    const apiTotalRecordCount = attribute.totalCount; 
+  private async getDataFromPagination(
+    attribute: any,
+    params: any,
+    url: string,
+    basicSearchDto: BasicSearchDto,
+    tempFilePath: string,
+    paginationName: string,
+  ): Promise<any[]> {
+    const apiTotalRecordCount = attribute.totalCount;
     let currentObsData = attribute.domainObjects;
     let cursor = attribute.cursor;
-    params = {...params, cursor: cursor };
+    params = { ...params, cursor: cursor };
 
     if (apiTotalRecordCount >= currentObsData.length && cursor) {
       const noOfLoop = Math.ceil(apiTotalRecordCount / currentObsData.length);
-      let i = 0; 
+      let i = 0;
 
       while (i < noOfLoop) {
         this.logger.log("Cursor for the next record: " + cursor);
         const res = await this.bcApiCall(this.getAbsoluteUrl(url), params);
-        
+
         if (res.status === HttpStatus.OK) {
           const data = JSON.parse(res.data);
-          currentObsData = currentObsData.concat(data.domainObjects);          
+          currentObsData = currentObsData.concat(data.domainObjects);
           cursor = data.cursor;
           params = { ...params, cursor: cursor };
           i++;
-          
-          if (paginationName === 'observation') { 
-            this.logger.log("noOfLoop" + noOfLoop)           
-           // if (this.TOTAL_RECORD >= this.MAX_API_DATA_LIMIT) break;
-            await this.processObsData(currentObsData, basicSearchDto, tempFilePath);
+
+          if (paginationName === "observation") {
+            this.logger.log("noOfLoop" + noOfLoop);
+            // if (this.TOTAL_RECORD >= this.MAX_API_DATA_LIMIT) break;
+            await this.processObsData(
+              currentObsData,
+              basicSearchDto,
+              tempFilePath,
+            );
             //this.TOTAL_RECORD += currentObsData.length;
-            currentObsData = []            
-          }         
+            currentObsData = [];
+          }
         }
       }
-      
     }
     return currentObsData;
   }
 
-  private async processObsData(observations: any[], 
-                               basicSearchDto: BasicSearchDto, 
-                               tempFilePath: string): Promise<void> {
-                            
+  private async processObsData(
+    observations: any[],
+    basicSearchDto: BasicSearchDto,
+    tempFilePath: string,
+  ): Promise<void> {
     const obsIds = observations.map((item) => item.id);
     if (obsIds && obsIds.length > 0) {
       if (obsIds.length > this.MAX_PARAMS_CHUNK) {
-        const obsIdsPartition = this.partitionArray(obsIds, this.MAX_PARAMS_CHUNK);
+        const obsIdsPartition = this.partitionArray(
+          obsIds,
+          this.MAX_PARAMS_CHUNK,
+        );
 
         for (const ids of obsIdsPartition) {
           const params = { ...basicSearchDto, observationIds: ids };
-          const responseStream = await this.getObservationPromise(params,
+          const responseStream = await this.getObservationPromise(
+            params,
             this.OBSERVATIONS_EXPORT_URL,
             "",
             true,
           );
-          
+
           if (responseStream) {
-            const writeStream = fs.createWriteStream(tempFilePath, {flags: "a"});
+            const writeStream = fs.createWriteStream(tempFilePath, {
+              flags: "a",
+            });
             await new Promise((resolve, reject) => {
               responseStream.pipe(writeStream);
               writeStream.on("finish", resolve);
@@ -530,22 +620,28 @@ export class SearchService {
           }
         }
       } else {
-        const paramsDto = {...basicSearchDto, observationIds: obsIds};
+        const paramsDto = { ...basicSearchDto, observationIds: obsIds };
         await this.prepareTempCsv(paramsDto, tempFilePath);
       }
     }
-
   }
 
-  private async getUserSearchParams(basicSearchDto: BasicSearchDto, cursor: string) {
+  private async getUserSearchParams(
+    basicSearchDto: BasicSearchDto,
+    cursor: string,
+  ) {
     const queryParams = {
       samplingLocationIds: (basicSearchDto.locationName || "").toString(),
       samplingLocationGroupIds: (basicSearchDto.permitNumber || "").toString(),
       media: (basicSearchDto.media || "").toString(),
       analyticalGroupIds: (basicSearchDto.observedPropertyGrp || "").toString(),
       projectIds: (basicSearchDto.projects || "").toString(),
-      "start-observedTime": basicSearchDto.fromDate ? new Date(basicSearchDto.fromDate) : "",
-      "end-observedTime": basicSearchDto.toDate ? new Date(new Date(basicSearchDto.toDate).setHours(23,59,0,0)) : "",     
+      "start-observedTime": basicSearchDto.fromDate
+        ? new Date(basicSearchDto.fromDate)
+        : "",
+      "end-observedTime": basicSearchDto.toDate
+        ? new Date(new Date(basicSearchDto.toDate).setHours(23, 59, 0, 0))
+        : "",
       limit: this.MAX_API_DATA_LIMIT,
       cursor: cursor,
       observedPropertyIds: (basicSearchDto?.observedProperty || "").toString(),
@@ -558,12 +654,16 @@ export class SearchService {
       dataClassifications: (
         basicSearchDto?.dataClassification || ""
       ).toString(),
-      depthValue: basicSearchDto?.sampleDepth ? parseFloat(basicSearchDto.sampleDepth)
+      depthValue: basicSearchDto?.sampleDepth
+        ? parseFloat(basicSearchDto.sampleDepth)
         : undefined,
       specimenName: basicSearchDto?.specimenId,
     };
 
-    if (basicSearchDto.observationIds && basicSearchDto.observationIds.length > 0)
+    if (
+      basicSearchDto.observationIds &&
+      basicSearchDto.observationIds.length > 0
+    )
       queryParams["ids"] = basicSearchDto?.observationIds.toString();
 
     if (basicSearchDto.labBatchId)
@@ -573,18 +673,22 @@ export class SearchService {
       queryParams["EA_Work Order Number"] =
         (basicSearchDto?.workedOrderNo.text).toString();
 
-    if (basicSearchDto.samplingAgency && basicSearchDto.samplingAgency.length > 0)
-      queryParams["EA_Sampling Agency"] = (basicSearchDto?.samplingAgency).toString();
+    if (
+      basicSearchDto.samplingAgency &&
+      basicSearchDto.samplingAgency.length > 0
+    )
+      queryParams["EA_Sampling Agency"] =
+        (basicSearchDto?.samplingAgency).toString();
 
     return queryParams;
   }
 
   private async bcApiCall(url: string, params: any): Promise<any> {
     try {
-
-      const res = await firstValueFrom(this.httpService.get(url, { params: params}));
+      const res = await firstValueFrom(
+        this.httpService.get(url, { params: params }),
+      );
       if (res.status === HttpStatus.OK) return res;
-
     } catch (err) {
       this.logger.log(err);
       if (err.response.data) {
@@ -596,7 +700,6 @@ export class SearchService {
           error: errMsg,
         });
       }
-
     }
   }
 
@@ -726,7 +829,7 @@ export class SearchService {
     try {
       const params = {};
       if (hasParams) {
-        params["limit"] = this.MAX_DROPDWN_OPTIONS_LIMIT;      
+        params["limit"] = this.MAX_DROPDWN_OPTIONS_LIMIT;
         if (query) params["search"] = query;
       }
 
@@ -754,39 +857,62 @@ export class SearchService {
     return `${process.env.BASE_URL_BC_API}${relativeUrl}`;
   }
 
+  public async getLocationNames(): Promise<any[]> {
+    this.logger.log(
+      "getLocationNames called, querying materialized view mv_aqi_location_collection",
+    );
+    // Use TypeORM to query the materialized view entity and return raw data
+    const repo = this["observationRepository"].manager.getRepository(
+      "mv_aqi_location_collection",
+    );
+    const raw = await repo
+      .createQueryBuilder()
+      .select()
+      .orderBy("MvAqiLocationCollection.location_name", "ASC")
+      .getRawMany();
+    // Return as array of objects for frontend dropdown compatibility
+    return raw.map((item) => ({
+      id: item.MvAqiLocationCollection_location_id,
+      name: item.MvAqiLocationCollection_location_name,
+    }));
+  }
+
   public async getLocationTypes(): Promise<any[]> {
     this.logger.log(
-      "getLocationTypes called, env:",
-      process.env.LOCATION_TYPE_CODE_TABLE_API,
+      "getLocationTypes called, querying materialized view mv_aqi_location_type",
     );
-    return await this.getDropdwnOptionsFrmApi(
-      this.getAbsoluteUrl(process.env.LOCATION_TYPE_CODE_TABLE_API),
-      null,
-      "customId",
-      false,
-    );    
+    // Use TypeORM to query the materialized view entity and return raw data
+    const repo = this["observationRepository"].manager.getRepository(
+      "mv_aqi_location_type",
+    );
+    const raw = await repo
+      .createQueryBuilder()
+      .select()
+      .orderBy("MvAqiLocationType.location_type", "ASC")
+      .getRawMany();
+    // Return as array of objects for frontend dropdown compatibility
+    return raw.map((item) => ({
+      customId: item.MvAqiLocationType_location_type,
+    }));
   }
 
-  public async getLocationNames(query: string): Promise<any[]> {
+  public async getLocationGroups(): Promise<any[]> {
     this.logger.log(
-      "getLocationNames called, env:",
-      process.env.LOCATION_NAME_CODE_TABLE_API,
+      "getLocationGroups called, querying materialized view mv_aqi_location_groups",
     );
-    return await this.getDropdwnOptionsFrmApi(
-      this.getAbsoluteUrl(process.env.LOCATION_NAME_CODE_TABLE_API),
-      query,
-      "name",
-      true,
-    );    
-  }
-
-  public async getPermitNumbers(query: string): Promise<any[]> {
-    return await this.getDropdwnOptionsFrmApi(
-      this.getAbsoluteUrl(process.env.PERMIT_NUMBER_CODE_TABLE_API),
-      query,
-      null,
-      true,
-    );   
+    // Use TypeORM to query the materialized view entity and return raw data
+    const repo = this["observationRepository"].manager.getRepository(
+      "mv_aqi_location_groups",
+    );
+    const raw = await repo
+      .createQueryBuilder()
+      .select()
+      .orderBy("MvAqiLocationGroups.location_groups", "ASC")
+      .getRawMany();
+    // Return as array of objects for frontend dropdown compatibility
+    return raw.map((item) => ({
+      name: item.MvAqiLocationGroups_location_groups,
+    }));
   }
 
   public async getMediums(query: string): Promise<any[]> {
@@ -795,7 +921,7 @@ export class SearchService {
       query,
       null,
       true,
-    );    
+    );
   }
 
   public async getObservedPropertyGroups(query: string): Promise<any[]> {
@@ -804,7 +930,7 @@ export class SearchService {
       query,
       null,
       true,
-    );    
+    );
   }
 
   public async getProjects(query: string): Promise<any[]> {
@@ -813,7 +939,7 @@ export class SearchService {
       query,
       null,
       true,
-    );    
+    );
   }
 
   public async getAnalyticalMethods(query: string): Promise<any[]> {
@@ -822,7 +948,7 @@ export class SearchService {
       query,
       "name",
       true,
-    );    
+    );
   }
 
   public async getAnalyzingAgencies(query: string): Promise<any[]> {
@@ -831,7 +957,7 @@ export class SearchService {
       null,
       "name",
       false,
-    );    
+    );
   }
 
   public async getObservedProperties(query: string): Promise<any[]> {
@@ -840,7 +966,7 @@ export class SearchService {
       query,
       null,
       true,
-    );    
+    );
   }
 
   public async getWorkedOrderNos(query: string): Promise<any[]> {
@@ -849,7 +975,7 @@ export class SearchService {
       query,
       null,
       true,
-    );    
+    );
     const arr = this.getExtendedAttribute(specimens, "text");
     const workOrderedNos = [
       ...new Map(arr.map((item) => [item["id"], item])).values(),
@@ -864,7 +990,7 @@ export class SearchService {
       query,
       null,
       true,
-    );   
+    );
     const arr = this.getExtendedAttribute(fieldVisits, "dropDownListItem");
     const agencies = [
       ...new Map(arr.map((item) => [item["id"], item])).values(),
@@ -895,7 +1021,7 @@ export class SearchService {
       null,
       null,
       false,
-    );    
+    );
   }
 
   public async getUnits(query: string): Promise<any[]> {
@@ -904,28 +1030,27 @@ export class SearchService {
       null,
       "name",
       false,
-    );    
+    );
   }
 
   public async getQcSampleTypes(query: string): Promise<any[]> {
-    const qcTypes = await this.observationRepository.query(`SELECT distinct data->>'qualityControlType' qc_type
+    const qcTypes = await this.observationRepository
+      .query(`SELECT distinct data->>'qualityControlType' qc_type
                     FROM public.observations where data->>'qualityControlType' is not null`);
-    
-    if (qcTypes && qcTypes.length > 0) 
-      return qcTypes
-    
-    return [];
 
+    if (qcTypes && qcTypes.length > 0) return qcTypes;
+
+    return [];
   }
 
   public async getDataClassifications(query: string): Promise<any[]> {
-    const dataClassifications = await this.observationRepository.query(`SELECT distinct data->>'dataClassification' data_classification
+    const dataClassifications = await this.observationRepository
+      .query(`SELECT distinct data->>'dataClassification' data_classification
       FROM public.observations where data->>'dataClassification' is not null`);
 
-    if (dataClassifications && dataClassifications.length > 0) 
-    return dataClassifications
+    if (dataClassifications && dataClassifications.length > 0)
+      return dataClassifications;
 
     return [];
   }
 }
-

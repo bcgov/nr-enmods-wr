@@ -28,7 +28,6 @@ AND Project_Name IS NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS ux_mv_aqi_project
   ON mv_aqi_project (Project, Project_Name);
 
-
 -- Work_Order_Number
 DROP MATERIALIZED VIEW IF EXISTS mv_aqi_work_order_number;
 CREATE MATERIALIZED VIEW mv_aqi_work_order_number AS
@@ -39,25 +38,12 @@ WHERE Work_Order_Number IS NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS ux_mv_aqi_work_order_number
   ON mv_aqi_work_order_number (Work_Order_Number);
 
--- Combine location id and name as they are 1-1 mapping??
-DROP MATERIALIZED VIEW IF EXISTS mv_aqi_location;
-CREATE MATERIALIZED VIEW mv_aqi_location AS
-SELECT DISTINCT
-    Location_ID,
-    Location_Name
-FROM AQI_CSV_IMPORT_STAGING
-WHERE Location_ID IS NOT NULL
-  AND Location_Name IS NOT NULL;
-
-CREATE UNIQUE INDEX IF NOT EXISTS ux_mv_aqi_location
-  ON mv_aqi_location (Location_ID, Location_Name);
-
 -- Location_Type
 DROP MATERIALIZED VIEW IF EXISTS mv_aqi_location_type;
 CREATE MATERIALIZED VIEW mv_aqi_location_type AS
 SELECT DISTINCT Location_Type
 FROM AQI_CSV_IMPORT_STAGING
-WHERE Location_Type IS NOT NULL;
+WHERE Location_Type IS NOT NULL; 
 
 CREATE UNIQUE INDEX IF NOT EXISTS ux_mv_aqi_location_type
   ON mv_aqi_location_type (Location_Type);
@@ -71,6 +57,19 @@ WHERE Location_Groups IS NOT NULL;
 
 CREATE UNIQUE INDEX IF NOT EXISTS ux_mv_aqi_location_groups
   ON mv_aqi_location_groups (Location_Groups);
+
+-- Combine location id and name as they are 1-1 mapping??
+DROP MATERIALIZED VIEW IF EXISTS mv_aqi_location_collection;
+CREATE MATERIALIZED VIEW mv_aqi_location_collection AS
+SELECT DISTINCT
+    Location_ID,
+    Location_Name
+FROM AQI_CSV_IMPORT_STAGING
+WHERE Location_ID IS NOT NULL
+  AND Location_Name IS NOT NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS ux_mv_aqi_location_collection
+  ON mv_aqi_location_collection (Location_ID, Location_Name);
 
 -- Collection_Method
 DROP MATERIALIZED VIEW IF EXISTS mv_aqi_collection_method;

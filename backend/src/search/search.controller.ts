@@ -126,51 +126,43 @@ export class SearchController {
   }
 
   @Get("getProjects")
-  public getProjects(@Req() req: Request) {
-    const query: any = req.query.search;
-    return this.searchService.getProjects(query);
+  public getProjects() {
+    return this.searchService.getProjects();
   }
 
   @Get("getMediums")
-  public getMediums(@Req() req: Request) {
-    const query: any = req.query.search;
-    return this.searchService.getMediums(query);
+  public getMediums() {
+    return this.searchService.getMediums();
   }
 
   @Get("getObservedPropertyGroups")
-  public getObservedPropertyGroups(@Req() req: Request) {
-    const query: any = req.query.search;
-    return this.searchService.getObservedPropertyGroups(query);
+  public getObservedPropertyGroups() {
+    return this.searchService.getObservedPropertyGroups();
   }
 
   @Get("getAnalyticalMethods")
-  public getAnalyticalMethods(@Req() req: Request) {
-    const query: any = req.query.search;
-    return this.searchService.getAnalyticalMethods(query);
+  public getAnalyticalMethods() {
+    return this.searchService.getAnalyticalMethods();
   }
 
   @Get("getAnalyzingAgencies")
-  public getAnalyzingAgencies(@Req() req: Request) {
-    const query: any = req.query.search;
-    return this.searchService.getAnalyzingAgencies(query);
+  public getAnalyzingAgencies() {
+    return this.searchService.getAnalyzingAgencies();
   }
 
   @Get("getObservedProperties")
-  public getObservedProperties(@Req() req: Request) {
-    const query: any = req.query.search;
-    return this.searchService.getObservedProperties(query);
+  public getObservedProperties() {
+    return this.searchService.getObservedProperties();
   }
 
   @Get("getWorkedOrderNos")
-  public getWorkedOrderNos(@Req() req: Request) {
-    const query: any = req.query.search;
-    return this.searchService.getWorkedOrderNos(query);
+  public getWorkedOrderNos() {
+    return this.searchService.getWorkedOrderNos();
   }
 
   @Get("getSamplingAgencies")
-  public getSamplingAgencies(@Req() req: Request) {
-    const query: any = req.query.search;
-    return this.searchService.getSamplingAgencies(query);
+  public getSamplingAgencies() {
+    return this.searchService.getSamplingAgencies();
   }
 
   @Get("getCollectionMethods")

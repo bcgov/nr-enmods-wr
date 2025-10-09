@@ -3,10 +3,13 @@ import TitleText from "../TitleText"
 import TooltipInfo from "../TooltipInfo"
 import { Autocomplete, TextField } from "@mui/material"
 import "react-datepicker/dist/react-datepicker.css"
-import { forwardRef } from "react"
+import { forwardRef, useEffect } from "react"
 import { SearchAttr } from "@/enum/searchEnum"
 
 export default function FilterResultsForm(props: any) {
+     useEffect(() => {
+    console.log("Location Id:", props.filterResultDrpdwns)
+    }, [])
   const {
     formData,
     handleInputChange,

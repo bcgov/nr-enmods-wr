@@ -210,27 +210,27 @@ const AdvanceSearch = (props: Props) => {
     if (fieldName) {
       switch (fieldName) {
         case SearchAttr.ObservedPropertyGrp:
-          return `${API_VERSION}/search/getObservedPropertyGroups?search=${query}`
+          return `${API_VERSION}/search/getObservedPropertyGroups`
         case SearchAttr.Media:
-          return `${API_VERSION}/search/getMediums?search=${query}`
+          return `${API_VERSION}/search/getMediums`
         case SearchAttr.PermitNo:
-          return `${API_VERSION}/search/getPermitNumbers?search=${query}`
+          return `${API_VERSION}/search/getLocationGroups`
         case SearchAttr.LocationName:
-          return `${API_VERSION}/search/getLocationNames?search=${query}`
+          return `${API_VERSION}/search/getLocationNames`
         case SearchAttr.LocationType:
           return `${API_VERSION}/search/getLocationTypes`
         case SearchAttr.Projects:
-          return `${API_VERSION}/search/getProjects?search=${query}`
+          return `${API_VERSION}/search/getProjects`
         case SearchAttr.AnalyticalMethod:
-          return `${API_VERSION}/search/getAnalyticalMethods?search=${query}`
+          return `${API_VERSION}/search/getAnalyticalMethods`
         case SearchAttr.AnalyzingAgency:
-          return `${API_VERSION}/search/getAnalyzingAgencies?search=${query}`
+          return `${API_VERSION}/search/getAnalyzingAgencies`
         case SearchAttr.ObservedProperty:
-          return `${API_VERSION}/search/getObservedProperties?search=${query}`
+          return `${API_VERSION}/search/getObservedProperties`
         case SearchAttr.WorkedOrderNo:
-          return `${API_VERSION}/search/getWorkedOrderNos?search=${query}`
+          return `${API_VERSION}/search/getWorkedOrderNos`
         case SearchAttr.SamplingAgency:
-          return `${API_VERSION}/search/getSamplingAgencies?search=${query}`
+          return `${API_VERSION}/search/getSamplingAgencies`
         case SearchAttr.CollectionMethod:
           return `${API_VERSION}/search/getCollectionMethods?search=${query}`
         case SearchAttr.Units:

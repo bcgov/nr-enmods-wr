@@ -6,11 +6,6 @@ import { useEffect, useState } from "react"
 
 
 export default function LocationParametersForm(props: any) {
-
-   useEffect(() => {
-    console.log("Location Id:", props.locationDropdwns)
-    }, [])
-
   const { formData, handleInputChange, handleOnChange, locationDropdwns } =
     props
   return (

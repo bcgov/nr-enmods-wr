@@ -915,88 +915,155 @@ export class SearchService {
     }));
   }
 
-  public async getMediums(query: string): Promise<any[]> {
-    return await this.getDropdwnOptionsFrmApi(
-      this.getAbsoluteUrl(process.env.MEDIA_CODE_TABLE_API),
-      query,
-      null,
-      true,
+  public async getMediums(): Promise<any[]> {
+    this.logger.log(
+      "getMediums called, querying materialized view mv_aqi_mediums",
     );
+
+    // Use TypeORM to query the materialized view entity and return raw data
+    const repo =
+      this["observationRepository"].manager.getRepository("mv_aqi_medium");
+    const raw = await repo
+      .createQueryBuilder()
+      .select()
+      .orderBy("MvAqiMedium.medium", "ASC")
+      .getRawMany();
+    // Return as array of objects for frontend dropdown compatibility
+    return raw.map((item) => ({
+      customId: item.MvAqiMedium_medium,
+    }));
   }
 
-  public async getObservedPropertyGroups(query: string): Promise<any[]> {
-    return await this.getDropdwnOptionsFrmApi(
-      this.getAbsoluteUrl(process.env.OBSERVED_PROPERTIES_GROUP_CODE_TABLE_API),
-      query,
-      null,
-      true,
+  public async getObservedPropertyGroups(): Promise<any[]> {
+    this.logger.log(
+      "getObservedPropertyGroups called, querying materialized view mv_aqi_observed_property",
     );
+    // Use TypeORM to query the materialized view entity and return raw data
+    const repo = this["observationRepository"].manager.getRepository(
+      "mv_aqi_observed_property",
+    );
+    const raw = await repo
+      .createQueryBuilder()
+      .select()
+      .orderBy("MvAqiObservedProperty.observed_property_description", "ASC")
+      .getRawMany();
+    // Return as array of objects for frontend dropdown compatibility
+    return raw.map((item) => ({
+      id: item.MvAqiObservedProperty_observed_property_id,
+      name: item.MvAqiObservedProperty_observed_property_description,
+    }));
   }
 
-  public async getProjects(query: string): Promise<any[]> {
-    return await this.getDropdwnOptionsFrmApi(
-      this.getAbsoluteUrl(process.env.PROJECTS_CODE_TABLE_API),
-      query,
-      null,
-      true,
-    );
+  public async getProjects(): Promise<any[]> {
+    this.logger.log("getProjects called, querying materialized view mv_aqi_project");
+    // Use TypeORM to query the materialized view entity and return raw data
+    const repo =
+      this["observationRepository"].manager.getRepository("mv_aqi_project");
+    const raw = await repo
+      .createQueryBuilder()
+      .select()
+      .orderBy("MvAqiProject.project", "ASC")
+      .getRawMany();
+    // Return as array of objects for frontend dropdown compatibility
+    return raw.map((item) => ({
+      id: item.MvAqiProject_project,
+      customId: item.MvAqiProject_project_name,
+    }));
   }
 
-  public async getAnalyticalMethods(query: string): Promise<any[]> {
-    return await this.getDropdwnOptionsFrmApi(
-      this.getAbsoluteUrl(process.env.ANALYTICAL_METHOD_CODE_TABLE_API),
-      query,
-      "name",
-      true,
+  public async getAnalyticalMethods(): Promise<any[]> {
+    this.logger.log(
+      "getAnalyticalMethods called, querying materialized view mv_aqi_analysis_method",
     );
+    const repo = this["observationRepository"].manager.getRepository(
+      "mv_aqi_analysis_method",
+    );
+    const raw = await repo
+      .createQueryBuilder()
+      .select()
+      .orderBy("MvAqiAnalysisMethod.analyzed_method_name", "ASC")
+      .getRawMany();
+    // Return as array of objects for frontend dropdown compatibility
+    return raw.map((item) => ({
+      id: item.MvAqiAnalysisMethod_analysis_method,
+      name: item.MvAqiAnalysisMethod_analyzed_method_name,
+    }));
   }
 
-  public async getAnalyzingAgencies(query: string): Promise<any[]> {
-    return await this.getDropdwnOptionsFrmApi(
-      this.getAbsoluteUrl(process.env.ANALYZING_AGENCY_CODE_TABLE_API),
-      null,
-      "name",
-      false,
+  public async getAnalyzingAgencies(): Promise<any[]> {
+    this.logger.log(
+      "getAnalyzingAgencies called, querying materialized view mv_aqi_analyzing_agency",
     );
+    const repo = this["observationRepository"].manager.getRepository(
+      "mv_aqi_analyzing_agency",
+    );
+    const raw = await repo
+      .createQueryBuilder()
+      .select()
+      .orderBy("MvAqiAnalyzingAgency.analyzing_agency_full_name", "ASC")
+      .getRawMany();
+    // Return as array of objects for frontend dropdown compatibility
+    return raw.map((item) => ({
+      id: item.MvAqiAnalyzingAgency_analyzing_agency,
+      name: item.MvAqiAnalyzingAgency_analyzing_agency_full_name,
+    }));
   }
 
-  public async getObservedProperties(query: string): Promise<any[]> {
-    return await this.getDropdwnOptionsFrmApi(
-      this.getAbsoluteUrl(process.env.OBSERVED_PROPERTIES_CODE_TABLE_API),
-      query,
-      null,
-      true,
+  public async getObservedProperties(): Promise<any[]> {
+    this.logger.log(
+      "getObservedProperties called, querying materialized view mv_aqi_observed_property",
     );
+    // Use TypeORM to query the materialized view entity and return raw data
+    const repo = this["observationRepository"].manager.getRepository(
+      "mv_aqi_observed_property",
+    );
+    const raw = await repo
+      .createQueryBuilder()
+      .select()
+      .orderBy("MvAqiObservedProperty.observed_property_id", "ASC")
+      .getRawMany();
+    // Return as array of objects for frontend dropdown compatibility
+    return raw.map((item) => ({
+      id: item.MvAqiObservedProperty_observed_property_id,
+      customId: item.MvAqiObservedProperty_observed_property_id,
+    }));
   }
 
-  public async getWorkedOrderNos(query: string): Promise<any[]> {
-    const specimens = await this.getDropdwnOptionsFrmApi(
-      this.getAbsoluteUrl(process.env.WORKED_ORDER_NO_CODE_TABLE_API),
-      query,
-      null,
-      true,
+  public async getWorkedOrderNos(): Promise<any[]> {
+    this.logger.log(
+      "getWorkedOrderNos called, querying materialized view mv_aqi_work_order_number",
     );
-    const arr = this.getExtendedAttribute(specimens, "text");
-    const workOrderedNos = [
-      ...new Map(arr.map((item) => [item["id"], item])).values(),
-    ];
-    sortArr(workOrderedNos, "text");
-    return workOrderedNos;
+    // Use TypeORM to query the materialized view entity and return raw data
+    const repo = this["observationRepository"].manager.getRepository(
+      "mv_aqi_work_order_number",
+    );
+    const raw = await repo
+      .createQueryBuilder()
+      .select()
+      .orderBy("MvAqiWorkOrderNumber.work_order_number", "ASC")
+      .getRawMany();
+    // Return as array of objects for frontend dropdown compatibility
+    return raw.map((item) => ({
+      text: item.MvAqiWorkOrderNumber_work_order_number,
+    }));
   }
 
-  public async getSamplingAgencies(query: string): Promise<any[]> {
-    const fieldVisits = await this.getDropdwnOptionsFrmApi(
-      this.getAbsoluteUrl(process.env.SAMPLING_AGENCY_CODE_TABLE_API),
-      query,
-      null,
-      true,
+  public async getSamplingAgencies(): Promise<any[]> {
+    this.logger.log(
+      "getSamplingAgencies called, querying materialized view mv_aqi_sampling_agency",
     );
-    const arr = this.getExtendedAttribute(fieldVisits, "dropDownListItem");
-    const agencies = [
-      ...new Map(arr.map((item) => [item["id"], item])).values(),
-    ];
-    sortArr(agencies, "customId");
-    return agencies;
+    const repo = this["observationRepository"].manager.getRepository(
+      "mv_aqi_sampling_agency",
+    );
+    const raw = await repo
+      .createQueryBuilder()
+      .select()
+      .orderBy("MvAqiSamplingAgency.sampling_agency", "ASC")
+      .getRawMany();
+    // Return as array of objects for frontend dropdown compatibility
+    return raw.map((item) => ({
+      customId: item.MvAqiSamplingAgency_sampling_agency,
+    }));
   }
 
   private getExtendedAttribute(attributeArr: any[], name: string) {

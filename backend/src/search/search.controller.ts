@@ -79,7 +79,9 @@ export class SearchController {
     jobs[jobId] = { id: jobId, status: "pending" };
 
     // Start background job (non-blocking)
-    this.searchService.runExportJob(basicSearchDto, jobId);
+    // this.searchService.runExportJob(basicSearchDto, jobId);
+
+    this.searchService.runExport(basicSearchDto, jobId);
 
     response.status(202).json({ jobId });
   }

@@ -14,10 +14,11 @@ import * as fs from "fs";
 import * as fastcsv from "@fast-csv/format";
 import { parse } from "csv-parse";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository, In } from "typeorm";
+import { Repository, In, DataSource } from "typeorm";
 import { Observation } from "../observations/entities/observation.entity";
 import { promisify } from "util";
 import { jobs } from "src/jobs/searchjob";
+import { AqiCsvImportOperational } from "src/aqi-csv-import-operational/entities/aqi-csv-import-operational.entity";
 
 const unlinkAsync = promisify(fs.unlink);
 
@@ -27,6 +28,9 @@ export class SearchService {
     private readonly httpService: HttpService,
     @InjectRepository(Observation)
     private readonly observationRepository: Repository<Observation>,
+    @InjectRepository(AqiCsvImportOperational)
+    private readonly aqiCsvImportOperationalRepository: Repository<AqiCsvImportOperational>,
+    private readonly dataSource: DataSource,
   ) {}
 
   private readonly logger = new Logger("ObservationSearchService");
@@ -37,6 +41,140 @@ export class SearchService {
   private readonly OBSERVATIONS_EXPORT_URL =
     process.env.OBSERVATIONS_EXPORT_URL;
   private readonly MAX_PARAMS_CHUNK = 50;
+
+  public async streamToCSV(basicSearchDto: BasicSearchDto) {
+    const whereClause: string[] = [];
+    const params: any[] = [];
+
+    // Apply filters based on basicSearchDto
+    if (basicSearchDto.locationName) {
+      whereClause.push("location_id IN (:...locationName)");
+      params.push(basicSearchDto.locationName);
+    }
+
+    if (basicSearchDto.locationType) {
+      whereClause.push("location_type = :locationType");
+      params.push(basicSearchDto.locationType.customId);
+    }
+
+    const whereSql = whereClause.length ? `WHERE ${whereClause.join( ' AND ')}` : '';
+
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+
+    const sql = `SELECT * FROM aqi_csv_import_operational ${whereSql}`;
+
+    const stream = await queryRunner.stream(sql, params);
+    
+    console.log(stream)
+  }
+
+  public async runExport(basicSearchDto: BasicSearchDto, jobId: string) {
+    try {
+      const result = await this.exportDataFromDb(basicSearchDto);
+      if (result.data && result.data.path) {
+        jobs[jobId].status = "complete";
+        jobs[jobId].filePath = result.data.path;
+      } else {
+        jobs[jobId].status = "error";
+        jobs[jobId].error = result.message || "Unknown error";
+      }
+    } catch (err) {
+      jobs[jobId].status = "error";
+      jobs[jobId].error = err?.message || "Unknown error";
+    }
+  }
+
+  public async exportDataFromDb(basicSearchDto: BasicSearchDto): Promise<any> {
+    this.logger.log(
+      "Exporting observations from DB with search criteria: " +
+        JSON.stringify(basicSearchDto),
+    );
+    const start = Date.now();
+
+    const allEmpty = Object.values(basicSearchDto).every(
+      (val) =>
+        val === null ||
+        val === undefined ||
+        (typeof val === "string" && val.trim() === "") ||
+        (Array.isArray(val) && val.length === 0),
+    );
+
+    if (allEmpty) {
+      return {
+        data: null,
+        status: 400,
+        message: "Please provide at least one search criteria.",
+      };
+    }
+
+    try {
+      this.logger.log("Fetching observations from DB...");
+
+      // Prepare temp file for streaming the API response
+      const tempFileName = `tmp_obs_export_${Date.now()}.csv`;
+      const tempFilePath = join(
+        process.cwd(),
+        `${this.DIR_NAME}${tempFileName}`,
+      );
+
+      const whereClause = {};
+
+      // Apply filters based on basicSearchDto
+      if (basicSearchDto.locationName) {
+        whereClause["location_id"] = In(basicSearchDto.locationName);
+      }
+
+      if (basicSearchDto.locationType) {
+        whereClause["location_type"] = basicSearchDto.locationType.customId;
+      }
+
+      const observations = await this.aqiCsvImportOperationalRepository.find({
+        where: whereClause,
+      });
+
+      console.log(observations.length)
+
+      if (observations.length > this.MAX_API_DATA_LIMIT) {
+        return {
+          data: null,
+          status: 400,
+          message:
+            "This export cannot proceed because it would result in a set of items larger than the imposed limit of 100000 items. Please restrict the data set further by adding filters.",
+        };
+      } else {
+        await this.streamToCSV(basicSearchDto);
+      }
+
+      const elapsedMs = Date.now() - start;
+      const minutes = Math.floor(elapsedMs / 60000);
+      const seconds = ((elapsedMs % 60000) / 1000).toFixed(1);
+      this.logger.debug(`AQI API took ${minutes}m ${seconds}s`);
+
+      this.logger.log(`Fetched ${observations.length} observations from DB`);
+
+      // // Pass the temp file path to prepareCsvExportData
+      // const result = await this.prepareCsvExportData(
+      //   tempFilePath,
+      //   basicSearchDto,
+      // );
+
+      // // Delete the temp file after processing
+      // if (fs.existsSync(tempFilePath)) await unlinkAsync(tempFilePath);
+
+      // return result;
+    } catch (error) {
+      this.logger.error(
+        "Error fetching observations from DB: " + error.message,
+      );
+      return {
+        data: null,
+        status: 500,
+        message: "Error fetching observations from DB.",
+      };
+    }
+    return null;
+  }
 
   /** Runs the export job in a thread so that it doesn't block the frontend */
   public async runExportJob(basicSearchDto: BasicSearchDto, jobId: string) {

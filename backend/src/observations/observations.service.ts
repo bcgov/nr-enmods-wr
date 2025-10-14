@@ -130,9 +130,9 @@ export class ObservationsService {
     }
   }
 
-  @Cron(process.env.OBS_REFRESH_CRON || CronExpression.EVERY_DAY_AT_2AM, {
-    timeZone: "America/Vancouver",
-  })
+  // @Cron(process.env.OBS_REFRESH_CRON || CronExpression.EVERY_DAY_AT_2AM, {
+  //   timeZone: "America/Vancouver",
+  // })
   async scheduledRefreshObservationsTable() {
     const start = Date.now();
     this.logger.log("Scheduled refreshObservationsTable running...");

@@ -17,18 +17,18 @@ export class AqiCsvImportOperationalController {
     return this.service.findAll();
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.service.findOne(Number(id));
-  }
+//   @Get(':id')
+//   findOne(@Param('id') id: string) {
+//     return this.service.findOne(Number(id));
+//   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateAqiCsvImportOperationalDto) {
-    return this.service.update(Number(id), dto);
-  }
+//   @Patch(':id')
+//   update(@Param('id') id: string, @Body() dto: UpdateAqiCsvImportOperationalDto) {
+//     return this.service.update(Number(id), dto);
+//   }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.service.remove(Number(id));
-  }
+//   @Delete(':id')
+//   remove(@Param('id') id: string) {
+//     return this.service.remove(Number(id));
+//   }
 }

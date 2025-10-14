@@ -21,16 +21,16 @@ export class AqiCsvImportOperationalService {
     return this.repo.find();
   }
 
-  async findOne(id: number): Promise<AqiCsvImportOperational> {
-    return this.repo.findOneBy({ id });
-  }
+//   async findOne(id: number): Promise<AqiCsvImportOperational> {
+//     return this.repo.findOneBy({ id });
+//   }
 
-  async update(id: number, dto: UpdateAqiCsvImportOperationalDto): Promise<AqiCsvImportOperational> {
-    await this.repo.update(id, dto);
-    return this.findOne(id);
-  }
+//   async update(id: number, dto: UpdateAqiCsvImportOperationalDto): Promise<AqiCsvImportOperational> {
+//     await this.repo.update(id, dto);
+//     return this.findOne(id);
+//   }
 
-  async remove(id: number): Promise<void> {
-    await this.repo.delete(id);
-  }
+//   async remove(id: number): Promise<void> {
+//     await this.repo.delete(id);
+//   }
 }

@@ -104,7 +104,7 @@ const BasicSearch = () => {
   ): Promise<void> => {
     try {
       setIsApiLoading(true)
-      const url = dropdwnUrl(fieldName, query)
+      const url = dropdwnUrl(fieldName)
       if (url) {
         const apiData = await apiService.getAxiosInstance().get(url)
 

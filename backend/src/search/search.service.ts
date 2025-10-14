@@ -43,54 +43,74 @@ export class SearchService {
   private readonly MAX_PARAMS_CHUNK = 50;
 
   public async streamToCSV(basicSearchDto: BasicSearchDto, filePath: string) {
-    const whereClause: string[] = [];
-    const params: any[] = [];
+    const start = Date.now();
+    try {
+      const whereClause: string[] = [];
+      const params: any[] = [];
 
-    // Apply filters based on basicSearchDto
-    if (basicSearchDto.locationName.length >= 1) {
-      whereClause.push(`location_id = ANY($${params.length + 1})`);
-      params.push(basicSearchDto.locationName);
+      // Apply filters based on basicSearchDto
+      if (basicSearchDto.locationName.length >= 1) {
+        whereClause.push(`location_id = ANY($${params.length + 1})`);
+        params.push(basicSearchDto.locationName);
+      }
+
+      if (basicSearchDto.locationType) {
+        whereClause.push(`location_type = $${params.length + 1}`);
+        params.push(basicSearchDto.locationType.customId);
+      }
+
+      const whereSql = whereClause.length ? `WHERE ${whereClause.join( ' AND ')}` : '';
+
+      const queryRunner = this.dataSource.createQueryRunner();
+      await queryRunner.connect();
+
+      const sql = `SELECT * FROM aqi_csv_import_operational ${whereSql}`;
+      const stream = await queryRunner.stream(sql, params);
+      
+      const writeStream = fs.createWriteStream(filePath)
+      
+      const csvStream = fastcsv.format({ headers: true });
+
+      await new Promise((resolve, reject) => {
+        stream
+        .pipe(csvStream)
+        .pipe(writeStream)
+        .on("finish", resolve)
+        .on("error", reject);
+      });
+
+      await queryRunner.release();
+      const ms = Date.now() - start;
+      const min = Math.floor(ms / 60000);
+      const sec = ((ms % 60000) / 1000).toFixed(1);
+      this.logger.log(
+        `prepareCsvExportData succeeded after ${min}m ${sec}s (${ms} ms)`,
+      );
+      this.logger.log("CSV file created at: " + filePath);
+
+      return {
+        data: stream,
+        path: filePath,
+        status: HttpStatus.OK,
+      };
+    } catch (error) {
+      this.logger.error(error);
+      const ms = Date.now() - start;
+      const min = Math.floor(ms / 60000);
+      const sec = ((ms % 60000) / 1000).toFixed(1);
+      this.logger.log(
+        `prepareCsvExportData failed after ${min}m ${sec}s (${ms} ms)`,
+      );
+      throw new BadRequestException({
+        status: HttpStatus.BAD_REQUEST,
+        error: error?.message || "Failed to prepare CSV export data",
+      });
     }
-
-    if (basicSearchDto.locationType) {
-      whereClause.push(`location_type = $${params.length + 1}`);
-      params.push(basicSearchDto.locationType.customId);
-    }
-
-    const whereSql = whereClause.length ? `WHERE ${whereClause.join( ' AND ')}` : '';
-
-    const queryRunner = this.dataSource.createQueryRunner();
-    await queryRunner.connect();
-
-    const sql = `SELECT * FROM aqi_csv_import_operational ${whereSql}`;
-    const stream = await queryRunner.stream(sql, params);
-    
-    const writeStream = fs.createWriteStream(filePath)
-    
-    const csvStream = fastcsv.format({ headers: true });
-
-    await new Promise((resolve, reject) => {
-      stream
-      .pipe(csvStream)
-      .pipe(writeStream)
-      .on("finish", resolve)
-      .on("error", reject);
-    });
-
-    await queryRunner.release();
-    console.log("CSV file created at: " + filePath);
-
-    return {
-      data: stream,
-      path: filePath,
-      status: HttpStatus.OK,
-    };
   }
 
   public async runExport(basicSearchDto: BasicSearchDto, jobId: string) {
     try {
       const result = await this.exportDataFromDb(basicSearchDto);
-      console.log(result)
       if (result.data && result.path) {
         jobs[jobId].status = "complete";
         jobs[jobId].filePath = result.path;
@@ -157,8 +177,16 @@ export class SearchService {
         return {
           data: null,
           status: 400,
+          path: null,
           message:
             "This export cannot proceed because it would result in a set of items larger than the imposed limit of 100000 items. Please restrict the data set further by adding filters.",
+        };
+      }else if (observations.length === 0){
+        return {
+          data: null,
+          status: 200,
+          path: null,
+          message: "No Data Found. Please adjust your search criteria.",
         };
       } else {
         result = await this.streamToCSV(basicSearchDto, tempFilePath);

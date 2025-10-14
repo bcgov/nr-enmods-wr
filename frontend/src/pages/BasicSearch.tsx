@@ -77,7 +77,6 @@ const BasicSearch = () => {
       const res = await apiService
         .getAxiosInstance()
         .get(`/v1/search/observationSearch/status/${jobId}`)
-      console.log(res.data)
       status = res.data.status
       if (status === "complete") {
         setIsDisabled(false)

@@ -42,18 +42,18 @@ export class SearchService {
     process.env.OBSERVATIONS_EXPORT_URL;
   private readonly MAX_PARAMS_CHUNK = 50;
 
-  public async streamToCSV(basicSearchDto: BasicSearchDto) {
+  public async streamToCSV(basicSearchDto: BasicSearchDto, filePath: string) {
     const whereClause: string[] = [];
     const params: any[] = [];
 
     // Apply filters based on basicSearchDto
-    if (basicSearchDto.locationName) {
-      whereClause.push("location_id IN (:...locationName)");
+    if (basicSearchDto.locationName.length >= 1) {
+      whereClause.push(`location_id = ANY($${params.length + 1})`);
       params.push(basicSearchDto.locationName);
     }
 
     if (basicSearchDto.locationType) {
-      whereClause.push("location_type = :locationType");
+      whereClause.push(`location_type = $${params.length + 1}`);
       params.push(basicSearchDto.locationType.customId);
     }
 
@@ -63,18 +63,37 @@ export class SearchService {
     await queryRunner.connect();
 
     const sql = `SELECT * FROM aqi_csv_import_operational ${whereSql}`;
-
     const stream = await queryRunner.stream(sql, params);
     
-    console.log(stream)
+    const writeStream = fs.createWriteStream(filePath)
+    
+    const csvStream = fastcsv.format({ headers: true });
+
+    await new Promise((resolve, reject) => {
+      stream
+      .pipe(csvStream)
+      .pipe(writeStream)
+      .on("finish", resolve)
+      .on("error", reject);
+    });
+
+    await queryRunner.release();
+    console.log("CSV file created at: " + filePath);
+
+    return {
+      data: stream,
+      path: filePath,
+      status: HttpStatus.OK,
+    };
   }
 
   public async runExport(basicSearchDto: BasicSearchDto, jobId: string) {
     try {
       const result = await this.exportDataFromDb(basicSearchDto);
-      if (result.data && result.data.path) {
+      console.log(result)
+      if (result.data && result.path) {
         jobs[jobId].status = "complete";
-        jobs[jobId].filePath = result.data.path;
+        jobs[jobId].filePath = result.path;
       } else {
         jobs[jobId].status = "error";
         jobs[jobId].error = result.message || "Unknown error";
@@ -91,6 +110,7 @@ export class SearchService {
         JSON.stringify(basicSearchDto),
     );
     const start = Date.now();
+    let result = null;
 
     const allEmpty = Object.values(basicSearchDto).every(
       (val) =>
@@ -133,8 +153,6 @@ export class SearchService {
         where: whereClause,
       });
 
-      console.log(observations.length)
-
       if (observations.length > this.MAX_API_DATA_LIMIT) {
         return {
           data: null,
@@ -143,7 +161,7 @@ export class SearchService {
             "This export cannot proceed because it would result in a set of items larger than the imposed limit of 100000 items. Please restrict the data set further by adding filters.",
         };
       } else {
-        await this.streamToCSV(basicSearchDto);
+        result = await this.streamToCSV(basicSearchDto, tempFilePath);
       }
 
       const elapsedMs = Date.now() - start;
@@ -153,16 +171,7 @@ export class SearchService {
 
       this.logger.log(`Fetched ${observations.length} observations from DB`);
 
-      // // Pass the temp file path to prepareCsvExportData
-      // const result = await this.prepareCsvExportData(
-      //   tempFilePath,
-      //   basicSearchDto,
-      // );
-
-      // // Delete the temp file after processing
-      // if (fs.existsSync(tempFilePath)) await unlinkAsync(tempFilePath);
-
-      // return result;
+      return result;
     } catch (error) {
       this.logger.error(
         "Error fetching observations from DB: " + error.message,
@@ -170,10 +179,10 @@ export class SearchService {
       return {
         data: null,
         status: 500,
+        path: null,
         message: "Error fetching observations from DB.",
       };
     }
-    return null;
   }
 
   /** Runs the export job in a thread so that it doesn't block the frontend */

@@ -99,9 +99,9 @@ export default function FilterResultsForm(props: any) {
             <Autocomplete
               multiple
               value={formData?.media}
-              getOptionKey={(option) => option.id}
+              getOptionKey={(option) => option.customId}
               options={filterResultDrpdwns.mediums}
-              isOptionEqualToValue={(option, value) => option.id === value.id}
+              isOptionEqualToValue={(option, value) => option.customId === value.customId}
               getOptionLabel={(option) => option.customId || ""}
               onInputChange={(e, val) =>
                 handleInputChange(e, val, SearchAttr.Media)

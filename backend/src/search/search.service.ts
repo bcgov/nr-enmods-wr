@@ -14,7 +14,13 @@ import * as fs from "fs";
 import * as fastcsv from "@fast-csv/format";
 import { parse } from "csv-parse";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository, In, DataSource } from "typeorm";
+import {
+  Repository,
+  In,
+  DataSource,
+  MoreThanOrEqual,
+  LessThanOrEqual,
+} from "typeorm";
 import { Observation } from "../observations/entities/observation.entity";
 import { promisify } from "util";
 import { jobs } from "src/jobs/searchjob";
@@ -49,7 +55,7 @@ export class SearchService {
       const params: any[] = [];
 
       // Apply filters based on basicSearchDto
-      if (basicSearchDto.locationName.length >= 1) {
+      if (basicSearchDto.locationName && basicSearchDto.locationName.length >= 1) {
         whereClause.push(`location_id = ANY($${params.length + 1})`);
         params.push(basicSearchDto.locationName);
       }
@@ -59,29 +65,71 @@ export class SearchService {
         params.push(basicSearchDto.locationType.customId);
       }
 
-      if (basicSearchDto.permitNumber.length >= 1) {
+      if (basicSearchDto.permitNumber && basicSearchDto.permitNumber.length >= 1) {
         whereClause.push(`location_groups = ANY($${params.length + 1})`);
         params.push(basicSearchDto.permitNumber);
       }
 
-      const whereSql = whereClause.length ? `WHERE ${whereClause.join( ' AND ')}` : '';
+      if (basicSearchDto.fromDate && basicSearchDto.toDate) {
+        const fromDateWithTime = new Date(basicSearchDto.fromDate);
+        const fromDate = `${fromDateWithTime.getFullYear()}-${(fromDateWithTime.getMonth() + 1).toString().padStart(2, "0")}-${fromDateWithTime.getDate().toString().padStart(2, "0")}`;
+        whereClause.push(`observed_date_time_start >= $${params.length + 1}`);
+        params.push(fromDate);
+
+        const toDateWithTime = new Date(basicSearchDto.toDate);
+        const toDate = `${toDateWithTime.getFullYear()}-${(toDateWithTime.getMonth() + 1).toString().padStart(2, "0")}-${toDateWithTime.getDate().toString().padStart(2, "0")}`;
+        whereClause.push(`observed_date_time_end <= $${params.length + 1}`);
+        params.push(toDate);
+      } else if (basicSearchDto.fromDate) {
+        const fromDateWithTime = new Date(basicSearchDto.fromDate);
+        const fromDate = `${fromDateWithTime.getFullYear()}-${(fromDateWithTime.getMonth() + 1).toString().padStart(2, "0")}-${fromDateWithTime.getDate().toString().padStart(2, "0")}`;
+        whereClause.push(`observed_date_time_start >= $${params.length + 1}`);
+        params.push(fromDate);
+      } else if (basicSearchDto.toDate) {
+        const toDateWithTime = new Date(basicSearchDto.toDate);
+        const toDate = `${toDateWithTime.getFullYear()}-${(toDateWithTime.getMonth() + 1).toString().padStart(2, "0")}-${toDateWithTime.getDate().toString().padStart(2, "0")}`;
+        whereClause.push(`observed_date_time_end <= $${params.length + 1}`);
+        params.push(toDate);
+      }
+
+      if (basicSearchDto.media && basicSearchDto.media.length >= 1) {
+        whereClause.push(`medium = ANY($${params.length + 1})`);
+        params.push(basicSearchDto.media);
+      }
+
+      if (basicSearchDto.observedPropertyGrp && basicSearchDto.observedPropertyGrp.length >= 1) {
+        whereClause.push(`observed_property_id = ANY($${params.length + 1})`);
+        params.push(basicSearchDto.observedPropertyGrp);
+      }
+
+      if (basicSearchDto.projects && basicSearchDto.projects.length >= 1) {
+        whereClause.push(`project = ANY($${params.length + 1})`);
+        params.push(basicSearchDto.projects);
+      }
+      
+
+      const whereSql = whereClause.length
+        ? `WHERE ${whereClause.join(" AND ")}`
+        : "";
+
+      console.log(whereSql);
 
       const queryRunner = this.dataSource.createQueryRunner();
       await queryRunner.connect();
 
       const sql = `SELECT * FROM aqi_csv_import_operational ${whereSql}`;
       const stream = await queryRunner.stream(sql, params);
-      
-      const writeStream = fs.createWriteStream(filePath)
-      
+
+      const writeStream = fs.createWriteStream(filePath);
+
       const csvStream = fastcsv.format({ headers: true });
 
       await new Promise((resolve, reject) => {
         stream
-        .pipe(csvStream)
-        .pipe(writeStream)
-        .on("finish", resolve)
-        .on("error", reject);
+          .pipe(csvStream)
+          .pipe(writeStream)
+          .on("finish", resolve)
+          .on("error", reject);
       });
 
       await queryRunner.release();
@@ -145,16 +193,18 @@ export class SearchService {
         (Array.isArray(val) && val.length === 0),
     );
 
-    // if (allEmpty) {
-    //   return {
-    //     data: null,
-    //     status: 400,
-    //     message: "Please provide at least one search criteria.",
-    //   };
-    // }
+    if (allEmpty) {
+      return {
+        data: null,
+        status: 400,
+        message: "Please provide at least one search criteria.",
+      };
+    }
 
     try {
       this.logger.log("Fetching observations from DB...");
+      this.logger.log(basicSearchDto)
+
 
       // Prepare temp file for streaming the API response
       const tempFileName = `tmp_obs_export_${Date.now()}.csv`;
@@ -163,26 +213,69 @@ export class SearchService {
         `${this.DIR_NAME}${tempFileName}`,
       );
 
-      this.logger.log(basicSearchDto);
       const whereClause = {};
 
       // Apply filters based on basicSearchDto
-      if (basicSearchDto.locationName && basicSearchDto.locationName.length > 0) {
+      if (
+        basicSearchDto.locationName &&
+        basicSearchDto.locationName.length > 0
+      ) {
         whereClause["location_id"] = In(basicSearchDto.locationName);
       }
 
       if (basicSearchDto.locationType && basicSearchDto.locationType.customId) {
-        whereClause["location_type"] = basicSearchDto.locationType.customId.trim();
+        whereClause["location_type"] =
+          basicSearchDto.locationType.customId.trim();
       }
 
-      if (basicSearchDto.permitNumber && basicSearchDto.permitNumber.length > 0) {
+      if (
+        basicSearchDto.permitNumber &&
+        basicSearchDto.permitNumber.length > 0
+      ) {
         whereClause["location_groups"] = In(basicSearchDto.permitNumber);
+      }
+
+      // Date filtering logic
+      if (basicSearchDto.fromDate && basicSearchDto.toDate) {
+        const fromDateWithTime = new Date(basicSearchDto.fromDate);
+        const fromDate = `${fromDateWithTime.getFullYear()}-${(fromDateWithTime.getMonth() + 1).toString().padStart(2, "0")}-${fromDateWithTime.getDate().toString().padStart(2, "0")}`;
+        const toDateWithTime = new Date(basicSearchDto.toDate);
+        const toDate = `${toDateWithTime.getFullYear()}-${(toDateWithTime.getMonth() + 1).toString().padStart(2, "0")}-${toDateWithTime.getDate().toString().padStart(2, "0")}`;
+
+        // Find within date range
+        whereClause["observed_date_time_start"] = MoreThanOrEqual(fromDate);
+        whereClause["observed_date_time_end"] = LessThanOrEqual(toDate);
+      } else if (basicSearchDto.fromDate) {
+        // Only fromDate provided
+        const fromDateWithTime = new Date(basicSearchDto.fromDate);
+        const fromDate = `${fromDateWithTime.getFullYear()}-${(fromDateWithTime.getMonth() + 1).toString().padStart(2, "0")}-${fromDateWithTime.getDate().toString().padStart(2, "0")}`;
+        whereClause["observed_date_time_start"] = MoreThanOrEqual(fromDate);
+      } else if (basicSearchDto.toDate) {
+        // Only toDate provided
+        const toDateWithTime = new Date(basicSearchDto.toDate);
+        const toDate = `${toDateWithTime.getFullYear()}-${(toDateWithTime.getMonth() + 1).toString().padStart(2, "0")}-${toDateWithTime.getDate().toString().padStart(2, "0")}`;
+        whereClause["observed_date_time_end"] = LessThanOrEqual(toDate);
+      }
+
+      if (basicSearchDto.media && basicSearchDto.media.length > 0) {
+        whereClause["medium"] = In(basicSearchDto.media);
+      }
+
+      if (
+        basicSearchDto.observedPropertyGrp &&
+        basicSearchDto.observedPropertyGrp.length > 0
+      ) {
+        whereClause["observed_property_id"] =
+          In(basicSearchDto.observedPropertyGrp);
+      }
+
+      if (basicSearchDto.projects && basicSearchDto.projects.length > 0) {
+        whereClause["project"] = In(basicSearchDto.projects);
       }
 
       const observations = await this.aqiCsvImportOperationalRepository.find({
         where: whereClause,
       });
-
 
       if (observations.length > this.MAX_API_DATA_LIMIT) {
         return {
@@ -192,7 +285,7 @@ export class SearchService {
           message:
             "This export cannot proceed because it would result in a set of items larger than the imposed limit of 100000 items. Please restrict the data set further by adding filters.",
         };
-      }else if (observations.length === 0){
+      } else if (observations.length === 0) {
         return {
           data: null,
           status: 200,
@@ -1131,12 +1224,12 @@ export class SearchService {
     const raw = await repo
       .createQueryBuilder()
       .select()
-      .orderBy("MvAqiObservedProperty.observed_property_description", "ASC")
+      .orderBy("MvAqiObservedProperty.observed_property_id", "ASC")
       .getRawMany();
     // Return as array of objects for frontend dropdown compatibility
     return raw.map((item) => ({
       id: item.MvAqiObservedProperty_observed_property_id,
-      name: item.MvAqiObservedProperty_observed_property_description,
+      name: item.MvAqiObservedProperty_observed_property_id,
     }));
   }
 

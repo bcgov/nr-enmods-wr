@@ -278,7 +278,7 @@ const BasicSearch = () => {
       const arr: string[] = []
       if (Array.isArray(formData[key])) {
         formData[key].forEach((item) => {
-          arr.push(item.id || item.name)
+          arr.push(item.id || item.name || item.customId)
         })
         data[key] = arr
       } else if (key === "fromDate" || key === "toDate") {

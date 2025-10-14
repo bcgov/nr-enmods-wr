@@ -59,6 +59,11 @@ export class SearchService {
         params.push(basicSearchDto.locationType.customId);
       }
 
+      if (basicSearchDto.permitNumber.length >= 1) {
+        whereClause.push(`location_groups = ANY($${params.length + 1})`);
+        params.push(basicSearchDto.permitNumber);
+      }
+
       const whereSql = whereClause.length ? `WHERE ${whereClause.join( ' AND ')}` : '';
 
       const queryRunner = this.dataSource.createQueryRunner();
@@ -140,13 +145,13 @@ export class SearchService {
         (Array.isArray(val) && val.length === 0),
     );
 
-    if (allEmpty) {
-      return {
-        data: null,
-        status: 400,
-        message: "Please provide at least one search criteria.",
-      };
-    }
+    // if (allEmpty) {
+    //   return {
+    //     data: null,
+    //     status: 400,
+    //     message: "Please provide at least one search criteria.",
+    //   };
+    // }
 
     try {
       this.logger.log("Fetching observations from DB...");
@@ -158,20 +163,26 @@ export class SearchService {
         `${this.DIR_NAME}${tempFileName}`,
       );
 
+      this.logger.log(basicSearchDto);
       const whereClause = {};
 
       // Apply filters based on basicSearchDto
-      if (basicSearchDto.locationName) {
+      if (basicSearchDto.locationName && basicSearchDto.locationName.length > 0) {
         whereClause["location_id"] = In(basicSearchDto.locationName);
       }
 
-      if (basicSearchDto.locationType) {
-        whereClause["location_type"] = basicSearchDto.locationType.customId;
+      if (basicSearchDto.locationType && basicSearchDto.locationType.customId) {
+        whereClause["location_type"] = basicSearchDto.locationType.customId.trim();
+      }
+
+      if (basicSearchDto.permitNumber && basicSearchDto.permitNumber.length > 0) {
+        whereClause["location_groups"] = In(basicSearchDto.permitNumber);
       }
 
       const observations = await this.aqiCsvImportOperationalRepository.find({
         where: whereClause,
       });
+
 
       if (observations.length > this.MAX_API_DATA_LIMIT) {
         return {

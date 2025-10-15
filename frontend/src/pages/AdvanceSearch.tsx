@@ -485,7 +485,8 @@ const AdvanceSearch = (props: Props) => {
           if (key === SearchAttr.DataClassification)
             arr.push(item.data_classification)
           else if (key === SearchAttr.QcSampleType) arr.push(item.qc_type)
-          else arr.push(item.id)
+          else if (key === SearchAttr.ObservedPropertyGrp) arr.push(item.name)
+          else arr.push(item.id || item.name || item.customId)
         })
 
         data[key] = arr

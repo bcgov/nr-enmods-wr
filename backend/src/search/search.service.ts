@@ -98,7 +98,7 @@ export class SearchService {
       }
 
       if (basicSearchDto.observedPropertyGrp && basicSearchDto.observedPropertyGrp.length >= 1) {
-        whereClause.push(`observed_property_id = ANY($${params.length + 1})`);
+        whereClause.push(`observed_property_description = ANY($${params.length + 1})`);
         params.push(basicSearchDto.observedPropertyGrp);
       }
 
@@ -213,71 +213,80 @@ export class SearchService {
         `${this.DIR_NAME}${tempFileName}`,
       );
 
-      const whereClause = {};
+      const whereClause: string[] = [];
+      const params: any[] = [];
 
       // Apply filters based on basicSearchDto
-      if (
-        basicSearchDto.locationName &&
-        basicSearchDto.locationName.length > 0
-      ) {
-        whereClause["location_id"] = In(basicSearchDto.locationName);
+      if (basicSearchDto.locationName && basicSearchDto.locationName.length >= 1) {
+        whereClause.push(`location_id = ANY($${params.length + 1})`);
+        params.push(basicSearchDto.locationName);
       }
 
-      if (basicSearchDto.locationType && basicSearchDto.locationType.customId) {
-        whereClause["location_type"] =
-          basicSearchDto.locationType.customId.trim();
+      if (basicSearchDto.locationType) {
+        whereClause.push(`location_type = $${params.length + 1}`);
+        params.push(basicSearchDto.locationType.customId);
       }
 
-      if (
-        basicSearchDto.permitNumber &&
-        basicSearchDto.permitNumber.length > 0
-      ) {
-        whereClause["location_groups"] = In(basicSearchDto.permitNumber);
+      if (basicSearchDto.permitNumber && basicSearchDto.permitNumber.length >= 1) {
+        whereClause.push(`location_groups = ANY($${params.length + 1})`);
+        params.push(basicSearchDto.permitNumber);
       }
 
-      // Date filtering logic
       if (basicSearchDto.fromDate && basicSearchDto.toDate) {
         const fromDateWithTime = new Date(basicSearchDto.fromDate);
         const fromDate = `${fromDateWithTime.getFullYear()}-${(fromDateWithTime.getMonth() + 1).toString().padStart(2, "0")}-${fromDateWithTime.getDate().toString().padStart(2, "0")}`;
+        whereClause.push(`observed_date_time_start >= $${params.length + 1}`);
+        params.push(fromDate);
+
         const toDateWithTime = new Date(basicSearchDto.toDate);
         const toDate = `${toDateWithTime.getFullYear()}-${(toDateWithTime.getMonth() + 1).toString().padStart(2, "0")}-${toDateWithTime.getDate().toString().padStart(2, "0")}`;
-
-        // Find within date range
-        whereClause["observed_date_time_start"] = MoreThanOrEqual(fromDate);
-        whereClause["observed_date_time_end"] = LessThanOrEqual(toDate);
+        whereClause.push(`observed_date_time_end <= $${params.length + 1}`);
+        params.push(toDate);
       } else if (basicSearchDto.fromDate) {
-        // Only fromDate provided
         const fromDateWithTime = new Date(basicSearchDto.fromDate);
         const fromDate = `${fromDateWithTime.getFullYear()}-${(fromDateWithTime.getMonth() + 1).toString().padStart(2, "0")}-${fromDateWithTime.getDate().toString().padStart(2, "0")}`;
-        whereClause["observed_date_time_start"] = MoreThanOrEqual(fromDate);
+        whereClause.push(`observed_date_time_start >= $${params.length + 1}`);
+        params.push(fromDate);
       } else if (basicSearchDto.toDate) {
-        // Only toDate provided
         const toDateWithTime = new Date(basicSearchDto.toDate);
         const toDate = `${toDateWithTime.getFullYear()}-${(toDateWithTime.getMonth() + 1).toString().padStart(2, "0")}-${toDateWithTime.getDate().toString().padStart(2, "0")}`;
-        whereClause["observed_date_time_end"] = LessThanOrEqual(toDate);
+        whereClause.push(`observed_date_time_end <= $${params.length + 1}`);
+        params.push(toDate);
       }
 
-      if (basicSearchDto.media && basicSearchDto.media.length > 0) {
-        whereClause["medium"] = In(basicSearchDto.media);
+      if (basicSearchDto.media && basicSearchDto.media.length >= 1) {
+        whereClause.push(`medium = ANY($${params.length + 1})`);
+        params.push(basicSearchDto.media);
       }
 
-      if (
-        basicSearchDto.observedPropertyGrp &&
-        basicSearchDto.observedPropertyGrp.length > 0
-      ) {
-        whereClause["observed_property_id"] =
-          In(basicSearchDto.observedPropertyGrp);
+      if (basicSearchDto.observedPropertyGrp && basicSearchDto.observedPropertyGrp.length >= 1) {
+        whereClause.push(`observed_property_description = ANY($${params.length + 1})`);
+        params.push(basicSearchDto.observedPropertyGrp);
       }
 
-      if (basicSearchDto.projects && basicSearchDto.projects.length > 0) {
-        whereClause["project"] = In(basicSearchDto.projects);
+      if (basicSearchDto.projects && basicSearchDto.projects.length >= 1) {
+        whereClause.push(`project = ANY($${params.length + 1})`);
+        params.push(basicSearchDto.projects);
       }
+      
 
-      const observations = await this.aqiCsvImportOperationalRepository.find({
-        where: whereClause,
-      });
+      const whereSql = whereClause.length
+        ? `WHERE ${whereClause.join(" AND ")}`
+        : "";
+
+      console.log(whereSql);
+
+      const queryRunner = this.dataSource.createQueryRunner();
+      await queryRunner.connect();
+
+      const sql = `SELECT * FROM aqi_csv_import_operational ${whereSql}`;
+
+      const observations = await queryRunner.query(sql, params);
+
+      await queryRunner.release();
 
       if (observations.length > this.MAX_API_DATA_LIMIT) {
+        this.logger.log(`Fetched ${observations.length} observations from DB`);
         return {
           data: null,
           status: 400,
@@ -1215,21 +1224,21 @@ export class SearchService {
 
   public async getObservedPropertyGroups(): Promise<any[]> {
     this.logger.log(
-      "getObservedPropertyGroups called, querying materialized view mv_aqi_observed_property",
+      "getObservedPropertyGroups called, querying materialized view mv_aqi_observed_property_description",
     );
     // Use TypeORM to query the materialized view entity and return raw data
     const repo = this["observationRepository"].manager.getRepository(
-      "mv_aqi_observed_property",
+      "mv_aqi_observed_property_description",
     );
     const raw = await repo
       .createQueryBuilder()
       .select()
-      .orderBy("MvAqiObservedProperty.observed_property_id", "ASC")
+      .orderBy("MvAqiObservedPropertyDescription.observed_property_description", "ASC")
       .getRawMany();
     // Return as array of objects for frontend dropdown compatibility
     return raw.map((item) => ({
-      id: item.MvAqiObservedProperty_observed_property_id,
-      name: item.MvAqiObservedProperty_observed_property_id,
+      id: item.MvAqiObservedPropertyDescription_observed_property_description,
+      name: item.MvAqiObservedPropertyDescription_observed_property_description,
     }));
   }
 

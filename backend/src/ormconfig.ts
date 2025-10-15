@@ -10,7 +10,11 @@ import { MvAqiLocationType } from "./materialized-views/mv_aqi_location_type.ent
 import { MvAqiLocationGroups } from "./materialized-views/mv_aqi_location_groups.entity";
 import { MvAqiCollectionMethod } from "./materialized-views/mv_aqi_collection_method.entity";
 import { MvAqiMedium } from "./materialized-views/mv_aqi_medium.entity";
-import { MvAqiObservedProperty } from "./materialized-views/mv_aqi_observed_property.entity";
+import { MvAqiObservedPropertyId } from "./materialized-views/mv_aqi_observed_property_id.entity";
+import { MvAqiObservedPropertyName } from "./materialized-views/mv_aqi_observed_property_name.entity";
+import { MvAqiObservedPropertyDescription } from "./materialized-views/mv_aqi_observed_property_description.entity";
+import { MvAqiObservedPropertyResultType } from "./materialized-views/mv_aqi_observed_property_result_type.entity";
+import { MvAqiObservedPropertyAnalysisType } from "./materialized-views/mv_aqi_observed_property_analysis_type.entity";
 import { MvAqiDataClassification } from "./materialized-views/mv_aqi_data_classification.entity";
 import { MvAqiAnalyzingAgency } from "./materialized-views/mv_aqi_analyzing_agency.entity";
 import { MvAqiAnalysisMethod } from "./materialized-views/mv_aqi_analysis_method.entity";
@@ -38,7 +42,11 @@ const ormconfig: TypeOrmModuleOptions = {
     MvAqiLocationGroups,
     MvAqiCollectionMethod,
     MvAqiMedium,
-    MvAqiObservedProperty,
+    MvAqiObservedPropertyId,
+    MvAqiObservedPropertyName,
+    MvAqiObservedPropertyDescription,
+    MvAqiObservedPropertyResultType,
+    MvAqiObservedPropertyAnalysisType,
     MvAqiDataClassification,
     MvAqiAnalyzingAgency,
     MvAqiAnalysisMethod,

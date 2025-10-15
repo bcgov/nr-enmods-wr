@@ -19,7 +19,11 @@ BEGIN
     REFRESH MATERIALIZED VIEW mv_aqi_medium;
 
     -- Observed property & chemistry metadata
-    REFRESH MATERIALIZED VIEW mv_aqi_observed_property;
+    REFRESH MATERIALIZED VIEW mv_aqi_observed_property_id;
+    REFRESH MATERIALIZED VIEW mv_aqi_observed_property_name;
+    REFRESH MATERIALIZED VIEW mv_aqi_observed_property_description;
+    REFRESH MATERIALIZED VIEW mv_aqi_observed_property_analysis_type;
+    REFRESH MATERIALIZED VIEW mv_aqi_observed_property_result_type;
 
     -- Result metrics & units
     REFRESH MATERIALIZED VIEW mv_aqi_data_classification;

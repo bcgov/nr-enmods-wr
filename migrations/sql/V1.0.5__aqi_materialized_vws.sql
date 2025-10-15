@@ -91,30 +91,51 @@ WHERE Medium IS NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS ux_mv_aqi_medium
   ON mv_aqi_medium (Medium);
 
--- Combine observed property fields
-DROP MATERIALIZED VIEW IF EXISTS mv_aqi_observed_property;
-CREATE MATERIALIZED VIEW mv_aqi_observed_property AS
-SELECT DISTINCT
-    Observed_Property_ID,
-    Observed_Property_Name,
-    Observed_Property_Description,
-    Observed_Property_Analysis_Type,
-    Observed_Property_Result_Type
+-- Observed_Property_ID
+DROP MATERIALIZED VIEW IF EXISTS mv_aqi_observed_property_id;
+CREATE MATERIALIZED VIEW mv_aqi_observed_property_id AS
+SELECT DISTINCT Observed_Property_ID
 FROM AQI_CSV_IMPORT_STAGING
-WHERE Observed_Property_ID IS NOT NULL
-  AND Observed_Property_Name IS NOT NULL
-  AND Observed_Property_Description IS NOT NULL
-  AND Observed_Property_Analysis_Type IS NOT NULL
-  AND Observed_Property_Result_Type IS NOT NULL;
+WHERE Observed_Property_ID IS NOT NULL;
 
-CREATE UNIQUE INDEX IF NOT EXISTS ux_mv_aqi_observed_property
-  ON mv_aqi_observed_property (
-    Observed_Property_ID,
-    Observed_Property_Name,
-    Observed_Property_Description,
-    Observed_Property_Analysis_Type,
-    Observed_Property_Result_Type
-  );
+CREATE UNIQUE INDEX IF NOT EXISTS ux_mv_aqi_observed_property_id
+  ON mv_aqi_observed_property_id (Observed_Property_ID);
+
+-- Observed_Property_Name
+DROP MATERIALIZED VIEW IF EXISTS mv_aqi_observed_property_name;
+CREATE MATERIALIZED VIEW mv_aqi_observed_property_name AS
+SELECT DISTINCT Observed_Property_Name
+FROM AQI_CSV_IMPORT_STAGING
+WHERE Observed_Property_Name IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS ux_mv_aqi_observed_property_name
+  ON mv_aqi_observed_property_name (Observed_Property_Name);
+
+-- Observed_Property_Description
+DROP MATERIALIZED VIEW IF EXISTS mv_aqi_observed_property_description;
+CREATE MATERIALIZED VIEW mv_aqi_observed_property_description AS
+SELECT DISTINCT Observed_Property_Description
+FROM AQI_CSV_IMPORT_STAGING
+WHERE Observed_Property_Description IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS ux_mv_aqi_observed_property_description
+  ON mv_aqi_observed_property_description (Observed_Property_Description);
+
+-- Observed_Property_Analysis_Type
+DROP MATERIALIZED VIEW IF EXISTS mv_aqi_observed_property_analysis_type;
+CREATE MATERIALIZED VIEW mv_aqi_observed_property_analysis_type AS
+SELECT DISTINCT Observed_Property_Analysis_Type
+FROM AQI_CSV_IMPORT_STAGING
+WHERE Observed_Property_Analysis_Type IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS ux_mv_aqi_observed_property_analysis_type
+  ON mv_aqi_observed_property_analysis_type (Observed_Property_Analysis_Type);
+
+-- Observed_Property_Result_Type
+DROP MATERIALIZED VIEW IF EXISTS mv_aqi_observed_property_result_type;
+CREATE MATERIALIZED VIEW mv_aqi_observed_property_result_type AS
+SELECT DISTINCT Observed_Property_Result_Type
+FROM AQI_CSV_IMPORT_STAGING
+WHERE Observed_Property_Result_Type IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS ux_mv_aqi_observed_property_result_type
+  ON mv_aqi_observed_property_result_type (Observed_Property_Result_Type);
 
 -- Data_Classification
 DROP MATERIALIZED VIEW IF EXISTS mv_aqi_data_classification;

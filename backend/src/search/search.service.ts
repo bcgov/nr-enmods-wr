@@ -48,72 +48,85 @@ export class SearchService {
     process.env.OBSERVATIONS_EXPORT_URL;
   private readonly MAX_PARAMS_CHUNK = 50;
 
+  public async formulateSqlQuery(basicSearchDto: BasicSearchDto) {
+    const whereClause: string[] = [];
+    const params: any[] = [];
+
+    // Apply filters based on basicSearchDto
+    if (
+      basicSearchDto.locationName &&
+      basicSearchDto.locationName.length >= 1
+    ) {
+      whereClause.push(`location_id = ANY($${params.length + 1})`);
+      params.push(basicSearchDto.locationName);
+    }
+
+    if (basicSearchDto.locationType) {
+      whereClause.push(`location_type = $${params.length + 1}`);
+      params.push(basicSearchDto.locationType.customId);
+    }
+
+    if (
+      basicSearchDto.permitNumber &&
+      basicSearchDto.permitNumber.length >= 1
+    ) {
+      whereClause.push(`location_groups = ANY($${params.length + 1})`);
+      params.push(basicSearchDto.permitNumber);
+    }
+
+    if (basicSearchDto.fromDate && basicSearchDto.toDate) {
+      const fromDateWithTime = new Date(basicSearchDto.fromDate);
+      const fromDate = `${fromDateWithTime.getFullYear()}-${(fromDateWithTime.getMonth() + 1).toString().padStart(2, "0")}-${fromDateWithTime.getDate().toString().padStart(2, "0")}`;
+      whereClause.push(`observed_date_time_start >= $${params.length + 1}`);
+      params.push(fromDate);
+
+      const toDateWithTime = new Date(basicSearchDto.toDate);
+      const toDate = `${toDateWithTime.getFullYear()}-${(toDateWithTime.getMonth() + 1).toString().padStart(2, "0")}-${toDateWithTime.getDate().toString().padStart(2, "0")}`;
+      whereClause.push(`observed_date_time_end <= $${params.length + 1}`);
+      params.push(toDate);
+    } else if (basicSearchDto.fromDate) {
+      const fromDateWithTime = new Date(basicSearchDto.fromDate);
+      const fromDate = `${fromDateWithTime.getFullYear()}-${(fromDateWithTime.getMonth() + 1).toString().padStart(2, "0")}-${fromDateWithTime.getDate().toString().padStart(2, "0")}`;
+      whereClause.push(`observed_date_time_start >= $${params.length + 1}`);
+      params.push(fromDate);
+    } else if (basicSearchDto.toDate) {
+      const toDateWithTime = new Date(basicSearchDto.toDate);
+      const toDate = `${toDateWithTime.getFullYear()}-${(toDateWithTime.getMonth() + 1).toString().padStart(2, "0")}-${toDateWithTime.getDate().toString().padStart(2, "0")}`;
+      whereClause.push(`observed_date_time_end <= $${params.length + 1}`);
+      params.push(toDate);
+    }
+
+    if (basicSearchDto.media && basicSearchDto.media.length >= 1) {
+      whereClause.push(`medium = ANY($${params.length + 1})`);
+      params.push(basicSearchDto.media);
+    }
+
+    if (
+      basicSearchDto.observedPropertyGrp &&
+      basicSearchDto.observedPropertyGrp.length >= 1
+    ) {
+      whereClause.push(
+        `observed_property_description = ANY($${params.length + 1})`,
+      );
+      params.push(basicSearchDto.observedPropertyGrp);
+    }
+
+    if (basicSearchDto.projects && basicSearchDto.projects.length >= 1) {
+      whereClause.push(`project = ANY($${params.length + 1})`);
+      params.push(basicSearchDto.projects);
+    }
+
+    const whereSql = whereClause.length
+      ? `WHERE ${whereClause.join(" AND ")}`
+      : "";
+
+    return { whereSql, params };
+  }
+
   public async streamToCSV(basicSearchDto: BasicSearchDto, filePath: string) {
     const start = Date.now();
     try {
-      const whereClause: string[] = [];
-      const params: any[] = [];
-
-      // Apply filters based on basicSearchDto
-      if (basicSearchDto.locationName && basicSearchDto.locationName.length >= 1) {
-        whereClause.push(`location_id = ANY($${params.length + 1})`);
-        params.push(basicSearchDto.locationName);
-      }
-
-      if (basicSearchDto.locationType) {
-        whereClause.push(`location_type = $${params.length + 1}`);
-        params.push(basicSearchDto.locationType.customId);
-      }
-
-      if (basicSearchDto.permitNumber && basicSearchDto.permitNumber.length >= 1) {
-        whereClause.push(`location_groups = ANY($${params.length + 1})`);
-        params.push(basicSearchDto.permitNumber);
-      }
-
-      if (basicSearchDto.fromDate && basicSearchDto.toDate) {
-        const fromDateWithTime = new Date(basicSearchDto.fromDate);
-        const fromDate = `${fromDateWithTime.getFullYear()}-${(fromDateWithTime.getMonth() + 1).toString().padStart(2, "0")}-${fromDateWithTime.getDate().toString().padStart(2, "0")}`;
-        whereClause.push(`observed_date_time_start >= $${params.length + 1}`);
-        params.push(fromDate);
-
-        const toDateWithTime = new Date(basicSearchDto.toDate);
-        const toDate = `${toDateWithTime.getFullYear()}-${(toDateWithTime.getMonth() + 1).toString().padStart(2, "0")}-${toDateWithTime.getDate().toString().padStart(2, "0")}`;
-        whereClause.push(`observed_date_time_end <= $${params.length + 1}`);
-        params.push(toDate);
-      } else if (basicSearchDto.fromDate) {
-        const fromDateWithTime = new Date(basicSearchDto.fromDate);
-        const fromDate = `${fromDateWithTime.getFullYear()}-${(fromDateWithTime.getMonth() + 1).toString().padStart(2, "0")}-${fromDateWithTime.getDate().toString().padStart(2, "0")}`;
-        whereClause.push(`observed_date_time_start >= $${params.length + 1}`);
-        params.push(fromDate);
-      } else if (basicSearchDto.toDate) {
-        const toDateWithTime = new Date(basicSearchDto.toDate);
-        const toDate = `${toDateWithTime.getFullYear()}-${(toDateWithTime.getMonth() + 1).toString().padStart(2, "0")}-${toDateWithTime.getDate().toString().padStart(2, "0")}`;
-        whereClause.push(`observed_date_time_end <= $${params.length + 1}`);
-        params.push(toDate);
-      }
-
-      if (basicSearchDto.media && basicSearchDto.media.length >= 1) {
-        whereClause.push(`medium = ANY($${params.length + 1})`);
-        params.push(basicSearchDto.media);
-      }
-
-      if (basicSearchDto.observedPropertyGrp && basicSearchDto.observedPropertyGrp.length >= 1) {
-        whereClause.push(`observed_property_description = ANY($${params.length + 1})`);
-        params.push(basicSearchDto.observedPropertyGrp);
-      }
-
-      if (basicSearchDto.projects && basicSearchDto.projects.length >= 1) {
-        whereClause.push(`project = ANY($${params.length + 1})`);
-        params.push(basicSearchDto.projects);
-      }
-      
-
-      const whereSql = whereClause.length
-        ? `WHERE ${whereClause.join(" AND ")}`
-        : "";
-
-      console.log(whereSql);
-
+      const { whereSql, params } = await this.formulateSqlQuery(basicSearchDto);
       const queryRunner = this.dataSource.createQueryRunner();
       await queryRunner.connect();
 
@@ -161,22 +174,6 @@ export class SearchService {
     }
   }
 
-  public async runExport(basicSearchDto: BasicSearchDto, jobId: string) {
-    try {
-      const result = await this.exportDataFromDb(basicSearchDto);
-      if (result.data && result.path) {
-        jobs[jobId].status = "complete";
-        jobs[jobId].filePath = result.path;
-      } else {
-        jobs[jobId].status = "error";
-        jobs[jobId].error = result.message || "Unknown error";
-      }
-    } catch (err) {
-      jobs[jobId].status = "error";
-      jobs[jobId].error = err?.message || "Unknown error";
-    }
-  }
-
   public async exportDataFromDb(basicSearchDto: BasicSearchDto): Promise<any> {
     this.logger.log(
       "Exporting observations from DB with search criteria: " +
@@ -203,8 +200,7 @@ export class SearchService {
 
     try {
       this.logger.log("Fetching observations from DB...");
-      this.logger.log(basicSearchDto)
-
+      this.logger.log(basicSearchDto);
 
       // Prepare temp file for streaming the API response
       const tempFileName = `tmp_obs_export_${Date.now()}.csv`;
@@ -213,69 +209,7 @@ export class SearchService {
         `${this.DIR_NAME}${tempFileName}`,
       );
 
-      const whereClause: string[] = [];
-      const params: any[] = [];
-
-      // Apply filters based on basicSearchDto
-      if (basicSearchDto.locationName && basicSearchDto.locationName.length >= 1) {
-        whereClause.push(`location_id = ANY($${params.length + 1})`);
-        params.push(basicSearchDto.locationName);
-      }
-
-      if (basicSearchDto.locationType) {
-        whereClause.push(`location_type = $${params.length + 1}`);
-        params.push(basicSearchDto.locationType.customId);
-      }
-
-      if (basicSearchDto.permitNumber && basicSearchDto.permitNumber.length >= 1) {
-        whereClause.push(`location_groups = ANY($${params.length + 1})`);
-        params.push(basicSearchDto.permitNumber);
-      }
-
-      if (basicSearchDto.fromDate && basicSearchDto.toDate) {
-        const fromDateWithTime = new Date(basicSearchDto.fromDate);
-        const fromDate = `${fromDateWithTime.getFullYear()}-${(fromDateWithTime.getMonth() + 1).toString().padStart(2, "0")}-${fromDateWithTime.getDate().toString().padStart(2, "0")}`;
-        whereClause.push(`observed_date_time_start >= $${params.length + 1}`);
-        params.push(fromDate);
-
-        const toDateWithTime = new Date(basicSearchDto.toDate);
-        const toDate = `${toDateWithTime.getFullYear()}-${(toDateWithTime.getMonth() + 1).toString().padStart(2, "0")}-${toDateWithTime.getDate().toString().padStart(2, "0")}`;
-        whereClause.push(`observed_date_time_end <= $${params.length + 1}`);
-        params.push(toDate);
-      } else if (basicSearchDto.fromDate) {
-        const fromDateWithTime = new Date(basicSearchDto.fromDate);
-        const fromDate = `${fromDateWithTime.getFullYear()}-${(fromDateWithTime.getMonth() + 1).toString().padStart(2, "0")}-${fromDateWithTime.getDate().toString().padStart(2, "0")}`;
-        whereClause.push(`observed_date_time_start >= $${params.length + 1}`);
-        params.push(fromDate);
-      } else if (basicSearchDto.toDate) {
-        const toDateWithTime = new Date(basicSearchDto.toDate);
-        const toDate = `${toDateWithTime.getFullYear()}-${(toDateWithTime.getMonth() + 1).toString().padStart(2, "0")}-${toDateWithTime.getDate().toString().padStart(2, "0")}`;
-        whereClause.push(`observed_date_time_end <= $${params.length + 1}`);
-        params.push(toDate);
-      }
-
-      if (basicSearchDto.media && basicSearchDto.media.length >= 1) {
-        whereClause.push(`medium = ANY($${params.length + 1})`);
-        params.push(basicSearchDto.media);
-      }
-
-      if (basicSearchDto.observedPropertyGrp && basicSearchDto.observedPropertyGrp.length >= 1) {
-        whereClause.push(`observed_property_description = ANY($${params.length + 1})`);
-        params.push(basicSearchDto.observedPropertyGrp);
-      }
-
-      if (basicSearchDto.projects && basicSearchDto.projects.length >= 1) {
-        whereClause.push(`project = ANY($${params.length + 1})`);
-        params.push(basicSearchDto.projects);
-      }
-      
-
-      const whereSql = whereClause.length
-        ? `WHERE ${whereClause.join(" AND ")}`
-        : "";
-
-      console.log(whereSql);
-
+      const { whereSql, params } = await this.formulateSqlQuery(basicSearchDto);
       const queryRunner = this.dataSource.createQueryRunner();
       await queryRunner.connect();
 
@@ -323,6 +257,22 @@ export class SearchService {
         path: null,
         message: "Error fetching observations from DB.",
       };
+    }
+  }
+
+  public async runExport(basicSearchDto: BasicSearchDto, jobId: string) {
+    try {
+      const result = await this.exportDataFromDb(basicSearchDto);
+      if (result.data && result.path) {
+        jobs[jobId].status = "complete";
+        jobs[jobId].filePath = result.path;
+      } else {
+        jobs[jobId].status = "error";
+        jobs[jobId].error = result.message || "Unknown error";
+      }
+    } catch (err) {
+      jobs[jobId].status = "error";
+      jobs[jobId].error = err?.message || "Unknown error";
     }
   }
 
@@ -1233,7 +1183,10 @@ export class SearchService {
     const raw = await repo
       .createQueryBuilder()
       .select()
-      .orderBy("MvAqiObservedPropertyDescription.observed_property_description", "ASC")
+      .orderBy(
+        "MvAqiObservedPropertyDescription.observed_property_description",
+        "ASC",
+      )
       .getRawMany();
     // Return as array of objects for frontend dropdown compatibility
     return raw.map((item) => ({

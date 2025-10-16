@@ -53,7 +53,7 @@ export class SearchController {
     const jobId = uuidv4();
     jobs[jobId] = { id: jobId, status: "pending" };
 
-    await this.searchService.runExportJob(params, jobId);
+    await this.searchService.runExport(params, jobId);
   
     const job = jobs[jobId];
     if (!job || job.status !== "complete" || !job.filePath) {
@@ -172,12 +172,6 @@ export class SearchController {
     return this.searchService.getCollectionMethods();
   }
 
-  @Get("getUnits")
-  public getUnits(@Req() req: Request) {
-    const query: any = req.query.search;
-    return this.searchService.getUnits(query);
-  }
-
   @Get("getQcSampleTypes")
   public getQcSampleTypes() {
     return this.searchService.getQcSampleTypes();
@@ -187,16 +181,4 @@ export class SearchController {
   public getDataClassifications() {
     return this.searchService.getDataClassifications();
   }
-
-  // @Get("getSampleDepths")
-  // public getSampleDepths(@Req() req: Request) {
-  //   const query: any = req.query.search;
-  //   return this.searchService.getSampleDepths(query);
-  // }
-
-  // @Get("getSpecimenIds")
-  // public getSpecimenIds(@Req() req: Request) {
-  //   const query: any = req.query.search;
-  //   return this.searchService.getSpecimenIds(query);
-  // }
 }

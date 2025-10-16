@@ -52,7 +52,6 @@ const AdvanceSearch = (props: Props) => {
   const [collectionMethods, setCollectionMethods] = useState([])
   const [qcSampleTypes, setQcSampleTypes] = useState([])
   const [dataClassifications, setDataClassifications] = useState([])
-  const [units, setUnits] = useState([])
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null)
   const [isPolling, setIsPolling] = useState(false)
   const [params, setParams] = useState<any>("")
@@ -96,11 +95,8 @@ const AdvanceSearch = (props: Props) => {
       getDropdownOptions(SearchAttr.AnalyzingAgency, ""),
       getDropdownOptions(SearchAttr.AnalyticalMethod, ""),
       getDropdownOptions(SearchAttr.CollectionMethod, ""),
-      getDropdownOptions(SearchAttr.Units, ""),
       getDropdownOptions(SearchAttr.QcSampleType, ""),
       getDropdownOptions(SearchAttr.DataClassification, ""),
-      // getDropdownOptions(SearchAttr.SampleDepth, ""),
-      // getDropdownOptions(SearchAttr.SpecimenId, ""),
     ]).finally(() => setIsApiLoading(false))
   }, [])
 
@@ -233,16 +229,10 @@ const AdvanceSearch = (props: Props) => {
           return `${API_VERSION}/search/getSamplingAgencies`
         case SearchAttr.CollectionMethod:
           return `${API_VERSION}/search/getCollectionMethods`
-        case SearchAttr.Units:
-          return `${API_VERSION}/search/getUnits?search=${query}`
         case SearchAttr.QcSampleType:
           return `${API_VERSION}/search/getQcSampleTypes`
         case SearchAttr.DataClassification:
           return `${API_VERSION}/search/getDataClassifications`
-        // case SearchAttr.SampleDepth:
-        //   return `${API_VERSION}/search/getSampleDepths?search=${query}`
-        // case SearchAttr.SpecimenId:
-        //   return `${API_VERSION}/search/getSpecimenIds?search=${query}`
         default:
           break
       }
@@ -304,21 +294,12 @@ const AdvanceSearch = (props: Props) => {
             case SearchAttr.CollectionMethod:
               setCollectionMethods(response)
               break
-            case SearchAttr.Units:
-              setUnits(response)
-              break
             case SearchAttr.QcSampleType:
               setQcSampleTypes(response)
               break
             case SearchAttr.DataClassification:
               setDataClassifications(response)
               break
-            // case SearchAttr.SampleDepth:
-            //   setSampleDepths(response)
-            //   break
-            // case SearchAttr.SpecimenId:
-            //   setSpecimenIds(response)
-            //   break
             default:
               break
           }
@@ -411,9 +392,6 @@ const AdvanceSearch = (props: Props) => {
       case SearchAttr.AnalyticalMethod:
         await getDropdownOptions(SearchAttr.AnalyticalMethod, query)
         break
-      // case SearchAttr.SpecimenId:
-      //   await getDropdownOptions(SearchAttr.SpecimenId, query)
-      //   break
       default:
         break
     }

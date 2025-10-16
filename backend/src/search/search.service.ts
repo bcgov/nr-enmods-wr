@@ -1,4 +1,3 @@
-import { HttpService } from "@nestjs/axios";
 import {
   BadRequestException,
   HttpStatus,
@@ -14,6 +13,7 @@ import { Repository, In, DataSource } from "typeorm";
 import { Observation } from "../observations/entities/observation.entity";
 import { promisify } from "util";
 import { jobs } from "src/jobs/searchjob";
+import { pipeline } from "stream/promises";
 
 const unlinkAsync = promisify(fs.unlink);
 
@@ -204,21 +204,54 @@ export class SearchService {
       const stream = await queryRunner.stream(sql, params);
 
       const writeStream = fs.createWriteStream(filePath);
-
       const csvStream = fastcsv.format({ headers: true });
 
-      await new Promise((resolve, reject) => {
-        stream
-          .pipe(csvStream)
-          .pipe(writeStream)
-          .on("finish", resolve)
-          .on("error", reject);
+      let rowCount = 0;
+      let aborted = false;
+
+      // Listen for data events to count rows
+      stream.on("data", (row) => {
+        rowCount++;
+        if (!aborted && rowCount > this.MAX_API_DATA_LIMIT) {
+          aborted = true;
+          const abortError = new Error("ABORT_EXPORT");
+          csvStream.destroy(abortError);
+          stream.destroy(abortError);
+        }
       });
+
+      try {
+        await pipeline(stream, csvStream, writeStream);
+      } catch (err) {
+        if (err && err.message === "ABORT_EXPORT") {
+          await queryRunner.release();
+          return {
+            data: "aborted",
+            path: null,
+            status: 400,
+            message: `This export cannot proceed because it would result in a set of items larger than the imposed limit of ${this.MAX_API_DATA_LIMIT} items. Please restrict the data set further by adding filters.`,
+          };
+        } else {
+          await queryRunner.release();
+          throw err;
+        }
+      }
+
+      if (rowCount === 0) {
+        await queryRunner.release();
+        return {
+          data: "empty",
+          path: null,
+          status: 200,
+          message: "No Data Found. Please adjust your search criteria.",
+        };
+      }
 
       await queryRunner.release();
       const ms = Date.now() - start;
       const min = Math.floor(ms / 60000);
       const sec = ((ms % 60000) / 1000).toFixed(1);
+
       this.logger.log(
         `prepareCsvExportData succeeded after ${min}m ${sec}s (${ms} ms)`,
       );
@@ -284,36 +317,53 @@ export class SearchService {
         `${this.DIR_NAME}${tempFileName}`,
       );
 
-      const { whereSql, params } = await this.formulateSqlQuery(basicSearchDto);
-      const queryRunner = this.dataSource.createQueryRunner();
-      await queryRunner.connect();
+      result = await this.streamToCSV(basicSearchDto, tempFilePath);
+      if (result.data == "aborted" || result.data == "empty") {
+        fs.unlinkSync(tempFilePath);
 
-      const sql = `SELECT count(*) FROM aqi_csv_import_operational ${whereSql}`;
+        const elapsedMs = Date.now() - start;
+        const minutes = Math.floor(elapsedMs / 60000);
+        const seconds = ((elapsedMs % 60000) / 1000).toFixed(1);
+        this.logger.debug(`AQI API took ${minutes}m ${seconds}s`);
 
-      const observations = await queryRunner.query(sql, params);
-
-      await queryRunner.release();
-      this.logger.log(`Fetched ${observations[0].count} observations from DB`);
-
-      const count = parseInt(observations[0].count, 10);
-      if (count > this.MAX_API_DATA_LIMIT) {
         return {
           data: null,
-          status: 400,
+          status: result.status,
           path: null,
-          message:
-            "This export cannot proceed because it would result in a set of items larger than the imposed limit of 100000 items. Please restrict the data set further by adding filters.",
+          message: result.message,
         };
-      } else if (count === 0) {
-        return {
-          data: null,
-          status: 200,
-          path: null,
-          message: "No Data Found. Please adjust your search criteria.",
-        };
-      } else {
-        result = await this.streamToCSV(basicSearchDto, tempFilePath);
       }
+
+      // const { whereSql, params } = await this.formulateSqlQuery(basicSearchDto);
+      // const queryRunner = this.dataSource.createQueryRunner();
+      // await queryRunner.connect();
+
+      // const sql = `SELECT count(*) FROM aqi_csv_import_operational ${whereSql}`;
+
+      // const observations = await queryRunner.query(sql, params);
+
+      // await queryRunner.release();
+      // this.logger.log(`Fetched ${observations[0].count} observations from DB`);
+
+      // const count = parseInt(observations[0].count, 10);
+      // if (count > this.MAX_API_DATA_LIMIT) {
+      //   return {
+      //     data: null,
+      //     status: 400,
+      //     path: null,
+      //     message:
+      //       "This export cannot proceed because it would result in a set of items larger than the imposed limit of 100000 items. Please restrict the data set further by adding filters.",
+      //   };
+      // } else if (count === 0) {
+      //   return {
+      //     data: null,
+      //     status: 200,
+      //     path: null,
+      //     message: "No Data Found. Please adjust your search criteria.",
+      //   };
+      // } else {
+      //   result = await this.streamToCSV(basicSearchDto, tempFilePath);
+      // }
 
       const elapsedMs = Date.now() - start;
       const minutes = Math.floor(elapsedMs / 60000);

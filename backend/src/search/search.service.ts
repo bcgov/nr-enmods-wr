@@ -126,6 +126,11 @@ export class SearchService {
       params.push(basicSearchDto.analyzingAgency);
     }
 
+    if (basicSearchDto.projects && basicSearchDto.projects.length >= 1) {
+      whereClause.push(`project = ANY($${params.length + 1})`);
+      params.push(basicSearchDto.projects);
+    }
+
     if (
       basicSearchDto.analyticalMethod &&
       basicSearchDto.analyticalMethod.length >= 1
@@ -146,7 +151,7 @@ export class SearchService {
       basicSearchDto.qcSampleType &&
       basicSearchDto.qcSampleType.length >= 1
     ) {
-      whereClause.push(`tissue_type = ANY($${params.length + 1})`);
+      whereClause.push(`qc_type = ANY($${params.length + 1})`);
       params.push(basicSearchDto.qcSampleType);
     }
 
@@ -164,18 +169,13 @@ export class SearchService {
     }
 
     if (basicSearchDto.labBatchId) {
-      whereClause.push(`lab_sample_id = $${params.length + 1}`);
+      whereClause.push(`lab_batch_id = $${params.length + 1}`);
       params.push(basicSearchDto.labBatchId);
     }
 
     if (basicSearchDto.specimenId) {
       whereClause.push(`specimen_id = $${params.length + 1}`);
       params.push(basicSearchDto.specimenId);
-    }
-
-    if (basicSearchDto.projects && basicSearchDto.projects.length >= 1) {
-      whereClause.push(`project = ANY($${params.length + 1})`);
-      params.push(basicSearchDto.projects);
     }
 
     const whereSql = whereClause.length

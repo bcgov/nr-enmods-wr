@@ -14,13 +14,7 @@ import * as fs from "fs";
 import * as fastcsv from "@fast-csv/format";
 import { parse } from "csv-parse";
 import { InjectRepository } from "@nestjs/typeorm";
-import {
-  Repository,
-  In,
-  DataSource,
-  MoreThanOrEqual,
-  LessThanOrEqual,
-} from "typeorm";
+import { Repository, In, DataSource } from "typeorm";
 import { Observation } from "../observations/entities/observation.entity";
 import { promisify } from "util";
 import { jobs } from "src/jobs/searchjob";
@@ -111,6 +105,64 @@ export class SearchService {
       params.push(basicSearchDto.observedPropertyGrp);
     }
 
+    if (
+      basicSearchDto.observedProperty &&
+      basicSearchDto.observedProperty.length >= 1
+    ) {
+      whereClause.push(`observed_property_id = ANY($${params.length + 1})`);
+      params.push(basicSearchDto.observedProperty);
+    }
+
+    if (basicSearchDto.workedOrderNo) {
+      whereClause.push(`work_order_number = $${params.length + 1}`);
+      params.push(basicSearchDto.workedOrderNo.text);
+    }
+
+    if (basicSearchDto.samplingAgency && basicSearchDto.samplingAgency.length >= 1) {
+      whereClause.push(`sampling_agency = ANY($${params.length + 1})`);
+      params.push(basicSearchDto.samplingAgency);
+    }
+
+    if( basicSearchDto.analyzingAgency && basicSearchDto.analyzingAgency.length >= 1) {
+      whereClause.push(`analyzing_agency = ANY($${params.length + 1})`);
+      params.push(basicSearchDto.analyzingAgency);
+    }
+
+    if (basicSearchDto.analyticalMethod && basicSearchDto.analyticalMethod.length >= 1) {
+      whereClause.push(`analysis_method = ANY($${params.length + 1})`);
+      params.push(basicSearchDto.analyticalMethod);
+    }
+
+    if (basicSearchDto.collectionMethod && basicSearchDto.collectionMethod.length >= 1) {
+      whereClause.push(`collection_method = ANY($${params.length + 1})`);
+      params.push(basicSearchDto.collectionMethod);
+    }
+
+    if (basicSearchDto.qcSampleType && basicSearchDto.qcSampleType.length >= 1) {
+      whereClause.push(`tissue_type = ANY($${params.length + 1})`);
+      params.push(basicSearchDto.qcSampleType);
+    }
+
+    if (basicSearchDto.dataClassification && basicSearchDto.dataClassification.length >= 1) {
+      whereClause.push(`data_classification = ANY($${params.length + 1})`);
+      params.push(basicSearchDto.dataClassification);
+    }
+
+    if (basicSearchDto.sampleDepth){
+      whereClause.push(`depth_upper = $${params.length + 1}`);
+      params.push(basicSearchDto.sampleDepth);
+    }
+
+    if (basicSearchDto.labBatchId) {
+      whereClause.push(`lab_sample_id = $${params.length + 1}`);
+      params.push(basicSearchDto.labBatchId);
+    }
+
+    if (basicSearchDto.specimenId) {
+      whereClause.push(`specimen_id = $${params.length + 1}`);
+      params.push(basicSearchDto.specimenId);
+    }
+
     if (basicSearchDto.projects && basicSearchDto.projects.length >= 1) {
       whereClause.push(`project = ANY($${params.length + 1})`);
       params.push(basicSearchDto.projects);
@@ -120,6 +172,8 @@ export class SearchService {
       ? `WHERE ${whereClause.join(" AND ")}`
       : "";
 
+    this.logger.log("Generated SQL WHERE clause: " + whereSql);
+    this.logger.log("With parameters: " + JSON.stringify(params));
     return { whereSql, params };
   }
 
@@ -213,14 +267,15 @@ export class SearchService {
       const queryRunner = this.dataSource.createQueryRunner();
       await queryRunner.connect();
 
-      const sql = `SELECT * FROM aqi_csv_import_operational ${whereSql}`;
+      const sql = `SELECT count(*) FROM aqi_csv_import_operational ${whereSql}`;
 
       const observations = await queryRunner.query(sql, params);
 
       await queryRunner.release();
+      this.logger.log(`Fetched ${observations[0].count} observations from DB`);
 
-      if (observations.length > this.MAX_API_DATA_LIMIT) {
-        this.logger.log(`Fetched ${observations.length} observations from DB`);
+
+      if (observations[0].count > this.MAX_API_DATA_LIMIT) {
         return {
           data: null,
           status: 400,
@@ -228,7 +283,7 @@ export class SearchService {
           message:
             "This export cannot proceed because it would result in a set of items larger than the imposed limit of 100000 items. Please restrict the data set further by adding filters.",
         };
-      } else if (observations.length === 0) {
+      } else if (observations[0].count === 0) {
         return {
           data: null,
           status: 200,
@@ -243,8 +298,6 @@ export class SearchService {
       const minutes = Math.floor(elapsedMs / 60000);
       const seconds = ((elapsedMs % 60000) / 1000).toFixed(1);
       this.logger.debug(`AQI API took ${minutes}m ${seconds}s`);
-
-      this.logger.log(`Fetched ${observations.length} observations from DB`);
 
       return result;
     } catch (error) {
@@ -1254,21 +1307,21 @@ export class SearchService {
 
   public async getObservedProperties(): Promise<any[]> {
     this.logger.log(
-      "getObservedProperties called, querying materialized view mv_aqi_observed_property",
+      "getObservedProperties called, querying materialized view mv_aqi_observed_property_id",
     );
     // Use TypeORM to query the materialized view entity and return raw data
     const repo = this["observationRepository"].manager.getRepository(
-      "mv_aqi_observed_property",
+      "mv_aqi_observed_property_id",
     );
     const raw = await repo
       .createQueryBuilder()
       .select()
-      .orderBy("MvAqiObservedProperty.observed_property_id", "ASC")
+      .orderBy("MvAqiObservedPropertyId.observed_property_id", "ASC")
       .getRawMany();
     // Return as array of objects for frontend dropdown compatibility
     return raw.map((item) => ({
-      id: item.MvAqiObservedProperty_observed_property_id,
-      customId: item.MvAqiObservedProperty_observed_property_id,
+      id: item.MvAqiObservedPropertyId_observed_property_id,
+      customId: item.MvAqiObservedPropertyId_observed_property_id,
     }));
   }
 

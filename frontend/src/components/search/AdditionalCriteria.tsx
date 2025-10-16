@@ -39,55 +39,7 @@ export default function AdditionalCriteria(props: any) {
   return (
     <div>
      
-      <div className="py-4">
-        {/* <div>
-          <TitleText
-            sx={{ fontSize: "9pt", p: 1 }}
-            text="Date Range Format: mm-dd-yyyy"
-            variant="body2"
-          />
-        </div> */}
-        {/* <div className="flex flex-col lg:flex-row justify-between p-4 gap-4">
-          <div className="flex items-center">
-            <DatePicker
-              customInput={
-                <CustomDatePickerInput label={"Lab Arrival From Date"} />
-              }
-              onChange={(val) =>
-                handleOnChangeDatepicker(val, SearchAttr.LabArrivalFromDate)
-              }
-              startDate={formData.labArrivalFromDate}
-              endDate={formData.labArrivalToDate}
-              selectsStart
-              dateFormat={"MM-dd-yyyy"}
-              selected={formData.labArrivalFromDate}
-              isClearable={true}
-              showYearDropdown
-              showMonthDropdown
-              useShortMonthInDropdown
-            />
-          </div>
-          <div className="flex items-center">
-            <DatePicker
-              customInput={
-                <CustomDatePickerInput label={"Lab Arrival To Date"} />
-              }
-              minDate={formData.labArrivalFromDate}
-              onChange={(val) =>
-                handleOnChangeDatepicker(val, SearchAttr.LabArrivalToDate)
-              }
-              selected={formData.labArrivalToDate}
-              selectsEnd
-              endDate={formData.labArrivalToDate}
-              dateFormat={"MM-dd-yyyy"}
-              isClearable={true}
-              showYearDropdown
-              showMonthDropdown
-              useShortMonthInDropdown
-            />
-            <TooltipInfo title="Lab Arrival Date Range" />
-          </div>
-        </div> */}
+      <div className="py-4">        
         <div className="flex flex-col lg:flex-row gap-4 justify-between px-4 pb-4">
           <div className="flex items-center">
             <Autocomplete
@@ -168,42 +120,8 @@ export default function AdditionalCriteria(props: any) {
             />
             <TooltipInfo title="Sample Depth" />
           </div>
-          {/* <div className="flex items-center">
-            <Autocomplete
-              value={formData?.sampleDepth}
-              options={additionalCriteriaDrpdwns.sampleDepths}
-              isOptionEqualToValue={(option, selectedValue) =>
-                option.depth?.value === selectedValue.depth?.value
-              }
-              getOptionLabel={(option) =>
-                JSON.stringify(option?.depth?.value) || ""
-              }
-              onChange={(e, val) =>
-                handleOnChange(e, val, SearchAttr.SampleDepth)
-              }
-              sx={{ width: 380 }}
-              renderInput={(params) => (
-                <TextField {...params} label="Sample Depth (m)" />
-              )}
-            />
-
-            <TooltipInfo title="Sample Depth (m)" />
-          </div> */}
         </div>
         <div className="flex flex-col lg:flex-row gap-4 justify-between px-4 pb-4">
-          {/* <div className="flex items-center">
-            <Autocomplete
-              value={formData?.units}
-              options={additionalCriteriaDrpdwns.units}
-              isOptionEqualToValue={(option, value) => option.id === value.id}
-              getOptionLabel={(option) => option.customId || ""}
-              onChange={(e, val) => handleOnChange(e, val, SearchAttr.Units)}
-              sx={{ width: 380 }}
-              renderInput={(params) => <TextField {...params} label="Units" />}
-            />
-
-            <TooltipInfo title="Units" />
-          </div> */}
           <div className="flex items-center">
             <TextField
               value={formData.labBatchId}
@@ -222,28 +140,6 @@ export default function AdditionalCriteria(props: any) {
             />
             <TooltipInfo title="Specimen ID" />
           </div>
-          {/* <div className="flex items-center">
-            <Autocomplete
-              multiple
-              
-              value={formData?.specimenId}
-              getOptionKey={(option) => option.id}
-              options={additionalCriteriaDrpdwns.specimenIds}
-              isOptionEqualToValue={(option, value) => option.id === value.id}
-              getOptionLabel={(option) => option.name || ""}
-              onInputChange={(e, val) =>
-                handleInputChange(e, val, SearchAttr.SpecimenId)
-              }
-              onChange={(e, val) =>
-                handleOnChange(e, val, SearchAttr.SpecimenId)
-              }
-              sx={{ width: 380 }}
-              renderInput={(params) => (
-                <TextField {...params} label="Specimen ID" />
-              )}
-            />
-            <TooltipInfo title="Specimen ID" />
-          </div> */}
         </div>
         
       </div>

@@ -174,7 +174,7 @@ export class SearchService {
     }
 
     if (basicSearchDto.specimenId) {
-      whereClause.push(`specimen_id = $${params.length + 1}`);
+      whereClause.push(`specimen_name = $${params.length + 1}`);
       params.push(basicSearchDto.specimenId);
     }
 

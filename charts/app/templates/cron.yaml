@@ -41,27 +41,27 @@ spec:
                 - name: S3_BUCKET
                   valueFrom:
                     secretKeyRef:
-                      name: "nr-enmods-wr"
+                      name: "{{ .Release.Name }}-database"
                       key: S3_BUCKET
                 - name: S3_KEY
                   valueFrom:
                     secretKeyRef:
-                      name: "nr-enmods-wr"
+                      name: "{{ .Release.Name }}-database"
                       key: S3_KEY
                 - name: S3_REGION
                   valueFrom:
                     secretKeyRef:
-                      name: "nr-enmods-wr"
+                      name: "{{ .Release.Name }}-database"
                       key: S3_REGION
                 - name: AWS_ACCESS_KEY_ID
                   valueFrom:
                     secretKeyRef:
-                      name: "nr-enmods-wr"
+                      name: "{{ .Release.Name }}-database"
                       key: AWS_ACCESS_KEY_ID
                 - name: AWS_SECRET_ACCESS_KEY
                   valueFrom:
                     secretKeyRef:
-                      name: "nr-enmods-wr"
+                      name: "{{ .Release.Name }}-database"
                       key: AWS_SECRET_ACCESS_KEY
               args:
                 - /bin/sh

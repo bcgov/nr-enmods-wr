@@ -24,18 +24,18 @@ spec:
                 - name: POSTGRES_USER
                   valueFrom:
                     secretKeyRef:
-                      name: "nr-enmods-wr"
-                      key: databaseUser
+                      name:  "{{ .Release.Name }}-database"
+                      key: POSTGRES_USER
                 - name: POSTGRES_PASSWORD
                   valueFrom:
                     secretKeyRef:
-                      name: "nr-enmods-wr"
-                      key: database  
+                      name: "{{ .Release.Name }}-database"
+                      key: POSTGRES_PASSWORD  
                 - name: POSTGRES_DBNAME
                   valueFrom:
                     secretKeyRef:
-                      name: "nr-enmods-wr"
-                      key: databaseName
+                      name: "{{ .Release.Name }}-database"
+                      key: POSTGRES_DATABASE
                 
                 # S3 Credentials from openshift secrets
                 - name: S3_BUCKET

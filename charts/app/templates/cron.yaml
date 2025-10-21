@@ -1,0 +1,99 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: aqi-hourly-sync
+  namespace: nr-enmods-wr
+spec:
+  # Runs every hour
+  schedule: "0 * * * *"
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: postgres-sync
+              image: postgres:15
+              env:
+                # Database credentials from OpenShift Secrets
+                - name: DB_HOST
+                  valueFrom:
+                    secretKeyRef:
+                      name: POSTGRES_HOST
+                      key: host
+                - name: DB_PORT
+                  valueFrom:
+                    secretKeyRef:
+                      name: POSTGRES_PORT
+                      key: port
+                - name: DB_NAME
+                  valueFrom:
+                    secretKeyRef:
+                      name: POSTGRES_DATABASE
+                      key: dbname
+                - name: DB_USER
+                  valueFrom:
+                    secretKeyRef:
+                      name: POSTGRES_USER
+                      key: username
+                - name: DB_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: POSTGRES_PASSWORD
+                      key: password
+
+                # AWS credentials from OpenShift Secrets
+                - name: AWS_ACCESS_KEY_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: AWS_ACCESS_KEY_ID
+                      key: aws_access_key_id
+                - name: AWS_SECRET_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: AWS_SECRET_ACCESS_KEY
+                      key: aws_secret_access_key
+
+                # === S3 params ===
+                - name: S3_BUCKET
+                  valueFrom:
+                    configMapKeyRef:
+                      name: S3_BUCKET
+                      key: bucket
+                - name: S3_KEY
+                  valueFrom:
+                    configMapKeyRef:
+                      name: S3_KEY
+                      key: key
+                - name: S3_REGION
+                  valueFrom:
+                    configMapKeyRef:
+                      name: S3_REGION
+                      key: region
+
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  set -euo pipefail
+                  echo "Starting AQI hourly sync..."
+
+                  # Build PostgreSQL connection string
+                  export DATABASE_URL="postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}"
+
+                  echo "Running load from S3..."
+                  psql "$DATABASE_URL" \
+                    -v b="$S3_BUCKET" \
+                    -v k="$S3_KEY" \
+                    -v r="$S3_REGION" \
+                    -v ak="$AWS_ACCESS_KEY_ID" \
+                    -v sk="$AWS_SECRET_ACCESS_KEY" \
+                    -v st="$AWS_SESSION_TOKEN" \
+                    -c "SELECT run_aqi_s3_load(:'b',:'k',:'r', NULL, :'ak', :'sk', :'st');"
+
+                  echo "Running table swap..."
+                  psql "$DATABASE_URL" \
+                    -c "SELECT run_aqi_table_swap('AQI_AWS_S3_SYNC');"
+
+                  echo "AQI hourly sync completed."
+          restartPolicy: OnFailure

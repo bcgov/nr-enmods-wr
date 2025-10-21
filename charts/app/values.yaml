@@ -17,6 +17,11 @@ global:
     databaseUser: ~
     databaseName: ~
     persist: true
+    s3Bucket: ~
+    s3Key: ~
+    s3Region: ~
+    awsAccessKeyId: ~
+    awsSecretAccessKey: ~
     #-- backend
     baseUrlBcApi: ~
     observationsExportUrl: ~

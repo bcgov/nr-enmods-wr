@@ -2,7 +2,7 @@ apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: aqi-hourly-sync
-  namespace: nr-enmods-wr
+  namespace: d23a53-dev
 spec:
   # Runs every hour
   schedule: "0 * * * *"

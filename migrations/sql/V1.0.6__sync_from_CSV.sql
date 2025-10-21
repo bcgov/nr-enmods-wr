@@ -65,7 +65,6 @@ BEGIN
 
     ELSE
         -- Build AWS CLI command with credentials and S3 path
-        RAISE NOTICE 'BUILDING COPY COMMAND';
         v_copy_cmd := format(
             'AWS_ACCESS_KEY_ID=%L AWS_SECRET_ACCESS_KEY=%L %s aws s3 cp s3://%s/%s - | tr -d ''\r'' | mlr --icsv --ocsv put ''for (k in $*) { if ($[k]=="") { $[k]=""; } }''',
             p_access_key,

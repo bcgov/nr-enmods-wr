@@ -19,49 +19,49 @@ spec:
                 - name: POSTGRES_HOST
                   valueFrom:
                     secretKeyRef:
-                      name: "{{ .Release.Name }}-database"
+                      name: "nr-enmods-wr"
                       key: POSTGRES_HOST
                 - name: POSTGRES_USER
                   valueFrom:
                     secretKeyRef:
-                      name: "{{ .Release.Name }}-database"
+                      name: "nr-enmods-wr"
                       key: POSTGRES_USER
                 - name: POSTGRES_PASSWORD
                   valueFrom:
                     secretKeyRef:
-                      name: "{{ .Release.Name }}-database"
+                      name: "nr-enmods-wr"
                       key: POSTGRES_PASSWORD  
                 - name: POSTGRES_DBNAME
                   valueFrom:
                     secretKeyRef:
-                      name: "{{ .Release.Name }}-database"
+                      name: "nr-enmods-wr"
                       key: POSTGRES_DATABASE
                 
                 # S3 Credentials from openshift secrets
                 - name: S3_BUCKET
                   valueFrom:
                     secretKeyRef:
-                      name: "{{ .Release.Name }}-database"
+                      name: "nr-enmods-wr"
                       key: S3_BUCKET
                 - name: S3_KEY
                   valueFrom:
                     secretKeyRef:
-                      name: "{{ .Release.Name }}-database"
+                      name: "nr-enmods-wr"
                       key: S3_KEY
                 - name: S3_REGION
                   valueFrom:
                     secretKeyRef:
-                      name: "{{ .Release.Name }}-database"
+                      name: "nr-enmods-wr"
                       key: S3_REGION
                 - name: AWS_ACCESS_KEY_ID
                   valueFrom:
                     secretKeyRef:
-                      name: "{{ .Release.Name }}-database"
+                      name: "nr-enmods-wr"
                       key: AWS_ACCESS_KEY_ID
                 - name: AWS_SECRET_ACCESS_KEY
                   valueFrom:
                     secretKeyRef:
-                      name: "{{ .Release.Name }}-database"
+                      name: "nr-enmods-wr"
                       key: AWS_SECRET_ACCESS_KEY
               args:
                 - /bin/sh

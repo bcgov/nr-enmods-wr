@@ -25,17 +25,17 @@ spec:
                   valueFrom:
                     secretKeyRef:
                       name: "nr-enmods-wr"
-                      key: POSTGRES_USER
+                      key: databaseUser
                 - name: POSTGRES_PASSWORD
                   valueFrom:
                     secretKeyRef:
                       name: "nr-enmods-wr"
-                      key: POSTGRES_PASSWORD  
+                      key: database  
                 - name: POSTGRES_DBNAME
                   valueFrom:
                     secretKeyRef:
                       name: "nr-enmods-wr"
-                      key: POSTGRES_DATABASE
+                      key: databaseName
                 
                 # S3 Credentials from openshift secrets
                 - name: S3_BUCKET

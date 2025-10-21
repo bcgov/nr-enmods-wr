@@ -69,7 +69,7 @@ spec:
                 - |
                   echo "Starting AQI weekly sync job..."
 
-                  export DATABASE_URL="postgresql://$POSTGRES_USER:$POSTGRES_PASSWORD@$POSTGRES_HOST/$POSTGRES_DBNAME"
+                  export DATABASE_URL="postgresql://postgres:$POSTGRES_PASSWORD@$POSTGRES_HOST/$POSTGRES_DBNAME"
 
                   echo "Running load from S3..."
                   psql "$DATABASE_URL" \

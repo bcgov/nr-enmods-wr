@@ -72,11 +72,11 @@ spec:
                   export DATABASE_URL="postgresql://$POSTGRES_USER:$POSTGRES_PASSWORD@$POSTGRES_HOST:5432/$POSTGRES_DBNAME"
 
                   echo "Running load from S3..."
-                  echo DATABASE_URL
-                  echo S3_BUCKET
-                  echo S3_KEY
-                  echo S3_REGION
-                  echo AWS_ACCESS_KEY_ID
-                  echo AWS_SECRET_ACCESS_KEY
+                  echo "DATABASE_URL=$DATABASE_URL"
+                  echo "S3_BUCKET=$S3_BUCKET"
+                  echo "S3_KEY=$S3_KEY"
+                  echo "S3_REGION=$S3_REGION"
+                  echo "AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID"
+                  echo "AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY"
                   echo "AQI hourly sync completed."
           restartPolicy: OnFailure

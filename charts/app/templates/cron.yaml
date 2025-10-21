@@ -16,21 +16,26 @@ spec:
               image: postgres:15
               env: 
                 # Database credentials from openshift secrets
+                - name: POSTGRES_HOST
+                  valueFrom:
+                    secretKeyRef:
+                      name: "{{ .Release.Name }}-database"
+                      key: POSTGRES_HOST
                 - name: POSTGRES_USER
                   valueFrom:
                     secretKeyRef:
-                      name: nr-enmods-wr
-                      key: databaseUser
+                      name: "{{ .Release.Name }}-database"
+                      key: POSTGRES_USER
                 - name: POSTGRES_PASSWORD
                   valueFrom:
                     secretKeyRef:
-                      name: nr-enmods-wr
-                      key: databasePassword
-                - name: POSTGRES_DB
+                      name: "{{ .Release.Name }}-database"
+                      key: POSTGRES_PASSWORD  
+                - name: POSTGRES_DBNAME
                   valueFrom:
                     secretKeyRef:
-                      name: nr-enmods-wr
-                      key: databaseName
+                      name: "{{ .Release.Name }}-database"
+                      key: POSTGRES_DATABASE
               args:
                 - /bin/sh
                 - '-c'

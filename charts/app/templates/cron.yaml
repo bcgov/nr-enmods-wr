@@ -19,7 +19,7 @@ spec:
                 - name: POSTGRES_HOST
                   valueFrom:
                     secretKeyRef:
-                      name: "nr-enmods-wr"
+                      name: "{{ .Release.Name }}-database"
                       key: POSTGRES_HOST
                 - name: POSTGRES_USER
                   valueFrom:

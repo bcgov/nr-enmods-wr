@@ -10,6 +10,40 @@ concurrency:
 
 jobs:
   # https://github.com/bcgov-nr/action-builder-ghcr
+  build-and-push:
+    name: Build and Push db
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+    # Checkout the repo
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+    # Log into ghcr
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHCR_PAT }}
+
+    # Build the Docker image
+      - name: Build  Docker Image
+        run: |
+          IMAGE_NAME=ghcr.io/bcgov/nr-containers/nr-enmods-wr-{{ .Release.Name }}-db
+          docker build -t $IMAGE_NAME:latest ./charts/app
+
+    # Push the image to ghcr
+      - name: Push Docker Image to GHCR
+        run: |
+          IMAGE_NAME=ghcr.io/bcgov/nr-containers/nr-enmods-wr-{{ .Release.Name }}-db
+          docker push $IMAGE_NAME:latest
+
   builds:
     name: Builds
     runs-on: ubuntu-22.04

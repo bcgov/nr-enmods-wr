@@ -35,13 +35,13 @@ jobs:
     # Build the Docker image
       - name: Build  Docker Image
         run: |
-          IMAGE_NAME=ghcr.io/bcgov/nr-containers/nr-enmods-wr-{{ .Release.Name }}-db
+          IMAGE_NAME=ghcr.io/bcgov/nr-containers/nr-enmods-wr-${{ github.event.number }}-db
           docker build -t $IMAGE_NAME:latest ./charts/app
 
     # Push the image to ghcr
       - name: Push Docker Image to GHCR
         run: |
-          IMAGE_NAME=ghcr.io/bcgov/nr-containers/nr-enmods-wr-{{ .Release.Name }}-db
+          IMAGE_NAME=ghcr.io/bcgov/nr-containers/nr-enmods-wr-${{ github.event.number }}-db
           docker push $IMAGE_NAME:latest
 
   builds:

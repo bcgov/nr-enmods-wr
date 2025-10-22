@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-22.04
     strategy:
       matrix:
-        package: [backend, frontend, migrations]
+        package: [backend, frontend, migrations, custom-postgres]
     timeout-minutes: 10
     steps:
       - uses: bcgov-nr/action-builder-ghcr@v2.0.2
@@ -24,43 +24,6 @@ jobs:
           tag: ${{ github.event.number }}
           tag_fallback: latest
           triggers: ('${{ matrix.package }}/')
-
-  # https://github.com/bcgov-nr/action-builder-ghcr
-  build-and-push:
-    name: Build and Push db
-    needs: builds
-    permissions:
-      contents: read
-      packages: write
-    runs-on: ubuntu-22.04
-    timeout-minutes: 10
-  
-    steps:
-    # Checkout the repo
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Build & push DB via action  
-        uses: bcgov-nr/action-builder-ghcr@v2.0.2
-        with:
-          package: custom-postgres-with-aws
-          tag: ${{ github.event.number }}
-          tag_fallback: latest
-          keep_versions: 50
-          build_context: ./charts/app          # whereever the database docker file folder is
-          build_file: ./charts/app/Dockerfile  # the path to the custom docker file
-
-    # # Build the Docker image
-    #   - name: Build  Docker Image
-    #     run: |
-    #       IMAGE_NAME=ghcr.io/bcgov/nr-containers/nr-enmods-wr-${{ github.event.number }}-db
-    #       docker build -t $IMAGE_NAME:latest ./charts/app
-
-    # # Push the image to ghcr
-    #   - name: Push Docker Image to GHCR
-    #     run: |
-    #       IMAGE_NAME=ghcr.io/bcgov/nr-containers/nr-enmods-wr-${{ github.event.number }}-db
-    #       docker push $IMAGE_NAME:latest
 
   # https://github.com/bcgov/quickstart-openshift-helpers
   deploys:

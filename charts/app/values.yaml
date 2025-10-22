@@ -163,6 +163,7 @@ frontend:
 bitnami-pg:
   enabled: true
   image:
+    registry: ghcr.io
     repository: ghcr.io/nr-enmods-wr/custom-postgres-with-aws
     tag: latest
   auth:

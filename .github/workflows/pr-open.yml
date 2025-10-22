@@ -47,8 +47,8 @@ jobs:
           tag: ${{ github.event.number }}
           tag_fallback: latest
           keep_versions: 50
-          context: ./charts/app          # whereever the database docker file folder is
-          file: ./charts/app/Dockerfile  # the path to the custom docker file
+          build_context: ./charts/app          # whereever the database docker file folder is
+          build_file: ./charts/app/Dockerfile  # the path to the custom docker file
 
     # # Build the Docker image
     #   - name: Build  Docker Image

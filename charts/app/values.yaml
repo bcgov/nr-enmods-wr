@@ -163,9 +163,8 @@ frontend:
 bitnami-pg:
   enabled: true
   image:
-    registry: ghcr.io
-    repository: ghcr.io/nr-enmods-wr/custom-postgres-with-aws
-    tag: latest
+    repository: bcgov/nr-enmods-wr/custom-postgres-with-aws
+    tag: 15.10.0
   auth:
     existingSecret: "{{ .Release.Name }}-database"
     username: "enmodswr"

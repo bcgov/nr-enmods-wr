@@ -422,6 +422,8 @@ export class SearchService {
       .select()
       .orderBy("MvAqiLocationCollection.location_name", "ASC")
       .getRawMany();
+
+    console.log(raw.length);
     // Return as array of objects for frontend dropdown compatibility
     return raw.map((item) => ({
       id: item.MvAqiLocationCollection_location_id,

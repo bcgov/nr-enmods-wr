@@ -4,7 +4,7 @@ metadata:
   name: aqi-weekly-sync
   namespace: d23a53-dev
 spec:
-  schedule: '0 * * * *' #change this to every saturday at midnight
+  schedule: '*/30 * * * *' #change this to every saturday at midnight
   successfulJobsHistoryLimit: 2
   failedJobsHistoryLimit: 2
   jobTemplate:

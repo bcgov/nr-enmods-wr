@@ -1,7 +1,7 @@
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: aqi-weekly-sync
+  name: aqi-weekly-sync 
   namespace: d23a53-dev
 spec:
   schedule: '0 0 * * 6' #change this to every saturday at midnight

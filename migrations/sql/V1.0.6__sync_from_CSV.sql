@@ -10,7 +10,7 @@
 --    Pass secrets at CALL time from OpenShift; do NOT store in DB.
 CREATE OR REPLACE FUNCTION run_aqi_s3_load(
     p_bucket        text,                                -- 'my-bucket'
-    p_object_key    text,                                -- 'aqi/current.csv'
+    p_object_keys   text[],                                -- 'aqi/current.csv'
     p_region        text DEFAULT 'us-east-2',            -- regional S3 endpoint
     p_iam_role_arn  text DEFAULT NULL,                   -- RDS IAM role
     p_access_key    text DEFAULT NULL,                   -- runtime only (from secrets)
@@ -27,6 +27,7 @@ DECLARE
     v_has_aws_ext boolean := false;
     v_s3_uri text;
     v_copy_cmd text;
+    v_key   text;
 BEGIN
     -- Detect if aws_s3 extension exists (RDS/Aurora)
     SELECT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'aws_s3')
@@ -43,47 +44,50 @@ BEGIN
     -- Start clean
     TRUNCATE TABLE public.aqi_csv_import_staging;
 
-    IF v_has_aws_ext THEN
-        -- RDS/Aurora path
-        v_s3_uri := aws_commons.create_s3_uri(p_bucket, p_object_key, p_region);
+    -- Loop through object keys
+    FOREACH v_key IN ARRAY p_object_keys LOOP
+        IF v_has_aws_ext THEN
+            -- RDS/Aurora path
+            v_s3_uri := aws_commons.create_s3_uri(p_bucket, v_key, p_region);
 
-        IF p_iam_role_arn IS NOT NULL THEN
-            PERFORM aws_s3.table_import_from_s3(
-                'public.aqi_csv_import_staging',
-                NULL, NULL,
-                v_s3_uri,
-                p_iam_role_arn
-            );
+            IF p_iam_role_arn IS NOT NULL THEN
+                PERFORM aws_s3.table_import_from_s3(
+                    'public.aqi_csv_import_staging',
+                    NULL, NULL,
+                    v_s3_uri,
+                    p_iam_role_arn
+                );
+            ELSE
+                PERFORM aws_s3.table_import_from_s3(
+                    'public.aqi_csv_import_staging',
+                    NULL, NULL,
+                    v_s3_uri,
+                    p_access_key, p_secret_key, p_session_token
+                );
+            END IF;
+
         ELSE
-            PERFORM aws_s3.table_import_from_s3(
-                'public.aqi_csv_import_staging',
-                NULL, NULL,
-                v_s3_uri,
-                p_access_key, p_secret_key, p_session_token
+            -- Build AWS CLI command with credentials and S3 path
+            v_copy_cmd := format(
+                'AWS_ACCESS_KEY_ID=%L AWS_SECRET_ACCESS_KEY=%L %s aws s3 cp s3://%s/%s - | gunzip -c | tr -d ''\r'' | mlr --icsv --ocsv put ''for (k in $*) { if ($[k]=="") { $[k]=""; } }''',
+                p_access_key,
+                p_secret_key,
+                CASE WHEN p_session_token IS NOT NULL THEN
+                    format('AWS_SESSION_TOKEN=%L ', p_session_token)
+                ELSE
+                    ''
+                END,
+                p_bucket,
+                v_key
+            );
+
+            -- Execute COPY FROM PROGRAM with the dynamic command
+            EXECUTE format(
+                'COPY public.aqi_csv_import_staging FROM PROGRAM %L WITH CSV HEADER',
+                v_copy_cmd
             );
         END IF;
-
-    ELSE
-        -- Build AWS CLI command with credentials and S3 path
-        v_copy_cmd := format(
-            'AWS_ACCESS_KEY_ID=%L AWS_SECRET_ACCESS_KEY=%L %s aws s3 cp s3://%s/%s - | tr -d ''\r'' | mlr --icsv --ocsv put ''for (k in $*) { if ($[k]=="") { $[k]=""; } }''',
-            p_access_key,
-            p_secret_key,
-            CASE WHEN p_session_token IS NOT NULL THEN
-                format('AWS_SESSION_TOKEN=%L ', p_session_token)
-            ELSE
-                ''
-            END,
-            p_bucket,
-            p_object_key
-        );
-
-        -- Execute COPY FROM PROGRAM with the dynamic command
-        EXECUTE format(
-            'COPY public.aqi_csv_import_staging FROM PROGRAM %L WITH CSV HEADER',
-            v_copy_cmd
-        );
-    END IF;
+    END LOOP;
 
     -- Count rows loaded
     SELECT count(*) INTO v_rows FROM public.aqi_csv_import_staging;

@@ -6,16 +6,16 @@ export class CreateAqiCsvImportOperationalDto {
   work_order_number?: string;
   location_id?: string;
   location_name?: string;
-  location_type?: string;
+  locationType?: string;
   location_latitude?: string;
   location_longitude?: string;
   location_elevation?: string;
-  location_elevation_unit?: string;
-  location_groups?: string;
+  location_elevation_units?: string;
+  location_group?: string;
   field_visit_start_time?: Date;
   field_visit_end_time?: Date;
   field_visit_participants?: string;
-  field_visit_comments?: string;
+  field_comment?: string;
   field_filtered?: string;
   field_filtered_comment?: string;
   field_preservative?: string;
@@ -48,7 +48,6 @@ export class CreateAqiCsvImportOperationalDto {
   analyzing_agency?: string;
   analyzing_agency_full_name?: string;
   analysis_method?: string;
-  analyzed_method_name?: string;
   analyzed_date_time?: Date;
   result_status?: string;
   result_grade?: string;

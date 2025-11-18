@@ -4,7 +4,4 @@ import { ViewEntity, ViewColumn } from 'typeorm';
 export class MvAqiAnalysisMethod {
   @ViewColumn({ name: 'analysis_method' })
   analysis_method: string;
-
-  @ViewColumn({ name: 'analyzed_method_name' })
-  analyzed_method_name: string;
 }

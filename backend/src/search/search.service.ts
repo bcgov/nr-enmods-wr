@@ -48,7 +48,7 @@ export class SearchService {
     }
 
     if (basicSearchDto.locationType) {
-      whereClause.push(`location_type = $${params.length + 1}`);
+      whereClause.push(`locationType = $${params.length + 1}`);
       params.push(basicSearchDto.locationType.customId);
     }
 
@@ -56,7 +56,7 @@ export class SearchService {
       basicSearchDto.permitNumber &&
       basicSearchDto.permitNumber.length >= 1
     ) {
-      whereClause.push(`location_groups = ANY($${params.length + 1})`);
+      whereClause.push(`location_group = ANY($${params.length + 1})`);
       params.push(basicSearchDto.permitNumber);
     }
 
@@ -436,20 +436,20 @@ export class SearchService {
    */
   public async getLocationTypes(): Promise<any[]> {
     this.logger.log(
-      "getLocationTypes called, querying materialized view mv_aqi_location_type",
+      "getLocationTypes called, querying materialized view mv_aqi_locationtype",
     );
     // Use TypeORM to query the materialized view entity and return raw data
     const repo = this["observationRepository"].manager.getRepository(
-      "mv_aqi_location_type",
+      "mv_aqi_locationtype",
     );
     const raw = await repo
       .createQueryBuilder()
       .select()
-      .orderBy("MvAqiLocationType.location_type", "ASC")
+      .orderBy("MvAqiLocationType.locationtype", "ASC")
       .getRawMany();
     // Return as array of objects for frontend dropdown compatibility
     return raw.map((item) => ({
-      customId: item.MvAqiLocationType_location_type,
+      customId: item.MvAqiLocationType_locationtype,
     }));
   }
 
@@ -459,20 +459,20 @@ export class SearchService {
    */
   public async getLocationGroups(): Promise<any[]> {
     this.logger.log(
-      "getLocationGroups called, querying materialized view mv_aqi_location_groups",
+      "getLocationGroups called, querying materialized view mv_aqi_location_group",
     );
     // Use TypeORM to query the materialized view entity and return raw data
     const repo = this["observationRepository"].manager.getRepository(
-      "mv_aqi_location_groups",
+      "mv_aqi_location_group",
     );
     const raw = await repo
       .createQueryBuilder()
       .select()
-      .orderBy("MvAqiLocationGroups.location_groups", "ASC")
+      .orderBy("MvAqiLocationGroup.location_group", "ASC")
       .getRawMany();
     // Return as array of objects for frontend dropdown compatibility
     return raw.map((item) => ({
-      name: item.MvAqiLocationGroups_location_groups,
+      name: item.MvAqiLocationGroup_location_group,
     }));
   }
 
@@ -563,12 +563,12 @@ export class SearchService {
     const raw = await repo
       .createQueryBuilder()
       .select()
-      .orderBy("MvAqiAnalysisMethod.analyzed_method_name", "ASC")
+      .orderBy("MvAqiAnalysisMethod.analysis_method", "ASC")
       .getRawMany();
     // Return as array of objects for frontend dropdown compatibility
     return raw.map((item) => ({
       id: item.MvAqiAnalysisMethod_analysis_method,
-      name: item.MvAqiAnalysisMethod_analyzed_method_name,
+      name: item.MvAqiAnalysisMethod_analysis_method,
     }));
   }
 

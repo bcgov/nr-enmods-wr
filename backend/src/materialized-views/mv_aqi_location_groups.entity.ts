@@ -1,9 +1,9 @@
 import { ViewEntity, ViewColumn } from 'typeorm';
 
 @ViewEntity({
-  name: 'mv_aqi_location_groups',
+  name: 'mv_aqi_location_group',
 })
-export class MvAqiLocationGroups {
+export class MvAqiLocationGroup {
   @ViewColumn()
-  location_groups: string;
+  location_group: string;
 }

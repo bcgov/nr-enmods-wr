@@ -10,8 +10,8 @@ BEGIN
     REFRESH MATERIALIZED VIEW mv_aqi_sampling_agency;
     REFRESH MATERIALIZED VIEW mv_aqi_project;
     REFRESH MATERIALIZED VIEW mv_aqi_work_order_number;
-    REFRESH MATERIALIZED VIEW mv_aqi_location_type;
-    REFRESH MATERIALIZED VIEW mv_aqi_location_groups;
+    REFRESH MATERIALIZED VIEW mv_aqi_locationType;
+    REFRESH MATERIALIZED VIEW mv_aqi_location_group;
     REFRESH MATERIALIZED VIEW mv_aqi_location_collection;
 
     -- Field/sample attributes

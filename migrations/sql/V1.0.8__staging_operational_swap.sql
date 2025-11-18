@@ -71,9 +71,9 @@ BEGIN
             RAISE NOTICE 'Dropping index: idx_aqi_stg_location_name';
             EXECUTE 'DROP INDEX public.idx_aqi_stg_location_name';
         END IF;
-        IF EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname='public' AND indexname='idx_aqi_stg_location_type') THEN
-            RAISE NOTICE 'Dropping index: idx_aqi_stg_location_type';   
-            EXECUTE 'DROP INDEX public.idx_aqi_stg_location_type';
+        IF EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname='public' AND indexname='idx_aqi_stg_locationtype') THEN
+            RAISE NOTICE 'Dropping index: idx_aqi_stg_locationtype';   
+            EXECUTE 'DROP INDEX public.idx_aqi_stg_locationtype';
         END IF;
         IF EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname='public' AND indexname='idx_aqi_stg_location_latitude') THEN
             RAISE NOTICE 'Dropping index: idx_aqi_stg_location_latitude';
@@ -87,13 +87,13 @@ BEGIN
             RAISE NOTICE 'Dropping index: idx_aqi_stg_location_elevation';
             EXECUTE 'DROP INDEX public.idx_aqi_stg_location_elevation';
         END IF;
-        IF EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname='public' AND indexname='idx_aqi_stg_location_elevation_unit') THEN
-            RAISE NOTICE 'Dropping index: idx_aqi_stg_location_elevation_unit';
-            EXECUTE 'DROP INDEX public.idx_aqi_stg_location_elevation_unit';
+        IF EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname='public' AND indexname='idx_aqi_stg_location_elevation_units') THEN
+            RAISE NOTICE 'Dropping index: idx_aqi_stg_location_elevation_units';
+            EXECUTE 'DROP INDEX public.idx_aqi_stg_location_elevation_units';
         END IF;
-        IF EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname='public' AND indexname='idx_aqi_stg_location_groups') THEN
-            RAISE NOTICE 'Dropping index: idx_aqi_stg_location_groups';
-            EXECUTE 'DROP INDEX public.idx_aqi_stg_location_groups';
+        IF EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname='public' AND indexname='idx_aqi_stg_location_group') THEN
+            RAISE NOTICE 'Dropping index: idx_aqi_stg_location_group';
+            EXECUTE 'DROP INDEX public.idx_aqi_stg_location_group';
         END IF;
         IF EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname='public' AND indexname='idx_aqi_stg_field_visit_start_time') THEN
             RAISE NOTICE 'Dropping index: idx_aqi_stg_field_visit_start_time';
@@ -107,9 +107,9 @@ BEGIN
             RAISE NOTICE 'Dropping index: idx_aqi_stg_field_visit_participants';
             EXECUTE 'DROP INDEX public.idx_aqi_stg_field_visit_participants';
         END IF;
-        IF EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname='public' AND indexname='idx_aqi_stg_field_visit_comments') THEN
-            RAISE NOTICE 'Dropping index: idx_aqi_stg_field_visit_comments';
-            EXECUTE 'DROP INDEX public.idx_aqi_stg_field_visit_comments';
+        IF EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname='public' AND indexname='idx_aqi_stg_field_comment') THEN
+            RAISE NOTICE 'Dropping index: idx_aqi_stg_field_comment';
+            EXECUTE 'DROP INDEX public.idx_aqi_stg_field_comment';
         END IF;
         IF EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname='public' AND indexname='idx_aqi_stg_field_filtered') THEN
             RAISE NOTICE 'Dropping index: idx_aqi_stg_field_filtered';
@@ -263,9 +263,9 @@ BEGIN
             RAISE NOTICE 'Dropping index: idx_aqi_stg_tissue_type';
             EXECUTE 'DROP INDEX public.idx_aqi_stg_tissue_type';
         END IF;
-        IF EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname='public' AND indexname='idx_aqi_stg_lab_arrival_temp') THEN
-            RAISE NOTICE 'Dropping index: idx_aqi_stg_lab_arrival_temp';
-            EXECUTE 'DROP INDEX public.idx_aqi_stg_lab_arrival_temp';
+        IF EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname='public' AND indexname='idx_aqi_stg_lab_arrival_temperature') THEN
+            RAISE NOTICE 'Dropping index: idx_aqi_stg_lab_arrival_temperature';
+            EXECUTE 'DROP INDEX public.idx_aqi_stg_lab_arrival_temperature';
         END IF;
         IF EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname='public' AND indexname='idx_aqi_stg_specimen_name') THEN
             RAISE NOTICE 'Dropping index: idx_aqi_stg_specimen_name';
@@ -332,8 +332,8 @@ BEGIN
     RAISE NOTICE 'Creating index: idx_aqi_stg_location_name';
     EXECUTE format('CREATE INDEX idx_aqi_stg_location_name                     ON %I.%I (Location_Name)',                             v_schema, v_stg);
 
-    RAISE NOTICE 'Creating index: idx_aqi_stg_location_type';
-    EXECUTE format('CREATE INDEX idx_aqi_stg_location_type                     ON %I.%I (Location_Type)',                             v_schema, v_stg);
+    RAISE NOTICE 'Creating index: idx_aqi_stg_locationtype';
+    EXECUTE format('CREATE INDEX idx_aqi_stg_locationtype                      ON %I.%I (LocationType)',                             v_schema, v_stg);
 
     RAISE NOTICE 'Creating index: idx_aqi_stg_location_latitude';
     EXECUTE format('CREATE INDEX idx_aqi_stg_location_latitude                 ON %I.%I (Location_Latitude)',                         v_schema, v_stg);
@@ -344,11 +344,11 @@ BEGIN
     RAISE NOTICE 'Creating index: idx_aqi_stg_location_elevation';
     EXECUTE format('CREATE INDEX idx_aqi_stg_location_elevation                ON %I.%I (Location_Elevation)',                        v_schema, v_stg);
 
-    RAISE NOTICE 'Creating index: idx_aqi_stg_location_elevation_unit';
-    EXECUTE format('CREATE INDEX idx_aqi_stg_location_elevation_unit           ON %I.%I (Location_Elevation_Unit)',                   v_schema, v_stg);
+    RAISE NOTICE 'Creating index: idx_aqi_stg_location_elevation_units';
+    EXECUTE format('CREATE INDEX idx_aqi_stg_location_elevation_units           ON %I.%I (Location_Elevation_Units)',                   v_schema, v_stg);
 
-    RAISE NOTICE 'Creating index: idx_aqi_stg_location_groups';
-    EXECUTE format('CREATE INDEX idx_aqi_stg_location_groups                   ON %I.%I (Location_Groups)',                           v_schema, v_stg);
+    RAISE NOTICE 'Creating index: idx_aqi_stg_location_group';
+    EXECUTE format('CREATE INDEX idx_aqi_stg_location_group                   ON %I.%I (Location_Group)',                           v_schema, v_stg);
 
     RAISE NOTICE 'Creating index: idx_aqi_stg_field_visit_start_time';
     EXECUTE format('CREATE INDEX idx_aqi_stg_field_visit_start_time            ON %I.%I (Field_Visit_Start_Time)',                    v_schema, v_stg);
@@ -359,8 +359,8 @@ BEGIN
     RAISE NOTICE 'Creating index: idx_aqi_stg_field_visit_participants';
     EXECUTE format('CREATE INDEX idx_aqi_stg_field_visit_participants          ON %I.%I (Field_Visit_Participants)',                  v_schema, v_stg);
 
-    RAISE NOTICE 'Creating index: idx_aqi_stg_field_visit_comments';
-    EXECUTE format('CREATE INDEX idx_aqi_stg_field_visit_comments              ON %I.%I (Field_Visit_Comments)',                      v_schema, v_stg);
+    RAISE NOTICE 'Creating index: idx_aqi_stg_field_comment';
+    EXECUTE format('CREATE INDEX idx_aqi_stg_field_comment              ON %I.%I (Field_Comment)',                      v_schema, v_stg);
 
     RAISE NOTICE 'Creating index: idx_aqi_stg_field_filtered';
     EXECUTE format('CREATE INDEX idx_aqi_stg_field_filtered                    ON %I.%I (Field_Filtered)',                            v_schema, v_stg);
@@ -458,8 +458,8 @@ BEGIN
     RAISE NOTICE 'Creating index: idx_aqi_stg_analysis_method';
     EXECUTE format('CREATE INDEX idx_aqi_stg_analysis_method                   ON %I.%I (Analysis_Method)',                           v_schema, v_stg);
 
-    RAISE NOTICE 'Creating index: idx_aqi_stg_analysis_method_name';
-    EXECUTE format('CREATE INDEX idx_aqi_stg_analysis_method_name              ON %I.%I (Analyzed_Method_Name)',                      v_schema, v_stg);
+    -- RAISE NOTICE 'Creating index: idx_aqi_stg_analysis_method_name';
+    -- EXECUTE format('CREATE INDEX idx_aqi_stg_analysis_method_name              ON %I.%I (Analyzed_Method_Name)',                      v_schema, v_stg);
 
     RAISE NOTICE 'Creating index: idx_aqi_stg_analyzed_date_time';
     EXECUTE format('CREATE INDEX idx_aqi_stg_analyzed_date_time                ON %I.%I (Analyzed_Date_Time)',                        v_schema, v_stg);
@@ -476,8 +476,8 @@ BEGIN
     RAISE NOTICE 'Creating index: idx_aqi_stg_tissue_type';
     EXECUTE format('CREATE INDEX idx_aqi_stg_tissue_type                       ON %I.%I (Tissue_Type)',                               v_schema, v_stg);
 
-    RAISE NOTICE 'Creating index: idx_aqi_stg_lab_arrival_temp';
-    EXECUTE format('CREATE INDEX idx_aqi_stg_lab_arrival_temp                  ON %I.%I (Lab_Arrival_Temp)',                          v_schema, v_stg);
+    RAISE NOTICE 'Creating index: idx_aqi_stg_lab_arrival_temperature';
+    EXECUTE format('CREATE INDEX idx_aqi_stg_lab_arrival_temperature           ON %I.%I (Lab_Arrival_Temperature)',                   v_schema, v_stg);
 
     RAISE NOTICE 'Creating index: idx_aqi_stg_specimen_name';
     EXECUTE format('CREATE INDEX idx_aqi_stg_specimen_name                     ON %I.%I (Specimen_Name)',                             v_schema, v_stg);
@@ -571,9 +571,9 @@ BEGIN
             RAISE NOTICE 'Dropping index: idx_aqi_stg_location_name';
             EXECUTE 'DROP INDEX public.idx_aqi_stg_location_name';
         END IF;
-        IF EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname='public' AND indexname='idx_aqi_stg_location_type') THEN
-            RAISE NOTICE 'Dropping index: idx_aqi_stg_location_type';   
-            EXECUTE 'DROP INDEX public.idx_aqi_stg_location_type';
+        IF EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname='public' AND indexname='idx_aqi_stg_locationtype') THEN
+            RAISE NOTICE 'Dropping index: idx_aqi_stg_locationtype';   
+            EXECUTE 'DROP INDEX public.idx_aqi_stg_locationtype';
         END IF;
         IF EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname='public' AND indexname='idx_aqi_stg_location_latitude') THEN
             RAISE NOTICE 'Dropping index: idx_aqi_stg_location_latitude';
@@ -587,13 +587,13 @@ BEGIN
             RAISE NOTICE 'Dropping index: idx_aqi_stg_location_elevation';
             EXECUTE 'DROP INDEX public.idx_aqi_stg_location_elevation';
         END IF;
-        IF EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname='public' AND indexname='idx_aqi_stg_location_elevation_unit') THEN
-            RAISE NOTICE 'Dropping index: idx_aqi_stg_location_elevation_unit';
-            EXECUTE 'DROP INDEX public.idx_aqi_stg_location_elevation_unit';
+        IF EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname='public' AND indexname='idx_aqi_stg_location_elevation_units') THEN
+            RAISE NOTICE 'Dropping index: idx_aqi_stg_location_elevation_units';
+            EXECUTE 'DROP INDEX public.idx_aqi_stg_location_elevation_units';
         END IF;
-        IF EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname='public' AND indexname='idx_aqi_stg_location_groups') THEN
-            RAISE NOTICE 'Dropping index: idx_aqi_stg_location_groups';
-            EXECUTE 'DROP INDEX public.idx_aqi_stg_location_groups';
+        IF EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname='public' AND indexname='idx_aqi_stg_location_group') THEN
+            RAISE NOTICE 'Dropping index: idx_aqi_stg_location_group';
+            EXECUTE 'DROP INDEX public.idx_aqi_stg_location_group';
         END IF;
         IF EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname='public' AND indexname='idx_aqi_stg_field_visit_start_time') THEN
             RAISE NOTICE 'Dropping index: idx_aqi_stg_field_visit_start_time';
@@ -607,9 +607,9 @@ BEGIN
             RAISE NOTICE 'Dropping index: idx_aqi_stg_field_visit_participants';
             EXECUTE 'DROP INDEX public.idx_aqi_stg_field_visit_participants';
         END IF;
-        IF EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname='public' AND indexname='idx_aqi_stg_field_visit_comments') THEN
-            RAISE NOTICE 'Dropping index: idx_aqi_stg_field_visit_comments';
-            EXECUTE 'DROP INDEX public.idx_aqi_stg_field_visit_comments';
+        IF EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname='public' AND indexname='idx_aqi_stg_field_comment') THEN
+            RAISE NOTICE 'Dropping index: idx_aqi_stg_field_comment';
+            EXECUTE 'DROP INDEX public.idx_aqi_stg_field_comment';
         END IF;
         IF EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname='public' AND indexname='idx_aqi_stg_field_filtered') THEN
             RAISE NOTICE 'Dropping index: idx_aqi_stg_field_filtered';
@@ -763,9 +763,9 @@ BEGIN
             RAISE NOTICE 'Dropping index: idx_aqi_stg_tissue_type';
             EXECUTE 'DROP INDEX public.idx_aqi_stg_tissue_type';
         END IF;
-        IF EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname='public' AND indexname='idx_aqi_stg_lab_arrival_temp') THEN
-            RAISE NOTICE 'Dropping index: idx_aqi_stg_lab_arrival_temp';
-            EXECUTE 'DROP INDEX public.idx_aqi_stg_lab_arrival_temp';
+        IF EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname='public' AND indexname='idx_aqi_stg_lab_arrival_temperature') THEN
+            RAISE NOTICE 'Dropping index: idx_aqi_stg_lab_arrival_temperature';
+            EXECUTE 'DROP INDEX public.idx_aqi_stg_lab_arrival_temperature';
         END IF;
         IF EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname='public' AND indexname='idx_aqi_stg_specimen_name') THEN
             RAISE NOTICE 'Dropping index: idx_aqi_stg_specimen_name';

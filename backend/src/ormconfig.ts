@@ -7,7 +7,7 @@ import { MvAqiProject } from "./materialized-views/mv_aqi_project.entity";
 import { MvAqiWorkOrderNumber } from "./materialized-views/mv_aqi_work_order_number.entity";
 import { MvAqiLocationCollection } from "./materialized-views/mv_aqi_location_collection.entity";
 import { MvAqiLocationType } from "./materialized-views/mv_aqi_location_type.entity";
-import { MvAqiLocationGroups } from "./materialized-views/mv_aqi_location_groups.entity";
+import { MvAqiLocationGroup } from "./materialized-views/mv_aqi_location_groups.entity";
 import { MvAqiCollectionMethod } from "./materialized-views/mv_aqi_collection_method.entity";
 import { MvAqiMedium } from "./materialized-views/mv_aqi_medium.entity";
 import { MvAqiObservedPropertyId } from "./materialized-views/mv_aqi_observed_property_id.entity";
@@ -39,7 +39,7 @@ const ormconfig: TypeOrmModuleOptions = {
     MvAqiWorkOrderNumber,
     MvAqiLocationCollection,
     MvAqiLocationType,
-    MvAqiLocationGroups,
+    MvAqiLocationGroup,
     MvAqiCollectionMethod,
     MvAqiMedium,
     MvAqiObservedPropertyId,

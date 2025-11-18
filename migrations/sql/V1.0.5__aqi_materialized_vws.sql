@@ -38,25 +38,25 @@ WHERE Work_Order_Number IS NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS ux_mv_aqi_work_order_number
   ON mv_aqi_work_order_number (Work_Order_Number);
 
--- Location_Type
-DROP MATERIALIZED VIEW IF EXISTS mv_aqi_location_type;
-CREATE MATERIALIZED VIEW mv_aqi_location_type AS
-SELECT DISTINCT Location_Type
+-- LocationType
+DROP MATERIALIZED VIEW IF EXISTS mv_aqi_locationTtype;
+CREATE MATERIALIZED VIEW mv_aqi_locationType AS
+SELECT DISTINCT LocationType
 FROM AQI_CSV_IMPORT_STAGING
-WHERE Location_Type IS NOT NULL; 
+WHERE LocationType IS NOT NULL; 
 
-CREATE UNIQUE INDEX IF NOT EXISTS ux_mv_aqi_location_type
-  ON mv_aqi_location_type (Location_Type);
+CREATE UNIQUE INDEX IF NOT EXISTS ux_mv_aqi_locationType
+  ON mv_aqi_locationType (LocationType);
 
--- Location_Groups
-DROP MATERIALIZED VIEW IF EXISTS mv_aqi_location_groups;
-CREATE MATERIALIZED VIEW mv_aqi_location_groups AS
-SELECT DISTINCT Location_Groups
+-- Location_Group
+DROP MATERIALIZED VIEW IF EXISTS mv_aqi_location_group;
+CREATE MATERIALIZED VIEW mv_aqi_location_group AS
+SELECT DISTINCT Location_Group
 FROM AQI_CSV_IMPORT_STAGING
-WHERE Location_Groups IS NOT NULL;
+WHERE Location_Group IS NOT NULL;
 
-CREATE UNIQUE INDEX IF NOT EXISTS ux_mv_aqi_location_groups
-  ON mv_aqi_location_groups (Location_Groups);
+CREATE UNIQUE INDEX IF NOT EXISTS ux_mv_aqi_location_group
+  ON mv_aqi_location_group (Location_Group);
 
 -- Combine location id and name as they are 1-1 mapping??
 DROP MATERIALIZED VIEW IF EXISTS mv_aqi_location_collection;
@@ -164,14 +164,12 @@ CREATE UNIQUE INDEX IF NOT EXISTS ux_mv_aqi_analyzing_agency
 DROP MATERIALIZED VIEW IF EXISTS mv_aqi_analysis_method;
 CREATE MATERIALIZED VIEW mv_aqi_analysis_method AS
 SELECT DISTINCT
-    Analysis_Method,
-    Analyzed_Method_Name
+    Analysis_Method
 FROM AQI_CSV_IMPORT_STAGING
-WHERE Analysis_Method IS NOT NULL
-  AND Analyzed_Method_Name IS NOT NULL;
+WHERE Analysis_Method IS NOT NULL;
 
 CREATE UNIQUE INDEX IF NOT EXISTS ux_mv_aqi_analysis_method
-  ON mv_aqi_analysis_method (Analysis_Method, Analyzed_Method_Name);
+  ON mv_aqi_analysis_method (Analysis_Method);
 
 -- Lab_Batch_ID
 DROP MATERIALIZED VIEW IF EXISTS mv_aqi_lab_batch_id;

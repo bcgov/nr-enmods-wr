@@ -9,16 +9,16 @@ export class AqiCsvImportOperational {
   @Column({ name: 'work_order_number', nullable: true }) work_order_number: string;
   @Column({ name: 'location_id', nullable: true }) location_id: string;
   @Column({ name: 'location_name', nullable: true }) location_name: string;
-  @Column({ name: 'location_type', nullable: true }) location_type: string;
+  @Column({ name: 'locationType', nullable: true }) locationType: string;
   @Column({ name: 'location_latitude', nullable: true }) location_latitude: string;
   @Column({ name: 'location_longitude', nullable: true }) location_longitude: string;
   @Column({ name: 'location_elevation', nullable: true }) location_elevation: string;
-  @Column({ name: 'location_elevation_unit', nullable: true }) location_elevation_unit: string;
-  @Column({ name: 'location_groups', nullable: true }) location_groups: string;
+  @Column({ name: 'location_elevation_units', nullable: true }) location_elevation_units: string;
+  @Column({ name: 'location_group', nullable: true }) location_group: string;
   @Column({ name: 'field_visit_start_time', nullable: true }) field_visit_start_time: Date;
   @Column({ name: 'field_visit_end_time', nullable: true }) field_visit_end_time: Date;
   @Column({ name: 'field_visit_participants', nullable: true }) field_visit_participants: string;
-  @Column({ name: 'field_visit_comments', nullable: true }) field_visit_comments: string;
+  @Column({ name: 'field_comment', nullable: true }) field_comment: string;
   @Column({ name: 'field_filtered', nullable: true }) field_filtered: string;
   @Column({ name: 'field_filtered_comment', nullable: true }) field_filtered_comment: string;
   @Column({ name: 'field_preservative', nullable: true }) field_preservative: string;
@@ -51,7 +51,6 @@ export class AqiCsvImportOperational {
   @Column({ name: 'analyzing_agency', nullable: true }) analyzing_agency: string;
   @Column({ name: 'analyzing_agency_full_name', nullable: true }) analyzing_agency_full_name: string;
   @Column({ name: 'analysis_method', nullable: true }) analysis_method: string;
-  @Column({ name: 'analyzed_method_name', nullable: true }) analyzed_method_name: string;
   @Column({ name: 'analyzed_date_time', nullable: true }) analyzed_date_time: Date;
   @Column({ name: 'result_status', nullable: true }) result_status: string;
   @Column({ name: 'result_grade', nullable: true }) result_grade: string;

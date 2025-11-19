@@ -43,11 +43,11 @@ spec:
                     secretKeyRef:
                       name: "{{ .Release.Name }}-database"
                       key: S3_BUCKET
-                - name: S3_KEY
+                - name: S3_BUCKET_PATH
                   valueFrom:
                     secretKeyRef:
                       name: "{{ .Release.Name }}-database"
-                      key: S3_KEY
+                      key: S3_BUCKET_PATH
                 - name: S3_REGION
                   valueFrom:
                     secretKeyRef:

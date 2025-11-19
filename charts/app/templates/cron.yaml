@@ -70,44 +70,44 @@ spec:
                   echo "Starting AQI weekly sync job..."
 
                   echo "Getting latest directory (prefix) from S3..."
-                  LATEST_DIR=$(aws s3api list-objects-v2 --bucket "$S3_BUCKET" --prefix "$S3_BUCKET_PATH/" --delimiter '/' --query "CommonPrefixes[].Prefix" --output text | tr ' ' '\n' | sort | tail -n 1)
+                  # LATEST_DIR=$(aws s3api list-objects-v2 --bucket "$S3_BUCKET" --prefix "$S3_BUCKET_PATH/" --delimiter '/' --query "CommonPrefixes[].Prefix" --output text | tr ' ' '\n' | sort | tail -n 1)
 
-                  if [ -z "$LATEST_DIR" ]; then
-                    echo "ERROR: No directories found under prefix $S3_BUCKET_PATH"
-                    exit 1
-                  fi
+                  # if [ -z "$LATEST_DIR" ]; then
+                  #   echo "ERROR: No directories found under prefix $S3_BUCKET_PATH"
+                  #   exit 1
+                  # fi
 
-                  echo "Latest directory (prefix) is: $LATEST_DIR"
-                  echo "Listing .csv.gz files inside the directory..."
+                  # echo "Latest directory (prefix) is: $LATEST_DIR"
+                  # echo "Listing .csv.gz files inside the directory..."
 
-                  FILES=$(aws s3api list-objects-v2 --bucket "$S3_BUCKET" --prefix "$LATEST_DIR" --query "Contents[?ends_with(Key, '.csv.gz')].Key" --output text)
+                  # FILES=$(aws s3api list-objects-v2 --bucket "$S3_BUCKET" --prefix "$LATEST_DIR" --query "Contents[?ends_with(Key, '.csv.gz')].Key" --output text)
 
-                  if [ -z "$FILES" ]; then
-                    echo "ERROR: No .csv.gz files found in $LATEST_DIR"
-                    exit 1
-                  fi
+                  # if [ -z "$FILES" ]; then
+                  #   echo "ERROR: No .csv.gz files found in $LATEST_DIR"
+                  #   exit 1
+                  # fi
 
-                  echo "Found Files:"
-                  echo "$FILES"
-                  echo
+                  # echo "Found Files:"
+                  # echo "$FILES"
+                  # echo
 
-                  # Convert to SQL Array format
-                  S3_KEY_ARRAY=$(printf "%s" "$FILES" | tr ' ' '\n' | awk '{printf "'\''%s'\'',", $0}' | sed 's/,$//')
-                  S3_KEY_ARRAY="ARRAY[$S3_KEY_ARRAY]"
+                  # # Convert to SQL Array format
+                  # S3_KEY_ARRAY=$(printf "%s" "$FILES" | tr ' ' '\n' | awk '{printf "'\''%s'\'',", $0}' | sed 's/,$//')
+                  # S3_KEY_ARRAY="ARRAY[$S3_KEY_ARRAY]"
 
-                  echo "Final SQL array: $S3_KEY_ARRAY"
-                  echo
+                  # echo "Final SQL array: $S3_KEY_ARRAY"
+                  # echo
 
-                  export DATABASE_URL="postgresql://$POSTGRES_USER:$POSTGRES_PASSWORD@$POSTGRES_HOST/$POSTGRES_DBNAME"
+                  # export DATABASE_URL="postgresql://$POSTGRES_USER:$POSTGRES_PASSWORD@$POSTGRES_HOST/$POSTGRES_DBNAME"
 
-                  echo "Running load from S3..."
-                  psql "$DATABASE_URL" \
-                    -c "SELECT run_aqi_s3_load('$S3_BUCKET', $S3_KEY_ARRAY, '$S3_REGION', NULL, '$AWS_ACCESS_KEY_ID', '$AWS_SECRET_ACCESS_KEY', '$AWS_SESSION_TOKEN');"
+                  # echo "Running load from S3..."
+                  # psql "$DATABASE_URL" \
+                  #   -c "SELECT run_aqi_s3_load('$S3_BUCKET', $S3_KEY_ARRAY, '$S3_REGION', NULL, '$AWS_ACCESS_KEY_ID', '$AWS_SECRET_ACCESS_KEY', '$AWS_SESSION_TOKEN');"
 
-                  echo "Load from S3 completed."
-                  echo "Running table swap..."
-                  psql "$DATABASE_URL" \
-                    -c "SELECT run_aqi_table_swap('AQI_AWS_S3_SYNC');"
-                  echo "Table swap completed."
-                  echo "AQI hourly sync completed."
+                  # echo "Load from S3 completed."
+                  # echo "Running table swap..."
+                  # psql "$DATABASE_URL" \
+                  #   -c "SELECT run_aqi_table_swap('AQI_AWS_S3_SYNC');"
+                  # echo "Table swap completed."
+                  # echo "AQI hourly sync completed."
           restartPolicy: OnFailure

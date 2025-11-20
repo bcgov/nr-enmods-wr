@@ -530,8 +530,10 @@ BEGIN
     /**********************************************************************
      * 3) Refresh lookup materialized views (if present)
      **********************************************************************/
+    RAISE NOTICE 'Checking for presence of refresh_aqi_lookup_materialized_views() function.';
     PERFORM 1 FROM pg_proc WHERE proname = 'refresh_aqi_lookup_materialized_views';
     IF FOUND THEN
+        RAISE NOTICE 'Function found. Refreshing AQI lookup materialized views.';
         PERFORM refresh_aqi_lookup_materialized_views();
     END IF;
 

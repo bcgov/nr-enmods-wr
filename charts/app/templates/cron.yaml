@@ -113,7 +113,7 @@ spec:
 
                   echo "Running load from S3..."
                   psql "$DATABASE_URL" \
-                    -c "SELECT run_aqi_s3_load('$S3_BUCKET', $S3_KEY_ARRAY, '$S3_REGION', NULL, '$AWS_ACCESS_KEY_ID', '$AWS_SECRET_ACCESS_KEY', '$AWS_SESSION_TOKEN');"
+                    -c "SELECT run_aqi_s3_load('$S3_BUCKET', ARRAY[$S3_KEY_ARRAY]::text[], '$S3_REGION', NULL, '$AWS_ACCESS_KEY_ID', '$AWS_SECRET_ACCESS_KEY', '$AWS_SESSION_TOKEN');"
 
                   echo "Load from S3 completed."
                   echo "Running table swap..."

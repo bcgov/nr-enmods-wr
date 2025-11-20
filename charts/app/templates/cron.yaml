@@ -13,7 +13,7 @@ spec:
         spec:
           containers:
             - name: db-sync
-              image: postgres:15
+              image: ghcr.io/bcgov/nr-enmods-wr/custom-postgres-with-aws:101
               env:
                 # Database credentials from openshift secrets
                 - name: POSTGRES_HOST

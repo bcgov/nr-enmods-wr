@@ -10,7 +10,7 @@
 --    Pass secrets at CALL time from OpenShift; do NOT store in DB.
 CREATE OR REPLACE FUNCTION run_aqi_s3_load(
     p_bucket        text,                                -- 'my-bucket'
-    p_object_keys   text[],                                -- 'aqi/current.csv'
+    p_object_keys   text[],                              -- 'aqi/current.csv'
     p_region        text DEFAULT 'us-east-2',            -- regional S3 endpoint
     p_iam_role_arn  text DEFAULT NULL,                   -- RDS IAM role
     p_access_key    text DEFAULT NULL,                   -- runtime only (from secrets)
@@ -28,6 +28,8 @@ DECLARE
     v_s3_uri text;
     v_copy_cmd text;
     v_key   text;
+    v_item_start_time timestamp;
+    v_item_end_time   timestamp;
 BEGIN
     -- Detect if aws_s3 extension exists (RDS/Aurora)
     SELECT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'aws_s3')
@@ -44,8 +46,15 @@ BEGIN
     -- Start clean
     TRUNCATE TABLE public.aqi_csv_import_staging;
 
+
+    RAISE NOTICE 'Beginning S3 load for % keys...', array_length(p_object_keys, 1);
+    RAISE NOTICE 'Keys: %', array_to_string(p_object_keys, ', ');
+
     -- Loop through object keys
     FOREACH v_key IN ARRAY p_object_keys LOOP
+        -- Log start time for this key
+        RAISE NOTICE 'Starting load for key: % at %', v_key, now();
+        v_item_start_time := now();
         IF v_has_aws_ext THEN
             -- RDS/Aurora path
             v_s3_uri := aws_commons.create_s3_uri(p_bucket, v_key, p_region);
@@ -87,6 +96,9 @@ BEGIN
                 v_copy_cmd
             );
         END IF;
+        -- Log end time for this key
+        RAISE NOTICE 'Finished load for key: % at %', v_key, now();
+        v_item_end_time := now();
     END LOOP;
 
     -- Count rows loaded

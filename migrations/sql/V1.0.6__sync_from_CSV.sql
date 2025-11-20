@@ -30,6 +30,9 @@ DECLARE
     v_key   text;
     v_item_start_time timestamp;
     v_item_end_time   timestamp;
+    v_rows_before bigint;
+    v_rows_after  bigint;
+    v_rows_added bigint;
 BEGIN
     -- Detect if aws_s3 extension exists (RDS/Aurora)
     SELECT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'aws_s3')
@@ -55,6 +58,7 @@ BEGIN
         -- Log start time for this key
         RAISE NOTICE 'Starting load for key: % at %', v_key, now();
         v_item_start_time := now();
+        v_rows_before := (SELECT count(*) FROM public.aqi_csv_import_staging);
         IF v_has_aws_ext THEN
             -- RDS/Aurora path
             v_s3_uri := aws_commons.create_s3_uri(p_bucket, v_key, p_region);
@@ -97,7 +101,9 @@ BEGIN
             );
         END IF;
         -- Log end time for this key
-        RAISE NOTICE 'Finished load for key: % at %', v_key, now();
+        v_rows_after := (SELECT count(*) FROM public.aqi_csv_import_staging);
+        v_rows_added := v_rows_after - v_rows_before;
+        RAISE NOTICE 'Finished load for key: % at %, records added: %', v_key, now(), v_rows_added;
         v_item_end_time := now();
     END LOOP;
 

@@ -65,7 +65,7 @@ spec:
                       key: AWS_SECRET_ACCESS_KEY
               args:
                 - /bin/bash
-                - "-c"
+                - '-c'
                 - |
                   echo "Starting AQI weekly sync job..."
 
@@ -90,24 +90,26 @@ spec:
                     exit 1
                   fi
 
-                  echo "Found Files:"
-                  echo "$FILES"
-                  echo
+                  normalized=$(printf "%s" "$FILES" | tr '\t' '\n' | tr -d '\r' | sed '/^[[:space:]]*$/d')
 
-                  # Convert to SQL Array format
-                  read -r -a gzFilesList <<< "$FILES"
-                  
+                  # Convert into array safely
+                  mapfile -t gzFilesList <<< "$normalized"
+
+                  echo "Files after read:"
+                  printf '%s\n' "${gzFilesList[@]}"
+
+                  # Build SQL array
                   S3_KEY_ARRAY=$(
                     for key in "${gzFilesList[@]}"; do
-                        safe_key=${key//\'/\'\'}  # replace ' with '' for SQL safety
-                        printf "'%s'," "$safe_key"
-                    done | sed 's/,$//'  # remove trailing comma
+                      safe_key=${key//\'/\'\'}
+                      printf "'%s'," "$safe_key"
+                    done | sed 's/,$//'
                   )
 
                   echo "[INFO $(date '+%Y-%m-%d %H:%M:%S')] Final SQL Array: ARRAY[$S3_KEY_ARRAY]"
                   echo
 
-                  # export DATABASE_URL="postgresql://$POSTGRES_USER:$POSTGRES_PASSWORD@$POSTGRES_HOST/$POSTGRES_DBNAME"
+                  export DATABASE_URL="postgresql://$POSTGRES_USER:$POSTGRES_PASSWORD@$POSTGRES_HOST/$POSTGRES_DBNAME"
 
                   echo "Running load from S3..."
                   psql "$DATABASE_URL" \

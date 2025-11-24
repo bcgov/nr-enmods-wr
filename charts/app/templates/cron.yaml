@@ -138,6 +138,8 @@ spec:
                     exit 1
                   fi
 
+                  log INFO "Latest synced folder from database: $LATEST_SYNCED_FOLDER"
+
                   # Compare lexicographically, skip if not newer
                   if [[ "$LATEST_FOLDER" <= "$LATEST_SYNCED_FOLDER" ]]; then
                     log WARN "No new data to sync. Latest folder '$LATEST_FOLDER' is already synced or is older."

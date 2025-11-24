@@ -23,6 +23,7 @@ import { InfoOutlined } from "@mui/icons-material"
 import type AdvanceSearchFormType from "@/interfaces/AdvanceSearchFormType"
 import DownloadReadyDialog from "@/components/search/DownloadReadyDialog"
 import config from "@/config"
+import SyncIcon from '@mui/icons-material/Sync';
 
 type Props = {}
 
@@ -55,6 +56,7 @@ const AdvanceSearch = (props: Props) => {
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null)
   const [isPolling, setIsPolling] = useState(false)
   const [params, setParams] = useState<any>("")
+  const [lastSyncTime, setLastSyncTime] = useState(null)
 
   const [formData, setFormData] = useState<AdvanceSearchFormType>({
     observationIds: [],
@@ -144,6 +146,19 @@ const AdvanceSearch = (props: Props) => {
     setParams(encodeURI(url))
   }, [formData])
 
+  useEffect(() => {
+        // Fetch last sync time from the server
+        const fetchLastSyncTime = async () => {
+          try {
+            const response = await apiService.getAxiosInstance().get(`${API_VERSION}/s3-sync-log/last-sync-time`);
+            setLastSyncTime(response.data);
+          } catch (error) {
+            console.error("Error fetching last sync time:", error);
+          }
+        }
+        fetchLastSyncTime();
+      }, [])
+
   const dropdowns = {
     location: {
       locationTypes: locationTypes,
@@ -167,6 +182,11 @@ const AdvanceSearch = (props: Props) => {
       dataClassifications: dataClassifications,
     },
   }
+
+  // Format sync time for Pacific Time
+  const formattedSyncTime = lastSyncTime
+    ? new Date(lastSyncTime).toLocaleString('en-US', { timeZone: 'America/Los_Angeles' })
+    : '';
 
   const pollStatus = async (jobId: string) => {
     setIsPolling(true)
@@ -501,6 +521,12 @@ const AdvanceSearch = (props: Props) => {
         >
           Advanced
         </Link>
+
+        <div className="ml-auto text-sm italic text-gray-600 self-center">
+          <SyncIcon sx={{ mr: 1, fontSize: '1rem' }} />
+          Last Synced: {formattedSyncTime} (PST)
+        </div>
+
         <DownloadReadyDialog
           open={!!downloadUrl}
           downloadUrl={downloadUrl}

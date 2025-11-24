@@ -1,5 +1,4 @@
 import { Divider, List, ListItemButton, ListItemText } from "@mui/material";
-import SyncIcon from '@mui/icons-material/Sync';
 import { NavLink } from "react-router-dom";
 import { Home, Search } from "@mui/icons-material";
 
@@ -18,16 +17,6 @@ const sidebar = ({ handleClickNavMenu, sidebarMessage }) => {
               <ListItemButton component={NavLink} to={item.link} sx={{display: "flex", gap: ".5rem"}}>
                 <span>{item.icon}</span> <ListItemText primary={item.name} />
               </ListItemButton>
-              {/* Show the sidebarMessage only under the Search option */}
-              {item.name === "Search" && sidebarMessage && (
-                <>
-                  <Divider sx={{ my: 1 }} />
-                  <div style={{ display: 'flex', alignItems: 'center', marginTop: 8, marginBottom: 8, fontWeight: 'bold', color: '#1976d2' }}>
-                    <SyncIcon sx={{ mr: 1 }} />
-                    <span style={{ fontSize: '0.82em' }}>{sidebarMessage}</span>
-                  </div>
-                </>
-              )}
               <Divider/>
             </div>
           ))}
@@ -44,13 +33,6 @@ const sidebar = ({ handleClickNavMenu, sidebarMessage }) => {
               >
                 {item.icon} <ListItemText primary={item.name} />
               </ListItemButton>
-              {/* Show the sidebarMessage only under the Search option */}
-              {item.name === "Search" && sidebarMessage && (
-                <div style={{ display: 'flex', alignItems: 'center', marginTop: 8, marginBottom: 8, fontWeight: 'bold', color: '#1976d2' }}>
-                  <SyncIcon sx={{ mr: 1 }} />
-                  <span>{sidebarMessage}</span>
-                </div>
-              )}
             </div>
           ))}
         </List>

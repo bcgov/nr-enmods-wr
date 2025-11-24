@@ -3,7 +3,8 @@
 -- Result: WR queries see a fully indexed OPERATIONAL immediately after swap.
 
 CREATE OR REPLACE FUNCTION run_aqi_table_swap(
-    p_process_name TEXT DEFAULT 'public.AQI_AWS_S3_SYNC'
+    p_process_name TEXT DEFAULT 'public.AQI_AWS_S3_SYNC',
+    p_folder_name   text DEFAULT ''                     -- optional prefix/folder
 )
 RETURNS void
 LANGUAGE plpgsql
@@ -20,13 +21,15 @@ BEGIN
     SELECT id INTO v_log_id
       FROM S3_SYNC_LOG
      WHERE process_name = p_process_name
-       AND status = 'IN_PROGRESS'
+       AND status = 'SUCCESS'
      ORDER BY start_time DESC
      LIMIT 1;
 
+     RAISE NOTICE 'FOUND LOG ID: %', v_log_id;
+
     IF v_log_id IS NULL THEN
-        INSERT INTO S3_SYNC_LOG(process_name, status, start_time)
-        VALUES (p_process_name, 'IN_PROGRESS', now())
+        INSERT INTO S3_SYNC_LOG(process_name, status, start_time, source_folder)
+        VALUES (p_process_name, 'IN_PROGRESS', now(), p_folder_name)
         RETURNING id INTO v_log_id;
     END IF;
 

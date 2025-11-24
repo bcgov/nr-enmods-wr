@@ -11,6 +11,7 @@
 CREATE OR REPLACE FUNCTION run_aqi_s3_load(
     p_bucket        text,                                -- 'my-bucket'
     p_object_keys   text[],                              -- 'aqi/current.csv'
+    p_folder_name   text DEFAULT '',                     -- optional prefix/folder
     p_region        text DEFAULT 'us-east-2',            -- regional S3 endpoint
     p_iam_role_arn  text DEFAULT NULL,                   -- RDS IAM role
     p_access_key    text DEFAULT NULL,                   -- runtime only (from secrets)
@@ -42,13 +43,13 @@ BEGIN
     PERFORM pg_advisory_lock(hashtext(p_process_name));
 
     -- Log start
-    INSERT INTO S3_SYNC_LOG(process_name, status, start_time)
-    VALUES (p_process_name, 'IN_PROGRESS', now())
+    RAISE NOTICE 'Added log entry for process %, started at %', p_process_name, now();
+    INSERT INTO S3_SYNC_LOG(process_name, status, start_time, source_folder)
+    VALUES (p_process_name, 'IN_PROGRESS', now(), p_folder_name)
     RETURNING id INTO v_log_id;
 
     -- Start clean
     TRUNCATE TABLE public.aqi_csv_import_staging;
-
 
     RAISE NOTICE 'Beginning S3 load for % keys...', array_length(p_object_keys, 1);
     RAISE NOTICE 'Keys: %', array_to_string(p_object_keys, ', ');

@@ -65,28 +65,60 @@ spec:
                       key: AWS_SECRET_ACCESS_KEY
               args:
                 - /bin/bash
-                - '-c'
+                - "-c"
                 - |
-                  echo "Starting AQI weekly sync job..."
+                  set -e
+                  trap 'catch $? $LINENO' ERR
 
-                  echo "Getting latest directory (prefix) from S3..."
-                  FOLDERS=$(aws s3api list-objects-v2 --bucket "$S3_BUCKET" --prefix "$S3_BUCKET_PATH" --delimiter '/' --query "CommonPrefixes[].Prefix" --output text)
+                  # Logging function with timestamp and color
+                  log() {
+                    local type="$1"; shift
+                    local color_reset="\033[0m"
+                    local color_info="\033[1;36m"
+                    local color_warn="\033[1;33m"
+                    local color_error="\033[1;31m"
+                    local ts="$(date '+%Y-%m-%d %H:%M:%S')"
+                    case "$type" in
+                      INFO) echo -e "${color_info}[INFO $ts] $*${color_reset}" ;;
+                      WARN) echo -e "${color_warn}[WARN $ts] $*${color_reset}" ;;
+                      ERROR) echo -e "${color_error}[ERROR $ts] $*${color_reset}" ;;
+                      *) echo "[LOG $ts] $*" ;;
+                    esac
+                  }
+
+                  catch() {
+                    local exit_code=$1
+                    local line_no=$2
+                    log ERROR "Script failed with exit code $exit_code at line $line_no."
+                    exit $exit_code
+                  }
+
+                  log INFO "Starting AQI weekly sync job..."
+
+                  log INFO "Getting latest directory (prefix) from S3..."
+                  if ! FOLDERS=$(aws s3api list-objects-v2 --bucket "$S3_BUCKET" --prefix "$S3_BUCKET_PATH" --delimiter '/' --query "CommonPrefixes[].Prefix" --output text); then
+                    log ERROR "Failed to list objects in S3 bucket $S3_BUCKET with prefix $S3_BUCKET_PATH"
+                    exit 1
+                  fi
                   read -r -a folderList <<< "$FOLDERS"
 
                   LATEST_FOLDER=$(printf "%s\n" "${folderList[@]}" | sort | tail -n 1)
 
                   if [ -z "$LATEST_FOLDER" ]; then
-                    echo "ERROR: No directories found under prefix $S3_BUCKET_PATH"
+                    log ERROR "No directories found under prefix $S3_BUCKET_PATH"
                     exit 1
                   fi
 
-                  echo "Latest directory (prefix) is: $LATEST_FOLDER"
-                  echo "Listing .csv.gz files inside the directory..."
+                  log INFO "Latest directory (prefix) is: $LATEST_FOLDER"
+                  log INFO "Listing .csv.gz files inside the directory..."
 
-                  FILES=$(aws s3api list-objects-v2 --bucket "$S3_BUCKET" --prefix "$LATEST_FOLDER" --query "Contents[?ends_with(Key, '.csv.gz')].Key" --output text)
+                  if ! FILES=$(aws s3api list-objects-v2 --bucket "$S3_BUCKET" --prefix "$LATEST_FOLDER" --query "Contents[?ends_with(Key, '.csv.gz')].Key" --output text); then
+                    log ERROR "Failed to list .csv.gz files in $LATEST_FOLDER"
+                    exit 1
+                  fi
 
                   if [ -z "$FILES" ]; then
-                    echo "ERROR: No .csv.gz files found in $LATEST_FOLDER"
+                    log ERROR "No .csv.gz files found in $LATEST_FOLDER"
                     exit 1
                   fi
 
@@ -95,30 +127,56 @@ spec:
                   # Convert into array safely
                   mapfile -t gzFilesList <<< "$normalized"
 
-                  echo "Files after read:"
+                  log INFO "Files after read:"
                   printf '%s\n' "${gzFilesList[@]}"
-
-                  # Build SQL array
-                  S3_KEY_ARRAY=$(
-                    for key in "${gzFilesList[@]}"; do
-                      safe_key=${key//\'/\'\'}
-                      printf "'%s'," "$safe_key"
-                    done | sed 's/,$//'
-                  )
-
-                  echo "[INFO $(date '+%Y-%m-%d %H:%M:%S')] Final SQL Array: ARRAY[$S3_KEY_ARRAY]"
                   echo
 
+                  log INFO "Getting latest synced folder from database..."
                   export DATABASE_URL="postgresql://$POSTGRES_USER:$POSTGRES_PASSWORD@$POSTGRES_HOST/$POSTGRES_DBNAME"
+                  if ! LATEST_SYNCED_FOLDER=$(psql "$DATABASE_URL" -t -c "SELECT source_folder from S3_SYNC_LOG WHERE status='SUCCESS' AND source_folder IS NOT NULL ORDER BY start_time DESC LIMIT 1;" | tr -d '[:space:]'); then
+                    log ERROR "Failed to fetch latest synced folder from database."
+                    exit 1
+                  fi
 
-                  echo "Running load from S3..."
-                  psql "$DATABASE_URL" \
-                    -c "SELECT run_aqi_s3_load('$S3_BUCKET', ARRAY[$S3_KEY_ARRAY]::text[], '$S3_REGION', NULL, '$AWS_ACCESS_KEY_ID', '$AWS_SECRET_ACCESS_KEY', '$AWS_SESSION_TOKEN');"
+                  # Compare lexicographically, skip if not newer
+                  if [[ "$LATEST_FOLDER" <= "$LATEST_SYNCED_FOLDER" ]]; then
+                    log WARN "No new data to sync. Latest folder '$LATEST_FOLDER' is already synced or is older."
+                    if ! psql "$DATABASE_URL" \
+                      -c "INSERT INTO S3_SYNC_LOG (process_name, status, error_message, source_folder, start_time, finish_time) VALUES ('AQI_AWS_S3_SYNC', 'SKIPPED_NO_CHANGE', 'No new data to sync. Latest folder $LATEST_FOLDER is already synced.', '$LATEST_FOLDER', now(), now());"; then
+                      log ERROR "Failed to log SKIPPED_NO_CHANGE status to S3_SYNC_LOG."
+                      exit 1
+                    fi
+                    exit 0
+                  else
+                    log INFO "New data found. Proceeding with sync for folder '$LATEST_FOLDER'."
+                    # Build SQL array
+                    S3_KEY_ARRAY=$(
+                      for key in "${gzFilesList[@]}"; do
+                        safe_key=${key//\'/\'\'}
+                        printf "'%s'," "$safe_key"
+                      done | sed 's/,$//'
+                    )
 
-                  echo "Load from S3 completed."
-                  echo "Running table swap..."
-                  psql "$DATABASE_URL" \
-                    -c "SELECT run_aqi_table_swap('AQI_AWS_S3_SYNC');"
-                  echo "Table swap completed."
-                  echo "AQI hourly sync completed."
+                    log INFO "Final SQL Array: ARRAY[$S3_KEY_ARRAY]"
+                    echo
+
+                    export DATABASE_URL="postgresql://$POSTGRES_USER:$POSTGRES_PASSWORD@$POSTGRES_HOST/$POSTGRES_DBNAME"
+
+                    log INFO "Running load from S3..."
+                    if ! psql "$DATABASE_URL" \
+                      -c "SELECT run_aqi_s3_load('$S3_BUCKET', ARRAY[$S3_KEY_ARRAY]::text[], '$LATEST_FOLDER' ,'$S3_REGION', NULL, '$AWS_ACCESS_KEY_ID', '$AWS_SECRET_ACCESS_KEY', '$AWS_SESSION_TOKEN');"; then
+                      log ERROR "Loader failed!"
+                      exit 1
+                    fi
+
+                    log INFO "Load from S3 completed."
+                    log INFO "Running table swap..."
+                    if ! psql "$DATABASE_URL" \
+                      -c "SELECT run_aqi_table_swap('AQI_AWS_S3_SYNC', '$LATEST_FOLDER');"; then
+                      log ERROR "Table swap failed!"
+                      exit 1
+                    fi
+                    log INFO "Table swap completed."
+                    log INFO "AQI hourly sync completed."
+                  fi
           restartPolicy: OnFailure

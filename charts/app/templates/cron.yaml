@@ -131,27 +131,29 @@ spec:
                   printf '%s\n' "${gzFilesList[@]}"
                   echo
 
+                  # Get the latest synced folder name from database
                   log INFO "Getting latest synced folder from database..."
                   export DATABASE_URL="postgresql://$POSTGRES_USER:$POSTGRES_PASSWORD@$POSTGRES_HOST/$POSTGRES_DBNAME"
-                  if ! LATEST_SYNCED_FOLDER=$(psql "$DATABASE_URL" -t -c "SELECT source_folder from S3_SYNC_LOG WHERE status='SUCCESS' AND source_folder IS NOT NULL ORDER BY start_time DESC LIMIT 1;" | tr -d '[:space:]'); then
-                    log ERROR "Failed to fetch latest synced folder from database."
+                  LATEST_SYNCED_FOLDER=$(psql "$DATABASE_URL" -t -A -c "
+                    SELECT source_folder 
+                    FROM S3_SYNC_LOG 
+                    WHERE status='SUCCESS' AND source_folder IS NOT NULL 
+                    ORDER BY start_time DESC 
+                    LIMIT 1;
+                  ") || {
+                    log ERROR "Failed to get latest synced folder from database."
                     exit 1
-                  fi
+                  }
 
-                  log INFO "Latest synced folder from database: $LATEST_SYNCED_FOLDER"
+                  # Trim whitespace
+                  LATEST_SYNCED_FOLDER=$(echo "$LATEST_SYNCED_FOLDER" | xargs)
 
-                  # Compare lexicographically, skip if not newer
-                  if [[ "$LATEST_FOLDER" <= "$LATEST_SYNCED_FOLDER" ]]; then
-                    log WARN "No new data to sync. Latest folder '$LATEST_FOLDER' is already synced or is older."
-                    if ! psql "$DATABASE_URL" \
-                      -c "INSERT INTO S3_SYNC_LOG (process_name, status, error_message, source_folder, start_time, finish_time) VALUES ('AQI_AWS_S3_SYNC', 'SKIPPED_NO_CHANGE', 'No new data to sync. Latest folder $LATEST_FOLDER is already synced.', '$LATEST_FOLDER', now(), now());"; then
-                      log ERROR "Failed to log SKIPPED_NO_CHANGE status to S3_SYNC_LOG."
-                      exit 1
-                    fi
-                    exit 0
-                  else
-                    log INFO "New data found. Proceeding with sync for folder '$LATEST_FOLDER'."
+                  # Now safely compare
+                  if [[ -z "$LATEST_SYNCED_FOLDER" ]]; then
+                    log INFO "No previous synced folder found (first sync). Proceeding with folder '$LATEST_FOLDER'."
+                    
                     # Build SQL array
+                    log INFO "Preparing S3 key array for SQL insertion..."
                     S3_KEY_ARRAY=$(
                       for key in "${gzFilesList[@]}"; do
                         safe_key=${key//\'/\'\'}
@@ -160,25 +162,55 @@ spec:
                     )
 
                     log INFO "Final SQL Array: ARRAY[$S3_KEY_ARRAY]"
-                    echo
-
-                    export DATABASE_URL="postgresql://$POSTGRES_USER:$POSTGRES_PASSWORD@$POSTGRES_HOST/$POSTGRES_DBNAME"
-
                     log INFO "Running load from S3..."
                     if ! psql "$DATABASE_URL" \
                       -c "SELECT run_aqi_s3_load('$S3_BUCKET', ARRAY[$S3_KEY_ARRAY]::text[], '$LATEST_FOLDER' ,'$S3_REGION', NULL, '$AWS_ACCESS_KEY_ID', '$AWS_SECRET_ACCESS_KEY', '$AWS_SESSION_TOKEN');"; then
-                      log ERROR "Loader failed!"
+                      log ERROR "Function run_aqi_s3_load failed!"
                       exit 1
                     fi
 
-                    log INFO "Load from S3 completed."
+                    log INFO "Data load from S3 completed successfully."
                     log INFO "Running table swap..."
                     if ! psql "$DATABASE_URL" \
                       -c "SELECT run_aqi_table_swap('AQI_AWS_S3_SYNC', '$LATEST_FOLDER');"; then
-                      log ERROR "Table swap failed!"
+                      log ERROR "Function run_aqi_table_swap failed!"
                       exit 1
                     fi
-                    log INFO "Table swap completed."
-                    log INFO "AQI hourly sync completed."
+
+                  elif [[ "$LATEST_FOLDER" < "$LATEST_SYNCED_FOLDER" || "$LATEST_FOLDER" == "$LATEST_SYNCED_FOLDER" ]]; then
+                    log WARN "No new data to sync. Latest folder '$LATEST_FOLDER' is already synced or is older."
+                    psql "$DATABASE_URL" \
+                      -c "INSERT INTO S3_SYNC_LOG (process_name, status, error_message, source_folder, start_time, finish_time) VALUES ('AQI_AWS_S3_SYNC', 'SKIPPED_NO_CHANGE', 'No new data to sync. Latest folder $LATEST_FOLDER is already synced.', '$LATEST_FOLDER', now(), now());"
+                  else
+                    log INFO "New data found. Proceeding with sync for folder '$LATEST_FOLDER'."
+                    
+                    # Build SQL array
+                    log INFO "Preparing S3 key array for SQL insertion..."
+                    S3_KEY_ARRAY=$(
+                      for key in "${gzFilesList[@]}"; do
+                        safe_key=${key//\'/\'\'}
+                        printf "'%s'," "$safe_key"
+                      done | sed 's/,$//'
+                    )
+
+                    log INFO "Final SQL Array: ARRAY[$S3_KEY_ARRAY]"
+                    log INFO "Running load from S3..."
+                    if ! psql "$DATABASE_URL" \
+                      -c "SELECT run_aqi_s3_load('$S3_BUCKET', ARRAY[$S3_KEY_ARRAY]::text[], '$LATEST_FOLDER' ,'$S3_REGION', NULL, '$AWS_ACCESS_KEY_ID', '$AWS_SECRET_ACCESS_KEY', '$AWS_SESSION_TOKEN');"; then
+                      log ERROR "Function run_aqi_s3_load failed!"
+                      exit 1
+                    fi
+
+                    log INFO "Data load from S3 completed successfully."
+                    log INFO "Running table swap..."
+                    if ! psql "$DATABASE_URL" \
+                      -c "SELECT run_aqi_table_swap('AQI_AWS_S3_SYNC', '$LATEST_FOLDER');"; then
+                      log ERROR "Function run_aqi_table_swap failed!"
+                      exit 1
+                    fi
+
                   fi
+
+                  log INFO "Table swap completed."
+                  log INFO "AQI hourly sync completed."
           restartPolicy: OnFailure

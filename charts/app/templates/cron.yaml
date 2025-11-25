@@ -2,7 +2,7 @@ apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: aqi-weekly-sync
-  namespace: d23a53-dev
+  namespace: "{{ .Release.Namespace }}"
 spec:
   schedule: "0 23 * * 1" #change this to every saturday at midnight
   successfulJobsHistoryLimit: 2
@@ -13,7 +13,7 @@ spec:
         spec:
           containers:
             - name: db-sync
-              image: ghcr.io/bcgov/nr-enmods-wr/custom-postgres-with-aws:101
+              image: "{{.Values.global.registry}}/{{.Values.global.repository}}/custom-postgres-with-aws:{{ .Values.global.tag | default .Chart.AppVersion }}"
               env:
                 # Database credentials from openshift secrets
                 - name: POSTGRES_HOST
@@ -183,7 +183,7 @@ spec:
                       -c "INSERT INTO S3_SYNC_LOG (process_name, status, error_message, source_folder, start_time, finish_time) VALUES ('AQI_AWS_S3_SYNC', 'SKIPPED_NO_CHANGE', 'No new data to sync. Latest folder $LATEST_FOLDER is already synced.', '$LATEST_FOLDER', now(), now());"
                   else
                     log INFO "New data found. Proceeding with sync for folder '$LATEST_FOLDER'."
-                    
+
                     # Build SQL array
                     log INFO "Preparing S3 key array for SQL insertion..."
                     S3_KEY_ARRAY=$(

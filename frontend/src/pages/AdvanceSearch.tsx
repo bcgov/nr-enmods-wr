@@ -523,7 +523,7 @@ const AdvanceSearch = (props: Props) => {
         </Link>
 
         <div className="ml-auto text-sm italic text-gray-600 self-center">
-          <SyncIcon sx={{ mr: 1, fontSize: '1rem' }} />
+          <SyncIcon sx={{ mr: 1, fontSize: '1rem' }} /> 
           Last Synced: {formattedSyncTime} (PST)
         </div>
 

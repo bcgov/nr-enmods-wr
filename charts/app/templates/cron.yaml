@@ -2,7 +2,7 @@ apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: aqi-weekly-sync
-  namespace: { { .Release.Namespace } }
+  namespace: "{{ .Release.Namespace }}"
 spec:
   schedule: "0 23 * * 1" #change this to every saturday at midnight
   successfulJobsHistoryLimit: 2

@@ -2,7 +2,7 @@ apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: aqi-weekly-sync
-  namespace: d23a53-dev
+  namespace: { { .Release.Namespace } }
 spec:
   schedule: "0 23 * * 1" #change this to every saturday at midnight
   successfulJobsHistoryLimit: 2
@@ -13,7 +13,7 @@ spec:
         spec:
           containers:
             - name: db-sync
-              image: ghcr.io/bcgov/nr-enmods-wr/custom-postgres-with-aws:101
+              image: "{{.Values.global.registry}}/{{.Values.global.repository}}/custom-postgres-with-aws:{{ .Values.global.tag | default .Chart.AppVersion }}"
               env:
                 # Database credentials from openshift secrets
                 - name: POSTGRES_HOST

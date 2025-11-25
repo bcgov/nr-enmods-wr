@@ -38,13 +38,11 @@ export default function AdditionalCriteria(props: any) {
 
   return (
     <div>
-     
-      <div className="py-4">        
+      <div className="py-4">
         <div className="flex flex-col lg:flex-row gap-4 justify-between px-4 pb-4">
           <div className="flex items-center">
             <Autocomplete
               multiple
-              
               value={formData?.collectionMethod}
               getOptionKey={(option) => option.id}
               options={additionalCriteriaDrpdwns.collectionMethods}
@@ -66,7 +64,6 @@ export default function AdditionalCriteria(props: any) {
           <div className="flex items-center">
             <Autocomplete
               multiple
-             
               value={formData?.qcSampleType}
               getOptionKey={(option) => option.id}
               options={additionalCriteriaDrpdwns.qcSampleTypes}
@@ -91,7 +88,6 @@ export default function AdditionalCriteria(props: any) {
           <div className="flex items-center">
             <Autocomplete
               multiple
-              
               value={formData?.dataClassification}
               getOptionKey={(option) => option.id}
               options={additionalCriteriaDrpdwns.dataClassifications}
@@ -141,7 +137,6 @@ export default function AdditionalCriteria(props: any) {
             <TooltipInfo title="Specimen ID" />
           </div>
         </div>
-        
       </div>
     </div>
   )

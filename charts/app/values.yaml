@@ -165,7 +165,7 @@ bitnami-pg:
   image:
     registry: ghcr.io
     repository: bcgov/nr-enmods-wr/custom-postgres-with-aws
-    tag: 104
+    tag: 107
   auth:
     existingSecret: "{{ .Release.Name }}-database"
     username: "enmodswr"
@@ -186,7 +186,7 @@ bitnami-pg:
       storageClass: netapp-block-standard
       accessModes:
         - ReadWriteOnce
-      size: 38Gi
+      size: 10Gi
     containerSecurityContext:
       enabled: false
     podSecurityContext:

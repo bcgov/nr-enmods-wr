@@ -1,6 +1,7 @@
 export enum SearchAttr {
   LocationType = "locationType",
   LocationName = "locationName",
+  LocationId = "locationId",
   LocationGroup = "locationGroup",
   PermitNo = "permitNumber",
   Media = "media",

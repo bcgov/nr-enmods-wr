@@ -23,6 +23,7 @@ import { InfoOutlined } from "@mui/icons-material"
 import type AdvanceSearchFormType from "@/interfaces/AdvanceSearchFormType"
 import DownloadReadyDialog from "@/components/search/DownloadReadyDialog"
 import config from "@/config"
+import SyncIcon from '@mui/icons-material/Sync';
 
 type Props = {}
 
@@ -52,10 +53,10 @@ const AdvanceSearch = (props: Props) => {
   const [collectionMethods, setCollectionMethods] = useState([])
   const [qcSampleTypes, setQcSampleTypes] = useState([])
   const [dataClassifications, setDataClassifications] = useState([])
-  const [units, setUnits] = useState([])
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null)
   const [isPolling, setIsPolling] = useState(false)
   const [params, setParams] = useState<any>("")
+  const [lastSyncTime, setLastSyncTime] = useState(null)
 
   const [formData, setFormData] = useState<AdvanceSearchFormType>({
     observationIds: [],
@@ -96,11 +97,8 @@ const AdvanceSearch = (props: Props) => {
       getDropdownOptions(SearchAttr.AnalyzingAgency, ""),
       getDropdownOptions(SearchAttr.AnalyticalMethod, ""),
       getDropdownOptions(SearchAttr.CollectionMethod, ""),
-      getDropdownOptions(SearchAttr.Units, ""),
       getDropdownOptions(SearchAttr.QcSampleType, ""),
       getDropdownOptions(SearchAttr.DataClassification, ""),
-      // getDropdownOptions(SearchAttr.SampleDepth, ""),
-      // getDropdownOptions(SearchAttr.SpecimenId, ""),
     ]).finally(() => setIsApiLoading(false))
   }, [])
 
@@ -148,6 +146,19 @@ const AdvanceSearch = (props: Props) => {
     setParams(encodeURI(url))
   }, [formData])
 
+  useEffect(() => {
+        // Fetch last sync time from the server
+        const fetchLastSyncTime = async () => {
+          try {
+            const response = await apiService.getAxiosInstance().get(`${API_VERSION}/s3-sync-log/last-sync-time`);
+            setLastSyncTime(response.data);
+          } catch (error) {
+            console.error("Error fetching last sync time:", error);
+          }
+        }
+        fetchLastSyncTime();
+      }, [])
+
   const dropdowns = {
     location: {
       locationTypes: locationTypes,
@@ -171,6 +182,11 @@ const AdvanceSearch = (props: Props) => {
       dataClassifications: dataClassifications,
     },
   }
+
+  // Format sync time for Pacific Time
+  const formattedSyncTime = lastSyncTime
+    ? new Date(lastSyncTime).toLocaleString('en-US', { timeZone: 'America/Los_Angeles' })
+    : '';
 
   const pollStatus = async (jobId: string) => {
     setIsPolling(true)
@@ -210,39 +226,33 @@ const AdvanceSearch = (props: Props) => {
     if (fieldName) {
       switch (fieldName) {
         case SearchAttr.ObservedPropertyGrp:
-          return `${API_VERSION}/search/getObservedPropertyGroups?search=${query}`
+          return `${API_VERSION}/search/getObservedPropertyGroups`
         case SearchAttr.Media:
-          return `${API_VERSION}/search/getMediums?search=${query}`
+          return `${API_VERSION}/search/getMediums`
         case SearchAttr.PermitNo:
-          return `${API_VERSION}/search/getPermitNumbers?search=${query}`
+          return `${API_VERSION}/search/getLocationGroups`
         case SearchAttr.LocationName:
-          return `${API_VERSION}/search/getLocationNames?search=${query}`
+          return `${API_VERSION}/search/getLocationNames`
         case SearchAttr.LocationType:
           return `${API_VERSION}/search/getLocationTypes`
         case SearchAttr.Projects:
-          return `${API_VERSION}/search/getProjects?search=${query}`
+          return `${API_VERSION}/search/getProjects`
         case SearchAttr.AnalyticalMethod:
-          return `${API_VERSION}/search/getAnalyticalMethods?search=${query}`
+          return `${API_VERSION}/search/getAnalyticalMethods`
         case SearchAttr.AnalyzingAgency:
-          return `${API_VERSION}/search/getAnalyzingAgencies?search=${query}`
+          return `${API_VERSION}/search/getAnalyzingAgencies`
         case SearchAttr.ObservedProperty:
-          return `${API_VERSION}/search/getObservedProperties?search=${query}`
+          return `${API_VERSION}/search/getObservedProperties`
         case SearchAttr.WorkedOrderNo:
-          return `${API_VERSION}/search/getWorkedOrderNos?search=${query}`
+          return `${API_VERSION}/search/getWorkedOrderNos`
         case SearchAttr.SamplingAgency:
-          return `${API_VERSION}/search/getSamplingAgencies?search=${query}`
+          return `${API_VERSION}/search/getSamplingAgencies`
         case SearchAttr.CollectionMethod:
-          return `${API_VERSION}/search/getCollectionMethods?search=${query}`
-        case SearchAttr.Units:
-          return `${API_VERSION}/search/getUnits?search=${query}`
+          return `${API_VERSION}/search/getCollectionMethods`
         case SearchAttr.QcSampleType:
-          return `${API_VERSION}/search/getQcSampleTypes?search=${query}`
+          return `${API_VERSION}/search/getQcSampleTypes`
         case SearchAttr.DataClassification:
-          return `${API_VERSION}/search/getDataClassifications?search=${query}`
-        // case SearchAttr.SampleDepth:
-        //   return `${API_VERSION}/search/getSampleDepths?search=${query}`
-        // case SearchAttr.SpecimenId:
-        //   return `${API_VERSION}/search/getSpecimenIds?search=${query}`
+          return `${API_VERSION}/search/getDataClassifications`
         default:
           break
       }
@@ -304,21 +314,12 @@ const AdvanceSearch = (props: Props) => {
             case SearchAttr.CollectionMethod:
               setCollectionMethods(response)
               break
-            case SearchAttr.Units:
-              setUnits(response)
-              break
             case SearchAttr.QcSampleType:
               setQcSampleTypes(response)
               break
             case SearchAttr.DataClassification:
               setDataClassifications(response)
               break
-            // case SearchAttr.SampleDepth:
-            //   setSampleDepths(response)
-            //   break
-            // case SearchAttr.SpecimenId:
-            //   setSpecimenIds(response)
-            //   break
             default:
               break
           }
@@ -411,9 +412,6 @@ const AdvanceSearch = (props: Props) => {
       case SearchAttr.AnalyticalMethod:
         await getDropdownOptions(SearchAttr.AnalyticalMethod, query)
         break
-      // case SearchAttr.SpecimenId:
-      //   await getDropdownOptions(SearchAttr.SpecimenId, query)
-      //   break
       default:
         break
     }
@@ -485,7 +483,8 @@ const AdvanceSearch = (props: Props) => {
           if (key === SearchAttr.DataClassification)
             arr.push(item.data_classification)
           else if (key === SearchAttr.QcSampleType) arr.push(item.qc_type)
-          else arr.push(item.id)
+          else if (key === SearchAttr.ObservedPropertyGrp) arr.push(item.name)
+          else arr.push(item.id || item.name || item.customId)
         })
 
         data[key] = arr
@@ -522,6 +521,12 @@ const AdvanceSearch = (props: Props) => {
         >
           Advanced
         </Link>
+
+        <div className="ml-auto text-sm italic text-gray-600 self-center">
+          <SyncIcon sx={{ mr: 1, fontSize: '1rem' }} />
+          Last Synced: {formattedSyncTime} (PST)
+        </div>
+
         <DownloadReadyDialog
           open={!!downloadUrl}
           downloadUrl={downloadUrl}

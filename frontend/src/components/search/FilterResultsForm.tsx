@@ -3,7 +3,7 @@ import TitleText from "../TitleText"
 import TooltipInfo from "../TooltipInfo"
 import { Autocomplete, TextField } from "@mui/material"
 import "react-datepicker/dist/react-datepicker.css"
-import { forwardRef } from "react"
+import { forwardRef, useEffect } from "react"
 import { SearchAttr } from "@/enum/searchEnum"
 
 export default function FilterResultsForm(props: any) {
@@ -99,9 +99,9 @@ export default function FilterResultsForm(props: any) {
             <Autocomplete
               multiple
               value={formData?.media}
-              getOptionKey={(option) => option.id}
+              getOptionKey={(option) => option.customId}
               options={filterResultDrpdwns.mediums}
-              isOptionEqualToValue={(option, value) => option.id === value.id}
+              isOptionEqualToValue={(option, value) => option.customId === value.customId}
               getOptionLabel={(option) => option.customId || ""}
               onInputChange={(e, val) =>
                 handleInputChange(e, val, SearchAttr.Media)

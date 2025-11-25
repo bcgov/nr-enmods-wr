@@ -66,17 +66,19 @@ export default function LocationParametersForm(props: any) {
         <div className="flex items-center py-4">
           <Autocomplete
             multiple
-            value={formData?.permitNumber}
-            getOptionKey={(option) => option.id}
+            value={formData?.permitNumber || null}
+            getOptionKey={(option) => option.name}
             options={locationDropdwns.permitNumbers}
             isOptionEqualToValue={(option, selectedValue) =>
-              option.id === selectedValue.id
+              option.name === selectedValue.name
             }
-            getOptionLabel={(option) => option.name || ""}
+            getOptionLabel={(option) => option?.name || ""}
             onInputChange={(e, val) =>
               handleInputChange(e, val, SearchAttr.PermitNo)
             }
-            onChange={(e, val) => handleOnChange(e, val, SearchAttr.PermitNo)}
+            onChange={(e, val) =>
+              handleOnChange(e, val, SearchAttr.PermitNo)
+            }
             sx={{ width: 380 }}
             renderInput={(params) => (
               <TextField {...params} label="Permit ID or Location Group" />
@@ -94,7 +96,7 @@ export default function LocationParametersForm(props: any) {
             isOptionEqualToValue={(option, selectedValue) =>
               option.id === selectedValue.id
             }
-            getOptionLabel={(option) => option?.customId || ""}
+            getOptionLabel={(option) => option?.id || ""}
             onInputChange={(e, val) =>
               handleInputChange(e, val, SearchAttr.LocationName)
             }

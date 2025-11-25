@@ -16,6 +16,7 @@ import Loading from "@/components/Loading"
 import LoadingSpinner from "../components/LoadingSpinner"
 import config from "@/config"
 import DownloadReadyDialog from "@/components/search/DownloadReadyDialog"
+import SyncIcon from '@mui/icons-material/Sync';
 
 const BasicSearch = () => {
   const apiBase = config.API_BASE_URL
@@ -36,6 +37,7 @@ const BasicSearch = () => {
   const [isLoading, setIsLoading] = useState(false)
   const [isApiLoading, setIsApiLoading] = useState(false)
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null)
+  const [lastSyncTime, setLastSyncTime] = useState(null)
 
   const [formData, setFormData] = useState<BasicSearchFormType>({
     locationType: null,
@@ -49,21 +51,21 @@ const BasicSearch = () => {
     fileFormat: null,
   })
 
-  const dropdwnUrl = (fieldName: string, query: string): string | undefined => {
+  const dropdwnUrl = (fieldName: string): string | undefined => {
     if (fieldName) {
       switch (fieldName) {
         case SearchAttr.ObservedPropertyGrp:
-          return `${API_VERSION}/search/getObservedPropertyGroups?search=${query}`
+          return `${API_VERSION}/search/getObservedPropertyGroups`
         case SearchAttr.Media:
-          return `${API_VERSION}/search/getMediums?search=${query}`
+          return `${API_VERSION}/search/getMediums`
         case SearchAttr.PermitNo:
-          return `${API_VERSION}/search/getPermitNumbers?search=${query}`
+          return `${API_VERSION}/search/getLocationGroups`
         case SearchAttr.LocationName:
-          return `${API_VERSION}/search/getLocationNames?search=${query}`
+          return `${API_VERSION}/search/getLocationNames`
         case SearchAttr.LocationType:
           return `${API_VERSION}/search/getLocationTypes`
         case SearchAttr.Projects:
-          return `${API_VERSION}/search/getProjects?search=${query}`
+          return `${API_VERSION}/search/getProjects`
         default:
           break
       }
@@ -104,7 +106,7 @@ const BasicSearch = () => {
   ): Promise<void> => {
     try {
       setIsApiLoading(true)
-      const url = dropdwnUrl(fieldName, query)
+      const url = dropdwnUrl(fieldName)
       if (url) {
         const apiData = await apiService.getAxiosInstance().get(url)
 
@@ -158,6 +160,19 @@ const BasicSearch = () => {
       getDropdownOptions(SearchAttr.Projects, ""),
     ]).finally(() => setIsApiLoading(false))
   }, [])
+
+  useEffect(() => {
+      // Fetch last sync time from the server
+      const fetchLastSyncTime = async () => {
+        try {
+          const response = await apiService.getAxiosInstance().get(`${API_VERSION}/s3-sync-log/last-sync-time`);
+          setLastSyncTime(response.data);
+        } catch (error) {
+          console.error("Error fetching last sync time:", error);
+        }
+      }
+      fetchLastSyncTime();
+    }, [])
 
   const handleOnChange = (
     e: React.ChangeEventHandler,
@@ -278,7 +293,10 @@ const BasicSearch = () => {
       const arr: string[] = []
       if (Array.isArray(formData[key])) {
         formData[key].forEach((item) => {
-          arr.push(item.id)
+          if (key === SearchAttr.ObservedPropertyGrp)
+            arr.push(item.name)
+          else
+            arr.push(item.id || item.name || item.customId)
         })
         data[key] = arr
       } else if (key === "fromDate" || key === "toDate") {
@@ -307,6 +325,11 @@ const BasicSearch = () => {
     },
   }
 
+  // Format sync time for Pacific Time
+  const formattedSyncTime = lastSyncTime
+    ? new Date(lastSyncTime).toLocaleString('en-US', { timeZone: 'America/Los_Angeles' })
+    : '';
+
   return (
     <div className="p-3">
       <LoadingSpinner isLoading={isApiLoading} />
@@ -326,6 +349,12 @@ const BasicSearch = () => {
         >
           Advanced
         </Link>
+
+        <div className="ml-auto text-sm italic text-gray-600 self-center">
+          <SyncIcon sx={{ mr: 1, fontSize: '1rem' }} />
+          Last Synced: {formattedSyncTime} (PST)
+        </div>
+
       </div>
       <DownloadReadyDialog
         open={!!downloadUrl}

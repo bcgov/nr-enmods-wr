@@ -53,7 +53,7 @@ export class SearchController {
     const jobId = uuidv4();
     jobs[jobId] = { id: jobId, status: "pending" };
 
-    await this.searchService.runExportJob(params, jobId);
+    await this.searchService.runExport(params, jobId);
   
     const job = jobs[jobId];
     if (!job || job.status !== "complete" || !job.filePath) {
@@ -79,7 +79,9 @@ export class SearchController {
     jobs[jobId] = { id: jobId, status: "pending" };
 
     // Start background job (non-blocking)
-    this.searchService.runExportJob(basicSearchDto, jobId);
+    // this.searchService.runExportJob(basicSearchDto, jobId);
+
+    this.searchService.runExport(basicSearchDto, jobId);
 
     response.status(202).json({ jobId });
   }
@@ -116,98 +118,67 @@ export class SearchController {
   }
 
   @Get("getLocationNames")
-  public getLocacationNames(@Req() req: Request) {
-    const query: any = req.query.search;
-    return this.searchService.getLocationNames(query);
+  public getLocationNames() {
+    return this.searchService.getLocationNames();
   }
 
-  @Get("getPermitNumbers")
-  public getPermitNumbers(@Req() req: Request) {
-    const query: any = req.query.search;
-    return this.searchService.getPermitNumbers(query);
+  @Get("getLocationGroups")
+  public getLocationGroups(@Req() req: Request) {
+    return this.searchService.getLocationGroups();
   }
 
   @Get("getProjects")
-  public getProjects(@Req() req: Request) {
-    const query: any = req.query.search;
-    return this.searchService.getProjects(query);
+  public getProjects() {
+    return this.searchService.getProjects();
   }
 
   @Get("getMediums")
-  public getMediums(@Req() req: Request) {
-    const query: any = req.query.search;
-    return this.searchService.getMediums(query);
+  public getMediums() {
+    return this.searchService.getMediums();
   }
 
   @Get("getObservedPropertyGroups")
-  public getObservedPropertyGroups(@Req() req: Request) {
-    const query: any = req.query.search;
-    return this.searchService.getObservedPropertyGroups(query);
+  public getObservedPropertyGroups() {
+    return this.searchService.getObservedPropertyGroups();
   }
 
   @Get("getAnalyticalMethods")
-  public getAnalyticalMethods(@Req() req: Request) {
-    const query: any = req.query.search;
-    return this.searchService.getAnalyticalMethods(query);
+  public getAnalyticalMethods() {
+    return this.searchService.getAnalyticalMethods();
   }
 
   @Get("getAnalyzingAgencies")
-  public getAnalyzingAgencies(@Req() req: Request) {
-    const query: any = req.query.search;
-    return this.searchService.getAnalyzingAgencies(query);
+  public getAnalyzingAgencies() {
+    return this.searchService.getAnalyzingAgencies();
   }
 
   @Get("getObservedProperties")
-  public getObservedProperties(@Req() req: Request) {
-    const query: any = req.query.search;
-    return this.searchService.getObservedProperties(query);
+  public getObservedProperties() {
+    return this.searchService.getObservedProperties();
   }
 
   @Get("getWorkedOrderNos")
-  public getWorkedOrderNos(@Req() req: Request) {
-    const query: any = req.query.search;
-    return this.searchService.getWorkedOrderNos(query);
+  public getWorkedOrderNos() {
+    return this.searchService.getWorkedOrderNos();
   }
 
   @Get("getSamplingAgencies")
-  public getSamplingAgencies(@Req() req: Request) {
-    const query: any = req.query.search;
-    return this.searchService.getSamplingAgencies(query);
+  public getSamplingAgencies() {
+    return this.searchService.getSamplingAgencies();
   }
 
   @Get("getCollectionMethods")
-  public getCollectionMethods(@Req() req: Request) {
-    const query: any = req.query.search;
-    return this.searchService.getCollectionMethods(query);
-  }
-
-  @Get("getUnits")
-  public getUnits(@Req() req: Request) {
-    const query: any = req.query.search;
-    return this.searchService.getUnits(query);
+  public getCollectionMethods() {
+    return this.searchService.getCollectionMethods();
   }
 
   @Get("getQcSampleTypes")
-  public getQcSampleTypes(@Req() req: Request) {
-    const query: any = req.query.search;
-    return this.searchService.getQcSampleTypes(query);
+  public getQcSampleTypes() {
+    return this.searchService.getQcSampleTypes();
   }
 
   @Get("getDataClassifications")
-  public getDataClassifications(@Req() req: Request) {
-    const query: any = req.query.search;
-    return this.searchService.getDataClassifications(query);
+  public getDataClassifications() {
+    return this.searchService.getDataClassifications();
   }
-
-  // @Get("getSampleDepths")
-  // public getSampleDepths(@Req() req: Request) {
-  //   const query: any = req.query.search;
-  //   return this.searchService.getSampleDepths(query);
-  // }
-
-  // @Get("getSpecimenIds")
-  // public getSpecimenIds(@Req() req: Request) {
-  //   const query: any = req.query.search;
-  //   return this.searchService.getSpecimenIds(query);
-  // }
 }

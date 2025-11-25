@@ -17,6 +17,11 @@ global:
     databaseUser: ~
     databaseName: ~
     persist: true
+    s3Bucket: ~
+    s3BucketPath: ~
+    s3Region: ~
+    awsAccessKeyId: ~
+    awsSecretAccessKey: ~
     #-- backend
     baseUrlBcApi: ~
     observationsExportUrl: ~
@@ -159,8 +164,8 @@ bitnami-pg:
   enabled: true
   image:
     registry: ghcr.io
-    repository: bcgov/nr-containers/bitnami/postgresql
-    tag: 15.10.0
+    repository: bcgov/nr-enmods-wr/custom-postgres-with-aws
+    tag: 104
   auth:
     existingSecret: "{{ .Release.Name }}-database"
     username: "enmodswr"
@@ -181,7 +186,7 @@ bitnami-pg:
       storageClass: netapp-block-standard
       accessModes:
         - ReadWriteOnce
-      size: 3500Mi
+      size: 38Gi
     containerSecurityContext:
       enabled: false
     podSecurityContext:

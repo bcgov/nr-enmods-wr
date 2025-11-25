@@ -12,6 +12,7 @@ import { ScheduleModule } from "@nestjs/schedule";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import ormconfig from "src/ormconfig";
 import { ObservationsModule } from "./observations/observations.module";
+import { S3SyncLogModule } from './s3_sync_log/s3_sync_log.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { ObservationsModule } from "./observations/observations.module";
     SearchModule,
     GeodataModule,
     ObservationsModule,
+    S3SyncLogModule,
   ],
   controllers: [AppController, MetricsController],
   providers: [AppService],

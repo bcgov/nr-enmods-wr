@@ -495,12 +495,12 @@ const AdvanceSearch = (props: Props) => {
     return data
   }
 
-  const copyText = async() => {
-   try {
-    await navigator.clipboard.writeText(params);
-   } catch(err) {
-    console.error(err)
-   }
+  const copyText = async () => {
+    try {
+      await navigator.clipboard.writeText(params)
+    } catch (err) {
+      console.error(err)
+    }
   }
 
   return (
@@ -510,7 +510,7 @@ const AdvanceSearch = (props: Props) => {
       <div className="flex-row px-1 py-4">
         <Link
           to="/search/basic"
-          className="bg-[#fff] text-[#38598a] border rounded-md p-2 text-sm hover:bg-[#38598a] hover:text-[#fff] cursor-pointer"
+          className="bg-[#fff] text-[#38598b] border rounded-md p-2 text-sm hover:bg-[#38598a] hover:text-[#fff] cursor-pointer"
         >
           Basic
         </Link>
@@ -695,17 +695,25 @@ const AdvanceSearch = (props: Props) => {
         </div>
       </form>
       <div className="py-8 flex gap-2">
-        <TextField fullWidth size="small" id="urlText" disabled value={params} />
-        <Btn text={"Copy"}
-            type="button"        
-            handleClick={copyText}
-            sx={{             
-              color: "#fff",
-              fontSize: "9pt",
-              "&:hover": {
-                fontWeight: 600,
-              },
-            }}/>
+        <TextField
+          fullWidth
+          size="small"
+          id="urlText"
+          disabled
+          value={params}
+        />
+        <Btn
+          text={"Copy"}
+          type="button"
+          handleClick={copyText}
+          sx={{
+            color: "#fff",
+            fontSize: "9pt",
+            "&:hover": {
+              fontWeight: 600,
+            },
+          }}
+        />
       </div>
     </div>
   )

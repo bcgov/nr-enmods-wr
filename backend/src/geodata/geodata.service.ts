@@ -1047,14 +1047,16 @@ export class GeodataService {
     const canonicalizedResource = `/${OBJECTSTORE_BUCKET}/${objectPath}`;
     const requestUrl = `${OBJECTSTORE_URL}/${OBJECTSTORE_BUCKET}/${objectPath}`;
 
-    const signature = crypto
-      .createHmac("sha1", OBJECTSTORE_SECRET_KEY)
-      .update(`PUT\n\n${contentType}\n${dateValue}\n${canonicalizedResource}`)
-      .digest("base64");
-
     // Get file size for Content-Length header
     const stats = fs.statSync(file.path);
     const fileSize = stats.size;
+
+    const signature = crypto
+      .createHmac("sha1", OBJECTSTORE_SECRET_KEY)
+      .update(
+        `PUT\n\n${contentType}\n${dateValue}\nx-amz-acl:public-read\n${canonicalizedResource}`,
+      )
+      .digest("base64");
 
     const headers = {
       Authorization: `AWS ${OBJECTSTORE_ACCESS_KEY}:${signature}`,
@@ -1062,6 +1064,7 @@ export class GeodataService {
       "Content-Type": contentType,
       "Content-Length": fileSize,
       Host: new URL(OBJECTSTORE_URL).host,
+      "x-amz-acl": "public-read",
     };
 
     try {

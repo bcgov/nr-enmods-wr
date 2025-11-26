@@ -374,7 +374,7 @@ const AdvanceSearch = (props: Props) => {
     )
       val = e.target.value
 
-    setFormData({ ...formData, [attrName]: val })
+    setFormData({ ...formData, [attrName]: val }) 
   }
 
   const handleInputChange = (

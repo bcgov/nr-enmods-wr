@@ -389,7 +389,7 @@ const AdvanceSearch = (props: Props) => {
     setIsApiLoading(true)
     switch (attrName) {
       case SearchAttr.LocationName:
-        await getDropdownOptions(SearchAttr.LocationName, query)
+        await getDropdownOptions(SearchAttr.LocationName, query)  
         break
       case SearchAttr.PermitNo:
         await getDropdownOptions(SearchAttr.PermitNo, query)

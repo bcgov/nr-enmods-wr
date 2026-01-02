@@ -1,3 +1,28 @@
+/**
+ * Advanced Search Page Component
+ *
+ * A comprehensive search interface for querying environmental observations with
+ * granular filtering options across multiple dimensions (location, properties,
+ * agencies, methods, and additional criteria).
+ *
+ * Features:
+ * - Multi-field search across 20+ dropdown and text input fields
+ * - Accordion-based grouping of search criteria for better UX
+ * - Real-time form validation with error messaging
+ * - Asynchronous job-based export with polling for completion
+ * - Redux-based dropdown caching to avoid redundant API calls
+ * - Download-ready dialog for exporting search results
+ * - Last sync time display for data freshness
+ *
+ * Architecture:
+ * - Uses useDropdowns() hook to access cached dropdown data from Redux
+ * - Maintains local form state for search parameters
+ * - Generates encoded download URLs based on current form data
+ * - Implements polling mechanism to monitor async export jobs
+ *
+ * @component
+ * @returns {JSX.Element} Advanced search form with results download capability
+ */
 import Btn from "@/components/Btn"
 import { Link } from "react-router-dom"
 import {
@@ -23,10 +48,17 @@ import { InfoOutlined } from "@mui/icons-material"
 import type AdvanceSearchFormType from "@/interfaces/AdvanceSearchFormType"
 import DownloadReadyDialog from "@/components/search/DownloadReadyDialog"
 import config from "@/config"
-import SyncIcon from '@mui/icons-material/Sync';
+import SyncIcon from "@mui/icons-material/Sync"
+import { useDropdowns } from "@/store/useDropdowns"
 
 type Props = {}
 
+/**
+ * AdvanceSearch component - provides advanced search capabilities for environmental data
+ *
+ * @param {Props} props - Component props (currently unused)
+ * @returns {JSX.Element} Advanced search interface
+ */
 const AdvanceSearch = (props: Props) => {
   const apiBase = config.API_BASE_URL
     ? config.API_BASE_URL
@@ -34,37 +66,43 @@ const AdvanceSearch = (props: Props) => {
       ? "http://localhost:3000/api"
       : ""
 
+  // Load all dropdown data from Redux cache to avoid redundant API calls
+  // These dropdowns were pre-fetched on app initialization via fetchAllDropdowns thunk
+  const {
+    locationTypes,
+    locationNames,
+    permitNumbers,
+    projects,
+    locationGroups,
+    observedProperties,
+    workedOrderNos,
+    analyzingAgencies,
+    analyticalMethods,
+    samplingAgencies,
+    mediums,
+    collectionMethods,
+    qcSampleTypes,
+    dataClassifications,
+    isLoading: isDropdownsLoading,
+  } = useDropdowns()
+
+  // Form state management
   const [errors, setErrors] = useState<string[]>([])
   const [isDisabled, setIsDisabled] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [isApiLoading, setIsApiLoading] = useState(false)
-  const [locationTypes, setLocationTypes] = useState([])
-  const [locationNames, setLocationNames] = useState([])
-  const [permitNumbers, setPermitNumbers] = useState([])
-  const [projects, setProjects] = useState([])
-  const [locationGroups, setLocationGroups] = useState([])
-  const [observeredProperties, setObservedProperties] = useState([])
-  const [observedPropGroups, setObservedPropGroups] = useState([])
-  const [workedOrderNos, setWorkedOrderNos] = useState([])
-  const [analyzingAgencies, setAnalyzingAgencies] = useState([])
-  const [analyticalMethods, setAnalyticalMethods] = useState([])
-  const [samplingAgencies, setSamplingAgencies] = useState([])
-  const [mediums, setMediums] = useState([])
-  const [collectionMethods, setCollectionMethods] = useState([])
-  const [qcSampleTypes, setQcSampleTypes] = useState([])
-  const [dataClassifications, setDataClassifications] = useState([])
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null)
   const [isPolling, setIsPolling] = useState(false)
   const [params, setParams] = useState<any>("")
   const [lastSyncTime, setLastSyncTime] = useState(null)
 
+  // Initialize form with empty values for all search fields
   const [formData, setFormData] = useState<AdvanceSearchFormType>({
     observationIds: [],
     locationName: [],
     locationType: null,
     permitNumber: [],
     media: [],
-    observedPropertyGrp: [],
     observedProperty: [],
     workedOrderNo: null,
     samplingAgency: [],
@@ -82,27 +120,6 @@ const AdvanceSearch = (props: Props) => {
   })
 
   useEffect(() => {
-    setIsApiLoading(true)
-    Promise.all([
-      getDropdownOptions(SearchAttr.ObservedPropertyGrp, ""),
-      getDropdownOptions(SearchAttr.Media, ""),
-      getDropdownOptions(SearchAttr.PermitNo, ""),
-      getDropdownOptions(SearchAttr.LocationName, ""),
-      getDropdownOptions(SearchAttr.LocationType, ""),
-      getDropdownOptions(SearchAttr.Projects, ""),
-      getDropdownOptions(SearchAttr.LocationGroup, ""),
-      getDropdownOptions(SearchAttr.WorkedOrderNo, ""),
-      getDropdownOptions(SearchAttr.ObservedProperty, ""),
-      getDropdownOptions(SearchAttr.SamplingAgency, ""),
-      getDropdownOptions(SearchAttr.AnalyzingAgency, ""),
-      getDropdownOptions(SearchAttr.AnalyticalMethod, ""),
-      getDropdownOptions(SearchAttr.CollectionMethod, ""),
-      getDropdownOptions(SearchAttr.QcSampleType, ""),
-      getDropdownOptions(SearchAttr.DataClassification, ""),
-    ]).finally(() => setIsApiLoading(false))
-  }, [])
-
-  useEffect(() => {
     let params = prepareFormData(formData)
     params = {
       ...params,
@@ -110,7 +127,6 @@ const AdvanceSearch = (props: Props) => {
       locationType: params.locationType ? params.locationType?.id : "",
       permitNumber: params.permitNumber.toString(),
       media: params.media.toString(),
-      observedPropertyGrp: params.observedPropertyGrp.toString(),
       observedProperty: params.observedProperty.toString(),
       workedOrderNo: params.workedOrderNo?.id || "",
       samplingAgency: params.samplingAgency.toString(),
@@ -147,17 +163,19 @@ const AdvanceSearch = (props: Props) => {
   }, [formData])
 
   useEffect(() => {
-        // Fetch last sync time from the server
-        const fetchLastSyncTime = async () => {
-          try {
-            const response = await apiService.getAxiosInstance().get(`${API_VERSION}/s3-sync-log/last-sync-time`);
-            setLastSyncTime(response.data);
-          } catch (error) {
-            console.error("Error fetching last sync time:", error);
-          }
-        }
-        fetchLastSyncTime();
-      }, [])
+    // Fetch last sync time from the server
+    const fetchLastSyncTime = async () => {
+      try {
+        const response = await apiService
+          .getAxiosInstance()
+          .get(`${API_VERSION}/s3-sync-log/last-sync-time`)
+        setLastSyncTime(response.data)
+      } catch (error) {
+        console.error("Error fetching last sync time:", error)
+      }
+    }
+    fetchLastSyncTime()
+  }, [])
 
   const dropdowns = {
     location: {
@@ -169,8 +187,7 @@ const AdvanceSearch = (props: Props) => {
     filterResult: {
       mediums: mediums,
       projects: projects,
-      observedPropGroups: observedPropGroups,
-      observeredProperties: observeredProperties,
+      observeredProperties: observedProperties,
       workedOrderNos: workedOrderNos,
       samplingAgencies: samplingAgencies,
       analyzingAgencies: analyzingAgencies,
@@ -185,8 +202,10 @@ const AdvanceSearch = (props: Props) => {
 
   // Format sync time for Pacific Time
   const formattedSyncTime = lastSyncTime
-    ? new Date(lastSyncTime).toLocaleString('en-US', { timeZone: 'America/Los_Angeles' })
-    : '';
+    ? new Date(lastSyncTime).toLocaleString("en-US", {
+        timeZone: "America/Los_Angeles",
+      })
+    : ""
 
   const pollStatus = async (jobId: string) => {
     setIsPolling(true)
@@ -223,113 +242,14 @@ const AdvanceSearch = (props: Props) => {
   }
 
   const dropdwnUrl = (fieldName: string, query: string): string | undefined => {
-    if (fieldName) {
-      switch (fieldName) {
-        case SearchAttr.ObservedPropertyGrp:
-          return `${API_VERSION}/search/getObservedPropertyGroups`
-        case SearchAttr.Media:
-          return `${API_VERSION}/search/getMediums`
-        case SearchAttr.PermitNo:
-          return `${API_VERSION}/search/getLocationGroups`
-        case SearchAttr.LocationName:
-          return `${API_VERSION}/search/getLocationNames`
-        case SearchAttr.LocationType:
-          return `${API_VERSION}/search/getLocationTypes`
-        case SearchAttr.Projects:
-          return `${API_VERSION}/search/getProjects`
-        case SearchAttr.AnalyticalMethod:
-          return `${API_VERSION}/search/getAnalyticalMethods`
-        case SearchAttr.AnalyzingAgency:
-          return `${API_VERSION}/search/getAnalyzingAgencies`
-        case SearchAttr.ObservedProperty:
-          return `${API_VERSION}/search/getObservedProperties`
-        case SearchAttr.WorkedOrderNo:
-          return `${API_VERSION}/search/getWorkedOrderNos`
-        case SearchAttr.SamplingAgency:
-          return `${API_VERSION}/search/getSamplingAgencies`
-        case SearchAttr.CollectionMethod:
-          return `${API_VERSION}/search/getCollectionMethods`
-        case SearchAttr.QcSampleType:
-          return `${API_VERSION}/search/getQcSampleTypes`
-        case SearchAttr.DataClassification:
-          return `${API_VERSION}/search/getDataClassifications`
-        default:
-          break
-      }
-    }
+    // This function is no longer needed as dropdowns come from Redux
+    return undefined
   }
   const getDropdownOptions = async (
     fieldName: string,
     query: string,
   ): Promise<void> => {
-    try {
-      setIsApiLoading(true)
-      const url = dropdwnUrl(fieldName, query)
-      if (url) {
-        const apiData = await apiService.getAxiosInstance().get(url)
-
-        if (apiData?.status === 200) {
-          setErrors([])
-          let response = apiData.data
-          if (!Array.isArray(response)) {
-            response = []
-          }
-          switch (fieldName) {
-            case SearchAttr.ObservedPropertyGrp:
-              setObservedPropGroups(response)
-              break
-            case SearchAttr.Media:
-              setMediums(response)
-              break
-            case SearchAttr.PermitNo:
-              setPermitNumbers(response)
-              break
-            case SearchAttr.LocationName:
-              setLocationNames(response)
-              break
-            case SearchAttr.LocationType:
-              setLocationTypes(response)
-              break
-            case SearchAttr.Projects:
-              setProjects(response)
-              break
-            case SearchAttr.LocationGroup:
-              setLocationGroups(response)
-              break
-            case SearchAttr.WorkedOrderNo:
-              setWorkedOrderNos(response)
-              break
-            case SearchAttr.ObservedProperty:
-              setObservedProperties(response)
-              break
-            case SearchAttr.SamplingAgency:
-              setSamplingAgencies(response)
-              break
-            case SearchAttr.AnalyzingAgency:
-              setAnalyzingAgencies(response)
-              break
-            case SearchAttr.AnalyticalMethod:
-              setAnalyticalMethods(response)
-              break
-            case SearchAttr.CollectionMethod:
-              setCollectionMethods(response)
-              break
-            case SearchAttr.QcSampleType:
-              setQcSampleTypes(response)
-              break
-            case SearchAttr.DataClassification:
-              setDataClassifications(response)
-              break
-            default:
-              break
-          }
-        } else {
-          setErrors(["Error! Please contact the system administrator."])
-        }
-      }
-    } catch (err) {
-      console.error(err)
-    }
+    // Dropdowns are now loaded from Redux, no need for individual fetching
   }
 
   const clearForm = () => {
@@ -341,7 +261,6 @@ const AdvanceSearch = (props: Props) => {
       locationType: null,
       permitNumber: [],
       media: [],
-      observedPropertyGrp: [],
       observedProperty: [],
       workedOrderNo: null,
       samplingAgency: [],
@@ -386,36 +305,8 @@ const AdvanceSearch = (props: Props) => {
   }
 
   const debounceSearch = debounce(async (query, attrName) => {
-    setIsApiLoading(true)
-    switch (attrName) {
-      case SearchAttr.LocationName:
-        await getDropdownOptions(SearchAttr.LocationName, query)  
-        break
-      case SearchAttr.PermitNo:
-        await getDropdownOptions(SearchAttr.PermitNo, query)
-        break
-      case SearchAttr.Media:
-        await getDropdownOptions(SearchAttr.Media, query)
-        break
-      case SearchAttr.ObservedPropertyGrp:
-        await getDropdownOptions(SearchAttr.ObservedPropertyGrp, query)
-        break
-      case SearchAttr.ObservedProperty:
-        await getDropdownOptions(SearchAttr.ObservedProperty, query)
-        break
-      case SearchAttr.WorkedOrderNo:
-        await getDropdownOptions(SearchAttr.WorkedOrderNo, query)
-        break
-      case SearchAttr.SamplingAgency:
-        await getDropdownOptions(SearchAttr.SamplingAgency, query)
-        break
-      case SearchAttr.AnalyticalMethod:
-        await getDropdownOptions(SearchAttr.AnalyticalMethod, query)
-        break
-      default:
-        break
-    }
-    setIsApiLoading(false)
+    // Debounce is no longer needed for dropdowns since they're loaded from Redux
+    // Keep the function signature for compatibility with handleInputChange
   }, 500)
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -523,7 +414,7 @@ const AdvanceSearch = (props: Props) => {
         </Link>
 
         <div className="ml-auto text-sm italic text-gray-600 self-center">
-          <SyncIcon sx={{ mr: 1, fontSize: '1rem' }} /> 
+          <SyncIcon sx={{ mr: 1, fontSize: "1rem" }} />
           Last Synced: {formattedSyncTime} (PST)
         </div>
 

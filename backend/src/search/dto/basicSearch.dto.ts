@@ -34,10 +34,6 @@ export class BasicSearchDto {
   @IsArray()
   public readonly media: any[];
 
-  @ValidateIf((obj) => obj.observedPropertyGrp.length > 0)
-  @IsArray()
-  public readonly observedPropertyGrp: any[];
-
   @ValidateIf((obj) => obj.projects.length > 0)
   @IsArray()
   public readonly projects: any[];
@@ -76,7 +72,7 @@ export class BasicSearchDto {
   //public readonly units?: any;
 
   public readonly labBatchId?: string;
-  
+
   public readonly specimenId?: string;
 
   public readonly observationIds?: string[];

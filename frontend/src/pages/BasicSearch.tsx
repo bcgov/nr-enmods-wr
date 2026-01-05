@@ -304,8 +304,7 @@ const BasicSearch = () => {
       const arr: string[] = []
       if (Array.isArray(formData[key])) {
         formData[key].forEach((item) => {
-          if (key === SearchAttr.ObservedPropertyGrp) arr.push(item.name)
-          else arr.push(item.id || item.name || item.customId)
+          arr.push(item.id || item.name || item.customId)
         })
         data[key] = arr
       } else if (key === "fromDate" || key === "toDate") {

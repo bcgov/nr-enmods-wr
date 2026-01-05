@@ -56,8 +56,12 @@ export class SearchService {
       basicSearchDto.permitNumber &&
       basicSearchDto.permitNumber.length >= 1
     ) {
+      // Split comma-separated values in permitNumber array
+      const expandedPermitNumbers = basicSearchDto.permitNumber.flatMap(
+        (permit) => permit.split(",").map((p) => p.trim()),
+      );
       whereClause.push(`location_group = ANY($${params.length + 1})`);
-      params.push(basicSearchDto.permitNumber);
+      params.push(expandedPermitNumbers);
     }
 
     if (basicSearchDto.fromDate && basicSearchDto.toDate) {

@@ -498,6 +498,21 @@ export class GeodataService {
     return attribute ? attribute.text : "";
   }
 
+  getLon(longitude: string): number | null {
+    if (!longitude || longitude === "") return null;
+    if (isNaN(parseFloat(longitude))) return null;
+    if (parseFloat(longitude) < -180 || parseFloat(longitude) > 180)
+      return null;
+    return parseFloat(longitude);
+  }
+
+  getLat(latitude: string): number | null {
+    if (!latitude || latitude === "") return null;
+    if (isNaN(parseFloat(latitude))) return null;
+    if (parseFloat(latitude) < -90 || parseFloat(latitude) > 90) return null;
+    return parseFloat(latitude);
+  }
+
   /**
    * 1. Receives and converts raw data to a simplified geojson format from processAndUpload
    * 2. Passes this on to intersectAndGenerate for file operations
@@ -521,8 +536,8 @@ export class GeodataService {
             geometry: {
               type: "Point",
               coordinates: [
-                location.longitude ? parseFloat(location.longitude) : null,
-                location.latitude ? parseFloat(location.latitude) : null,
+                this.getLon(location.longitude),
+                this.getLat(location.latitude),
               ],
             },
             properties: {

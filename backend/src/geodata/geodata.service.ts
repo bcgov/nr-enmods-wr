@@ -498,6 +498,21 @@ export class GeodataService {
     return attribute ? attribute.text : "";
   }
 
+  getLon(longitude: string): number | null {
+    if (!longitude || longitude === "") return null;
+    if (isNaN(parseFloat(longitude))) return null;
+    if (parseFloat(longitude) < -180 || parseFloat(longitude) > 180)
+      return null;
+    return parseFloat(longitude);
+  }
+
+  getLat(latitude: string): number | null {
+    if (!latitude || latitude === "") return null;
+    if (isNaN(parseFloat(latitude))) return null;
+    if (parseFloat(latitude) < -90 || parseFloat(latitude) > 90) return null;
+    return parseFloat(latitude);
+  }
+
   /**
    * 1. Receives and converts raw data to a simplified geojson format from processAndUpload
    * 2. Passes this on to intersectAndGenerate for file operations
@@ -514,85 +529,63 @@ export class GeodataService {
       const summaryMap = await this.fetchSummaries(rawData);
       transformedData = {
         type: "FeatureCollection",
-        features: rawData
-          .filter((location) => {
-            const lat = parseFloat(location.latitude);
-            const lon = parseFloat(location.longitude);
-            if (
-              !location.latitude ||
-              !location.longitude ||
-              isNaN(lat) ||
-              isNaN(lon) ||
-              lat < -90 ||
-              lat > 90 ||
-              lon < -180 ||
-              lon > 180
-            ) {
-              this.logger.warn(
-                `Skipping location ${location.id || "unknown"} due to invalid latitude/longitude: lat=${location.latitude}, lon=${location.longitude}`,
-              );
-              return false;
-            }
-            return true;
-          })
-          .map((location) => {
-            const summary = summaryMap.get(location.id) || {};
-            return {
-              type: "Feature",
-              geometry: {
-                type: "Point",
-                coordinates: [
-                  location.longitude ? parseFloat(location.longitude) : null,
-                  location.latitude ? parseFloat(location.latitude) : null,
-                ],
-              },
-              properties: {
-                ID: location.customId || "",
-                NAME: location.name || "",
-                DESCRIPTION: location.description || "",
+        features: rawData.map((location) => {
+          const summary = summaryMap.get(location.id) || {};
+          return {
+            type: "Feature",
+            geometry: {
+              type: "Point",
+              coordinates: [
+                this.getLon(location.longitude),
+                this.getLat(location.latitude),
+              ],
+            },
+            properties: {
+              ID: location.customId || "",
+              NAME: location.name || "",
+              DESCRIPTION: location.description || "",
 
-                TYPE: (location.type && location.type.customId) || "",
-                LATITUDE: location.latitude
-                  ? parseFloat(location.latitude)
-                  : null,
-                LONGITUDE: location.longitude
-                  ? parseFloat(location.longitude)
-                  : null,
-                ELEVATION:
-                  (location.elevation && location.elevation.value) || "",
-                ELEVATION_UNITS:
-                  (location.elevation &&
-                    location.elevation.unit &&
-                    location.elevation.unit.customId) ||
-                  "",
-                WELL_IDENTIFICATION_TAG_NO: this.getExtendedAttributeValue(
-                  location.extendedAttributes,
-                  this.EXTENDED_ATTRIBUTES.wellTagNumber,
-                ),
-                ESTABLISHED_DATE: this.getExtendedAttributeValue(
-                  location.extendedAttributes,
-                  this.EXTENDED_ATTRIBUTES.establishedDate,
-                  location.auditAttributes.creationTime,
-                ),
-                CLOSED_DATE: this.getExtendedAttributeValue(
-                  location.extendedAttributes,
-                  this.EXTENDED_ATTRIBUTES.closedDate,
-                ),
-                OBSERVATION_COUNT: summary.observationCount,
-                FIELD_VISIT_COUNT: summary.fieldVisitCount,
-                LATEST_FIELD_VISIT:
-                  (summary.latestFieldVisit &&
-                    summary.latestFieldVisit.startTime) ||
-                  "",
-                GROUP_NAMES: location.samplingLocationGroups
-                  ? location.samplingLocationGroups
-                      .map((group) => group.name || "")
-                      .join("; ")
-                  : "",
-                GEOREFERENCE_SOURCE: location.horizontalCollectionMethod || "",
-              },
-            };
-          }),
+              TYPE: (location.type && location.type.customId) || "",
+              LATITUDE: location.latitude
+                ? parseFloat(location.latitude)
+                : null,
+              LONGITUDE: location.longitude
+                ? parseFloat(location.longitude)
+                : null,
+              ELEVATION: (location.elevation && location.elevation.value) || "",
+              ELEVATION_UNITS:
+                (location.elevation &&
+                  location.elevation.unit &&
+                  location.elevation.unit.customId) ||
+                "",
+              WELL_IDENTIFICATION_TAG_NO: this.getExtendedAttributeValue(
+                location.extendedAttributes,
+                this.EXTENDED_ATTRIBUTES.wellTagNumber,
+              ),
+              ESTABLISHED_DATE: this.getExtendedAttributeValue(
+                location.extendedAttributes,
+                this.EXTENDED_ATTRIBUTES.establishedDate,
+                location.auditAttributes.creationTime,
+              ),
+              CLOSED_DATE: this.getExtendedAttributeValue(
+                location.extendedAttributes,
+                this.EXTENDED_ATTRIBUTES.closedDate,
+              ),
+              OBSERVATION_COUNT: summary.observationCount,
+              FIELD_VISIT_COUNT: summary.fieldVisitCount,
+              LATEST_FIELD_VISIT:
+                (summary.latestFieldVisit &&
+                  summary.latestFieldVisit.startTime) ||
+                "",
+              GROUP_NAMES: location.samplingLocationGroups
+                ? location.samplingLocationGroups
+                    .map((group) => group.name || "")
+                    .join("; ")
+                : "",
+              GEOREFERENCE_SOURCE: location.horizontalCollectionMethod || "",
+            },
+          };
+        }),
       };
 
       // Generate a geojson and then convert it to gpkg

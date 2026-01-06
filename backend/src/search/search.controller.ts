@@ -24,37 +24,57 @@ export class SearchController {
   constructor(private searchService: SearchService) {}
 
   @Get("downloadReport")
-  public async search(@Res() response: Response, @Query() query: Record<string,any>) {  
-    
-    const queryParams=  JSON.parse(JSON.stringify(query));
+  public async search(
+    @Res() response: Response,
+    @Query() query: Record<string, any>,
+  ) {
+    const queryParams = JSON.parse(JSON.stringify(query));
     let params: BasicSearchDto = {
-      locationType: queryParams.locationType ? {id: queryParams.locationType, customId: queryParams.locationTypeCustomId} : '',
-      locationName: queryParams.locationName ? queryParams.locationName : '',
-      permitNumber: queryParams.permitNumber ? queryParams.permitNumber : '',
-      fromDate: queryParams.fromDate ? queryParams.fromDate : '',
-      toDate: queryParams.toDate ? queryParams.toDate : '',
-      media: queryParams.media ? queryParams.media : '',
-      observedPropertyGrp: queryParams.observedPropertyGrp ? queryParams.observedPropertyGrp : '',
-      observedProperty: queryParams.observedProperty ? queryParams.observedProperty : '',
-      projects: queryParams.projects ? queryParams.projects : '',
-      workedOrderNo: queryParams.workedOrderNo ? {id: queryParams.workedOrderNo, text: queryParams.workOrderNoText} : '',
-      samplingAgency: queryParams.samplingAgency ? queryParams.samplingAgency : '',
-      analyzingAgency: queryParams.analyzingAgency ? queryParams.analyzingAgency : '',
-      analyticalMethod: queryParams.analyticalMethod ? queryParams.analyticalMethod : '',
-      collectionMethod: queryParams.collectionMethod ? queryParams.collectionMethod : '',
-      qcSampleType: queryParams.qcSampleType ? queryParams.qcSampleType : '',
-      dataClassification: queryParams.data_classification ? queryParams.data_classification : '',
-      sampleDepth: queryParams.sampleDepth ? queryParams.sampleDepth : '',
-      labBatchId: queryParams.labBatchId ? queryParams.labBatchId : '',
-      specimenId: queryParams.specimenId ? queryParams.specimenId : '',
-      fileFormat: ''
-    }
+      locationType: queryParams.locationType
+        ? {
+            id: queryParams.locationType,
+            customId: queryParams.locationTypeCustomId,
+          }
+        : "",
+      locationName: queryParams.locationName ? queryParams.locationName : "",
+      permitNumber: queryParams.permitNumber ? queryParams.permitNumber : "",
+      fromDate: queryParams.fromDate ? queryParams.fromDate : "",
+      toDate: queryParams.toDate ? queryParams.toDate : "",
+      media: queryParams.media ? queryParams.media : "",
+      observedProperty: queryParams.observedProperty
+        ? queryParams.observedProperty
+        : "",
+      projects: queryParams.projects ? queryParams.projects : "",
+      workedOrderNo: queryParams.workedOrderNo
+        ? { id: queryParams.workedOrderNo, text: queryParams.workOrderNoText }
+        : "",
+      samplingAgency: queryParams.samplingAgency
+        ? queryParams.samplingAgency
+        : "",
+      analyzingAgency: queryParams.analyzingAgency
+        ? queryParams.analyzingAgency
+        : "",
+      analyticalMethod: queryParams.analyticalMethod
+        ? queryParams.analyticalMethod
+        : "",
+      collectionMethod: queryParams.collectionMethod
+        ? queryParams.collectionMethod
+        : "",
+      qcSampleType: queryParams.qcSampleType ? queryParams.qcSampleType : "",
+      dataClassification: queryParams.data_classification
+        ? queryParams.data_classification
+        : "",
+      sampleDepth: queryParams.sampleDepth ? queryParams.sampleDepth : "",
+      labBatchId: queryParams.labBatchId ? queryParams.labBatchId : "",
+      specimenId: queryParams.specimenId ? queryParams.specimenId : "",
+      fileFormat: "",
+    };
 
     const jobId = uuidv4();
     jobs[jobId] = { id: jobId, status: "pending" };
 
     await this.searchService.runExport(params, jobId);
-  
+
     const job = jobs[jobId];
     if (!job || job.status !== "complete" || !job.filePath) {
       return response.status(404).json({ message: job.error });
@@ -70,11 +90,13 @@ export class SearchController {
       response.status(500).send("Failed to stream file.");
       delete jobs[jobId];
     });
-
   }
 
   @Post("observationSearch")
-  public async basicSearch(@Res() response: Response, @Body() basicSearchDto: BasicSearchDto) {
+  public async basicSearch(
+    @Res() response: Response,
+    @Body() basicSearchDto: BasicSearchDto,
+  ) {
     const jobId = uuidv4();
     jobs[jobId] = { id: jobId, status: "pending" };
 
@@ -87,14 +109,20 @@ export class SearchController {
   }
 
   @Get("observationSearch/status/:jobId")
-  public getJobStatus(@Param("jobId") jobId: string, @Res() response: Response) {
+  public getJobStatus(
+    @Param("jobId") jobId: string,
+    @Res() response: Response,
+  ) {
     const job = jobs[jobId];
     if (!job) return response.status(404).json({ status: "not_found" });
     response.json({ status: job.status, error: job.error });
   }
 
   @Get("observationSearch/download/:jobId")
-  public downloadResult(@Param("jobId") jobId: string, @Res() response: Response) {
+  public downloadResult(
+    @Param("jobId") jobId: string,
+    @Res() response: Response,
+  ) {
     const job = jobs[jobId];
     if (!job || job.status !== "complete" || !job.filePath) {
       return response.status(404).json({ message: "File not ready" });

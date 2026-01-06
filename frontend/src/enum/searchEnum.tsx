@@ -5,7 +5,6 @@ export enum SearchAttr {
   LocationGroup = "locationGroup",
   PermitNo = "permitNumber",
   Media = "media",
-  ObservedPropertyGrp = "observedPropertyGrp",
   ObservedProperty = "observedProperty",
   WorkedOrderNo = "workedOrderNo",
   SamplingAgency = "samplingAgency",
@@ -22,5 +21,5 @@ export enum SearchAttr {
   SpecimenId = "specimenId",
   LabBatchId = "labBatchId",
   LabArrivalFromDate = "labArrivalFromDate",
-  LabArrivalToDate = "labArrivalToDate"
+  LabArrivalToDate = "labArrivalToDate",
 }

@@ -92,16 +92,6 @@ export class SearchService {
     }
 
     if (
-      basicSearchDto.observedPropertyGrp &&
-      basicSearchDto.observedPropertyGrp.length >= 1
-    ) {
-      whereClause.push(
-        `observed_property_description = ANY($${params.length + 1})`,
-      );
-      params.push(basicSearchDto.observedPropertyGrp);
-    }
-
-    if (
       basicSearchDto.observedProperty &&
       basicSearchDto.observedProperty.length >= 1
     ) {

@@ -56,12 +56,20 @@ export class SearchService {
       basicSearchDto.permitNumber &&
       basicSearchDto.permitNumber.length >= 1
     ) {
-      // Split comma-separated values in permitNumber array
+      // Split comma-separated values in permitNumber array to match split dropdowns
       const expandedPermitNumbers = basicSearchDto.permitNumber.flatMap(
         (permit) => permit.split(",").map((p) => p.trim()),
       );
-      whereClause.push(`location_group = ANY($${params.length + 1})`);
-      params.push(expandedPermitNumbers);
+      // Use regex pattern to match location_group values that contain any of the selected permit numbers
+      // This handles both split values (e.g., "1") and comma-separated values (e.g., "1,2,3")
+      const patterns = expandedPermitNumbers.map(
+        (num) => `(^|,)\\s*${num}\\s*($|,)`,
+      );
+      const orConditions = patterns
+        .map((_, i) => `location_group ~ $${params.length + 1 + i}`)
+        .join(" OR ");
+      whereClause.push(`(${orConditions})`);
+      patterns.forEach((pattern) => params.push(pattern));
     }
 
     if (basicSearchDto.fromDate && basicSearchDto.toDate) {
@@ -195,11 +203,11 @@ export class SearchService {
       const queryRunner = this.dataSource.createQueryRunner();
       await queryRunner.connect();
 
-      const sql = `SELECT * FROM aqi_csv_import_operational ${whereSql}`;
+      const sql = `SELECT *, CONCAT('''', location_group::text, '''') AS location_group FROM aqi_csv_import_operational ${whereSql}`;
       const stream = await queryRunner.stream(sql, params);
 
       const writeStream = fs.createWriteStream(filePath);
-      const csvStream = fastcsv.format({ headers: true });
+      const csvStream = fastcsv.format({ headers: true, quoteColumns: true });
 
       let rowCount = 0;
       let aborted = false;

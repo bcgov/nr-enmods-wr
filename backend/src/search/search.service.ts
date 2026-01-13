@@ -183,9 +183,10 @@ export class SearchService {
 
   /**
    * Streams the results of a database query to a CSV file using the provided search criteria.
+   * While streaming, collects statistics: record count, unique location IDs, min/max observation dates
    * @param basicSearchDto - The search criteria DTO
    * @param filePath - The file path to write the CSV to
-   * @returns An object containing the stream, file path, and status
+   * @returns An object containing the stream, file path, status, and statistics
    */
   public async streamToCSV(basicSearchDto: BasicSearchDto, filePath: string) {
     const start = Date.now();
@@ -202,10 +203,34 @@ export class SearchService {
 
       let rowCount = 0;
       let aborted = false;
+      const uniqueLocations = new Set<string>();
+      let minObservationDate: string | null = null;
+      let maxObservationDate: string | null = null;
 
-      // Listen for data events to count rows
-      stream.on("data", (row) => {
+      // Listen for data events to count rows and collect statistics
+      stream.on("data", (row: any) => {
         rowCount++;
+
+        // Track unique location IDs
+        if (row.location_id) {
+          uniqueLocations.add(String(row.location_id));
+        }
+
+        // Track min/max observation dates
+        if (row.observed_date_time) {
+          const dateStr =
+            row.observed_date_time instanceof Date
+              ? row.observed_date_time.toISOString()
+              : String(row.observed_date_time);
+
+          if (!minObservationDate || dateStr < minObservationDate) {
+            minObservationDate = dateStr;
+          }
+          if (!maxObservationDate || dateStr > maxObservationDate) {
+            maxObservationDate = dateStr;
+          }
+        }
+
         if (!aborted && rowCount > this.MAX_API_DATA_LIMIT) {
           aborted = true;
           const abortError = new Error("ABORT_EXPORT");
@@ -255,6 +280,12 @@ export class SearchService {
         data: stream,
         path: filePath,
         status: HttpStatus.OK,
+        statistics: {
+          recordCount: rowCount,
+          uniqueLocations: uniqueLocations.size,
+          minObservationDate,
+          maxObservationDate,
+        },
       };
     } catch (error) {
       this.logger.error(error);
@@ -380,6 +411,7 @@ export class SearchService {
 
   /**
    * Runs the export job for the given search criteria and job ID, updating job status and file path.
+   * Also stores calculated statistics (record count, unique locations, date range).
    * @param basicSearchDto - The search criteria DTO
    * @param jobId - The job identifier
    */
@@ -389,6 +421,9 @@ export class SearchService {
       if (result.data && result.path) {
         jobs[jobId].status = "complete";
         jobs[jobId].filePath = result.path;
+        if (result.statistics) {
+          jobs[jobId].statistics = result.statistics;
+        }
       } else {
         jobs[jobId].status = "error";
         jobs[jobId].error = result.message || "Unknown error";

@@ -95,6 +95,7 @@ const AdvanceSearch = (props: Props) => {
   const [isPolling, setIsPolling] = useState(false)
   const [params, setParams] = useState<any>("")
   const [lastSyncTime, setLastSyncTime] = useState(null)
+  const [lastSearchParams, setLastSearchParams] = useState<any>(null)
 
   // Initialize form with empty values for all search fields
   const [formData, setFormData] = useState<AdvanceSearchFormType>({
@@ -223,6 +224,13 @@ const AdvanceSearch = (props: Props) => {
           setDownloadUrl(
             `${apiBase}/v1/search/observationSearch/download/${jobId}`,
           )
+          // Update search params with statistics from status response
+          if (res.data.statistics) {
+            setLastSearchParams((prev: any) => ({
+              ...prev,
+              statistics: res.data.statistics,
+            }))
+          }
           break
         } else if (status === "error") {
           setIsDisabled(false)
@@ -239,17 +247,6 @@ const AdvanceSearch = (props: Props) => {
       }
     }
     setIsPolling(false)
-  }
-
-  const dropdwnUrl = (fieldName: string, query: string): string | undefined => {
-    // This function is no longer needed as dropdowns come from Redux
-    return undefined
-  }
-  const getDropdownOptions = async (
-    fieldName: string,
-    query: string,
-  ): Promise<void> => {
-    // Dropdowns are now loaded from Redux, no need for individual fetching
   }
 
   const clearForm = () => {
@@ -312,7 +309,9 @@ const AdvanceSearch = (props: Props) => {
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     window.scroll(0, 0)
-    advanceSearch(prepareFormData(formData))
+    const preparedData = prepareFormData(formData)
+    setLastSearchParams(preparedData)
+    advanceSearch(preparedData)
   }
 
   const advanceSearch = async (data: { [key: string]: any }): Promise<void> => {
@@ -424,6 +423,7 @@ const AdvanceSearch = (props: Props) => {
             setDownloadUrl(null)
             setIsLoading(false)
           }}
+          searchParams={lastSearchParams}
         />
       </div>
       <div>

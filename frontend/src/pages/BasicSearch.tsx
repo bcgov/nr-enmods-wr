@@ -64,6 +64,7 @@ const BasicSearch = () => {
   const [isApiLoading, setIsApiLoading] = useState(false) // API request state
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null) // Download link after export
   const [lastSyncTime, setLastSyncTime] = useState(null) // Last data sync time display
+  const [lastSearchParams, setLastSearchParams] = useState<any>(null) // Last search params for statistics
 
   // Redux-based dropdown data access
   // useDropdowns() hook provides cached dropdown options for search form fields.
@@ -95,7 +96,7 @@ const BasicSearch = () => {
    * Async polling mechanism to check export job status
    *
    * Polls the backend API every 2 seconds to check if an async export job has completed.
-   * Once complete, constructs download URL. On error, displays error message to user.
+   * Once complete, constructs download URL and extracts statistics. On error, displays error message to user.
    *
    * @param {string} jobId - The unique identifier of the export job
    */
@@ -116,6 +117,13 @@ const BasicSearch = () => {
         setDownloadUrl(
           `${apiBase}/v1/search/observationSearch/download/${jobId}`,
         )
+        // Update search params with statistics from status response
+        if (res.data.statistics) {
+          setLastSearchParams((prev: any) => ({
+            ...prev,
+            statistics: res.data.statistics,
+          }))
+        }
         break
       } else if (status === "error") {
         // Export failed - enable form and show error
@@ -324,7 +332,9 @@ const BasicSearch = () => {
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     window.scroll(0, 0)
-    basicSearch(prepareFormData(formData))
+    const preparedData = prepareFormData(formData)
+    setLastSearchParams(preparedData)
+    basicSearch(preparedData)
   }
 
   // Format sync time for Pacific Time for display to users
@@ -389,6 +399,7 @@ const BasicSearch = () => {
         open={!!downloadUrl}
         downloadUrl={downloadUrl}
         onClose={() => setDownloadUrl(null)}
+        searchParams={lastSearchParams}
       />
 
       {/* Main search form */}

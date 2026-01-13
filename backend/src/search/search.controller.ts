@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Logger,
   Param,
@@ -115,7 +116,10 @@ export class SearchController {
   ) {
     const job = jobs[jobId];
     if (!job) return response.status(404).json({ status: "not_found" });
-    response.json({ status: job.status, error: job.error });
+    const statusData: any = { status: job.status };
+    if (job.error) statusData.error = job.error;
+    if (job.statistics) statusData.statistics = job.statistics;
+    response.json(statusData);
   }
 
   @Get("observationSearch/download/:jobId")
@@ -138,6 +142,28 @@ export class SearchController {
       response.status(500).send("Failed to stream file.");
       delete jobs[jobId];
     });
+  }
+
+  @Delete("observationSearch/job/:jobId")
+  public deleteJob(@Param("jobId") jobId: string, @Res() response: Response) {
+    const job = jobs[jobId];
+    if (!job) {
+      return response.status(404).json({ message: "Job not found" });
+    }
+
+    // Delete the CSV file if it exists
+    if (job.filePath) {
+      try {
+        fs.unlinkSync(job.filePath);
+        this.logger.log(`Deleted file: ${job.filePath}`);
+      } catch (err) {
+        this.logger.error(`Error deleting file ${job.filePath}:`, err);
+      }
+    }
+
+    // Delete the job from memory
+    delete jobs[jobId];
+    response.json({ message: "Job deleted successfully" });
   }
 
   @Get("getLocationTypes")

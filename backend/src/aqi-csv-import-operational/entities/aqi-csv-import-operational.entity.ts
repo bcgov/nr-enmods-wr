@@ -9,7 +9,7 @@ export class AqiCsvImportOperational {
   @Column({ name: 'work_order_number', nullable: true }) work_order_number: string;
   @Column({ name: 'location_id', nullable: true }) location_id: string;
   @Column({ name: 'location_name', nullable: true }) location_name: string;
-  @Column({ name: 'locationType', nullable: true }) locationType: string;
+  @Column({ name: 'location_type', nullable: true }) location_type: string;
   @Column({ name: 'location_latitude', nullable: true }) location_latitude: string;
   @Column({ name: 'location_longitude', nullable: true }) location_longitude: string;
   @Column({ name: 'location_elevation', nullable: true }) location_elevation: string;

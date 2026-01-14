@@ -48,7 +48,7 @@ export class SearchService {
     }
 
     if (basicSearchDto.locationType) {
-      whereClause.push(`locationType = $${params.length + 1}`);
+      whereClause.push(`location_type = $${params.length + 1}`);
       params.push(basicSearchDto.locationType.customId);
     }
 
@@ -473,20 +473,20 @@ export class SearchService {
    */
   public async getLocationTypes(): Promise<any[]> {
     this.logger.log(
-      "getLocationTypes called, querying materialized view mv_aqi_locationtype",
+      "getLocationTypes called, querying materialized view mv_aqi_location_type",
     );
     // Use TypeORM to query the materialized view entity and return raw data
     const repo = this["observationRepository"].manager.getRepository(
-      "mv_aqi_locationtype",
+      "mv_aqi_location_type",
     );
     const raw = await repo
       .createQueryBuilder()
       .select()
-      .orderBy("MvAqiLocationType.locationtype", "ASC")
+      .orderBy("MvAqiLocationType.location_type", "ASC")
       .getRawMany();
     // Return as array of objects for frontend dropdown compatibility
     return raw.map((item) => ({
-      customId: item.MvAqiLocationType_locationtype,
+      customId: item.MvAqiLocationType_location_type,
     }));
   }
 

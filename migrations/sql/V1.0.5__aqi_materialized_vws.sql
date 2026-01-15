@@ -38,15 +38,15 @@ WHERE Work_Order_Number IS NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS ux_mv_aqi_work_order_number
   ON mv_aqi_work_order_number (Work_Order_Number);
 
--- LocationType
-DROP MATERIALIZED VIEW IF EXISTS mv_aqi_locationTtype;
-CREATE MATERIALIZED VIEW mv_aqi_locationType AS
-SELECT DISTINCT LocationType
+-- Location_Type
+DROP MATERIALIZED VIEW IF EXISTS mv_aqi_location_type;
+CREATE MATERIALIZED VIEW mv_aqi_location_type AS
+SELECT DISTINCT Location_Type
 FROM AQI_CSV_IMPORT_STAGING
-WHERE LocationType IS NOT NULL; 
+WHERE Location_Type IS NOT NULL; 
 
-CREATE UNIQUE INDEX IF NOT EXISTS ux_mv_aqi_locationType
-  ON mv_aqi_locationType (LocationType);
+CREATE UNIQUE INDEX IF NOT EXISTS ux_mv_aqi_location_type
+  ON mv_aqi_location_type (Location_Type);
 
 -- Location_Group
 DROP MATERIALIZED VIEW IF EXISTS mv_aqi_location_group;

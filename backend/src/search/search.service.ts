@@ -48,7 +48,7 @@ export class SearchService {
     }
 
     if (basicSearchDto.locationType) {
-      whereClause.push(`locationType = $${params.length + 1}`);
+      whereClause.push(`location_type = $${params.length + 1}`);
       params.push(basicSearchDto.locationType.customId);
     }
 
@@ -56,8 +56,20 @@ export class SearchService {
       basicSearchDto.permitNumber &&
       basicSearchDto.permitNumber.length >= 1
     ) {
-      whereClause.push(`location_group = ANY($${params.length + 1})`);
-      params.push(basicSearchDto.permitNumber);
+      // Split comma-separated values in permitNumber array to match split dropdowns
+      const expandedPermitNumbers = basicSearchDto.permitNumber.flatMap(
+        (permit) => permit.split(",").map((p) => p.trim()),
+      );
+      // Use regex pattern to match location_group values that contain any of the selected permit numbers
+      // This handles both split values (e.g., "1") and comma-separated values (e.g., "1,2,3")
+      const patterns = expandedPermitNumbers.map(
+        (num) => `(^|,)\\s*${num}\\s*($|,)`,
+      );
+      const orConditions = patterns
+        .map((_, i) => `location_group ~ $${params.length + 1 + i}`)
+        .join(" OR ");
+      whereClause.push(`(${orConditions})`);
+      patterns.forEach((pattern) => params.push(pattern));
     }
 
     if (basicSearchDto.fromDate && basicSearchDto.toDate) {
@@ -85,16 +97,6 @@ export class SearchService {
     if (basicSearchDto.media && basicSearchDto.media.length >= 1) {
       whereClause.push(`medium = ANY($${params.length + 1})`);
       params.push(basicSearchDto.media);
-    }
-
-    if (
-      basicSearchDto.observedPropertyGrp &&
-      basicSearchDto.observedPropertyGrp.length >= 1
-    ) {
-      whereClause.push(
-        `observed_property_description = ANY($${params.length + 1})`,
-      );
-      params.push(basicSearchDto.observedPropertyGrp);
     }
 
     if (
@@ -189,9 +191,10 @@ export class SearchService {
 
   /**
    * Streams the results of a database query to a CSV file using the provided search criteria.
+   * While streaming, collects statistics: record count, unique location IDs, min/max observation dates
    * @param basicSearchDto - The search criteria DTO
    * @param filePath - The file path to write the CSV to
-   * @returns An object containing the stream, file path, and status
+   * @returns An object containing the stream, file path, status, and statistics
    */
   public async streamToCSV(basicSearchDto: BasicSearchDto, filePath: string) {
     const start = Date.now();
@@ -200,18 +203,42 @@ export class SearchService {
       const queryRunner = this.dataSource.createQueryRunner();
       await queryRunner.connect();
 
-      const sql = `SELECT * FROM aqi_csv_import_operational ${whereSql}`;
+      const sql = `SELECT *, CONCAT('''', location_group::text, '''') AS location_group FROM aqi_csv_import_operational ${whereSql}`;
       const stream = await queryRunner.stream(sql, params);
 
       const writeStream = fs.createWriteStream(filePath);
-      const csvStream = fastcsv.format({ headers: true });
+      const csvStream = fastcsv.format({ headers: true, quoteColumns: true });
 
       let rowCount = 0;
       let aborted = false;
+      const uniqueLocations = new Set<string>();
+      let minObservationDate: string | null = null;
+      let maxObservationDate: string | null = null;
 
-      // Listen for data events to count rows
-      stream.on("data", (row) => {
+      // Listen for data events to count rows and collect statistics
+      stream.on("data", (row: any) => {
         rowCount++;
+
+        // Track unique location IDs
+        if (row.location_id) {
+          uniqueLocations.add(String(row.location_id));
+        }
+
+        // Track min/max observation dates
+        if (row.observed_date_time) {
+          const dateStr =
+            row.observed_date_time instanceof Date
+              ? row.observed_date_time.toISOString()
+              : String(row.observed_date_time);
+
+          if (!minObservationDate || dateStr < minObservationDate) {
+            minObservationDate = dateStr;
+          }
+          if (!maxObservationDate || dateStr > maxObservationDate) {
+            maxObservationDate = dateStr;
+          }
+        }
+
         if (!aborted && rowCount > this.MAX_API_DATA_LIMIT) {
           aborted = true;
           const abortError = new Error("ABORT_EXPORT");
@@ -261,6 +288,12 @@ export class SearchService {
         data: stream,
         path: filePath,
         status: HttpStatus.OK,
+        statistics: {
+          recordCount: rowCount,
+          uniqueLocations: uniqueLocations.size,
+          minObservationDate,
+          maxObservationDate,
+        },
       };
     } catch (error) {
       this.logger.error(error);
@@ -386,6 +419,7 @@ export class SearchService {
 
   /**
    * Runs the export job for the given search criteria and job ID, updating job status and file path.
+   * Also stores calculated statistics (record count, unique locations, date range).
    * @param basicSearchDto - The search criteria DTO
    * @param jobId - The job identifier
    */
@@ -395,6 +429,9 @@ export class SearchService {
       if (result.data && result.path) {
         jobs[jobId].status = "complete";
         jobs[jobId].filePath = result.path;
+        if (result.statistics) {
+          jobs[jobId].statistics = result.statistics;
+        }
       } else {
         jobs[jobId].status = "error";
         jobs[jobId].error = result.message || "Unknown error";
@@ -436,20 +473,20 @@ export class SearchService {
    */
   public async getLocationTypes(): Promise<any[]> {
     this.logger.log(
-      "getLocationTypes called, querying materialized view mv_aqi_locationtype",
+      "getLocationTypes called, querying materialized view mv_aqi_location_type",
     );
     // Use TypeORM to query the materialized view entity and return raw data
     const repo = this["observationRepository"].manager.getRepository(
-      "mv_aqi_locationtype",
+      "mv_aqi_location_type",
     );
     const raw = await repo
       .createQueryBuilder()
       .select()
-      .orderBy("MvAqiLocationType.locationtype", "ASC")
+      .orderBy("MvAqiLocationType.location_type", "ASC")
       .getRawMany();
     // Return as array of objects for frontend dropdown compatibility
     return raw.map((item) => ({
-      customId: item.MvAqiLocationType_locationtype,
+      customId: item.MvAqiLocationType_location_type,
     }));
   }
 

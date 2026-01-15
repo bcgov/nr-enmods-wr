@@ -35,7 +35,7 @@ export default function LocationParametersForm(props: any) {
               <TextField {...params} label="Location Types" />
             )}
           />
-          <TooltipInfo title="Location Type" />
+          <TooltipInfo title="Describes the type of sampling location, such as a lake, river, or air quality monitoring site." />
         </div>
 
         <div className="flex items-center">
@@ -59,7 +59,7 @@ export default function LocationParametersForm(props: any) {
               <TextField {...params} label="Location Name" />
             )}
           />
-          <TooltipInfo title="Location Name" />
+          <TooltipInfo title="The name of the sampling location." />
         </div>
       </div>
       <div className="flex flex-col px-4 lg:flex-row gap-4 justify-between">
@@ -84,7 +84,7 @@ export default function LocationParametersForm(props: any) {
               <TextField {...params} label="Permit ID or Location Group" />
             )}
           />
-          <TooltipInfo title="Permit Number" />
+          <TooltipInfo title="An authorization number from the authorization management system or a location group ID." />
         </div>
 
         <div className="flex items-center">
@@ -108,7 +108,7 @@ export default function LocationParametersForm(props: any) {
               <TextField {...params} label="Location ID" />
             )}
           />
-          <TooltipInfo title="Location ID" />
+          <TooltipInfo title="The sampling locations unique alpha numeric ID." />
         </div>
       </div>
     </>

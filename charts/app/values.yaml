@@ -44,6 +44,8 @@ global:
     objectstoreFolder: ~
     #-- frontend
     port: "3000"
+    reactAppEnvironment: ~
+    reactAppProdLink: ~
     #-- flyway
     flywayLocations:
       dev: "filesystem:/flyway/sql, filesystem:/flyway/sql-test"

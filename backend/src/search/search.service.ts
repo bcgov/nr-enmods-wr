@@ -215,9 +215,36 @@ export class SearchService {
       let minObservationDate: string | null = null;
       let maxObservationDate: string | null = null;
 
-      // Listen for data events to count rows and collect statistics
+      let list_of_timecolumns = [
+        "field_visit_start_time",
+        "field_visit_end_time",
+        "observed_date_time",
+        "observed_date_time_start",
+        "observed_date_time_end",
+        "analyzed_date_time",
+        "lab_arrival_date_time",
+        "lab_prepared_date_time",
+      ];
+
+      // Listen for data events to count rows, collect statistics, and ensure ISO date/time
       stream.on("data", (row: any) => {
         rowCount++;
+
+        // from the list of timecolumns, write the value as-is (no conversion)
+        // This preserves the original string from the database
+        // If the value is a Date object, convert to string without timezone conversion
+        for (const col of list_of_timecolumns) {
+          if (row[col]) {
+            if (row[col] instanceof Date) {
+              const d = row[col];
+              const pad = (n: number, z = 2) => ("00" + n).slice(-z);
+              row[col] =
+                `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.${d.getMilliseconds().toString().padStart(3, "0")}-08:00`;
+            } else {
+              row[col] = `${row[col]}-08:00`;
+            }
+          }
+        }
 
         // Track unique location IDs
         if (row.location_id) {

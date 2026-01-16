@@ -75,22 +75,22 @@ export class SearchService {
     if (basicSearchDto.fromDate && basicSearchDto.toDate) {
       const fromDateWithTime = new Date(basicSearchDto.fromDate);
       const fromDate = `${fromDateWithTime.getFullYear()}-${(fromDateWithTime.getMonth() + 1).toString().padStart(2, "0")}-${fromDateWithTime.getDate().toString().padStart(2, "0")}`;
-      whereClause.push(`observed_date_time_start >= $${params.length + 1}`);
+      whereClause.push(`observed_date_time >= $${params.length + 1}`);
       params.push(fromDate);
 
       const toDateWithTime = new Date(basicSearchDto.toDate);
       const toDate = `${toDateWithTime.getFullYear()}-${(toDateWithTime.getMonth() + 1).toString().padStart(2, "0")}-${toDateWithTime.getDate().toString().padStart(2, "0")}`;
-      whereClause.push(`observed_date_time_start <= $${params.length + 1}`);
+      whereClause.push(`observed_date_time <= $${params.length + 1}`);
       params.push(toDate);
     } else if (basicSearchDto.fromDate) {
       const fromDateWithTime = new Date(basicSearchDto.fromDate);
       const fromDate = `${fromDateWithTime.getFullYear()}-${(fromDateWithTime.getMonth() + 1).toString().padStart(2, "0")}-${fromDateWithTime.getDate().toString().padStart(2, "0")}`;
-      whereClause.push(`observed_date_time_start >= $${params.length + 1}`);
+      whereClause.push(`observed_date_time >= $${params.length + 1}`);
       params.push(fromDate);
     } else if (basicSearchDto.toDate) {
       const toDateWithTime = new Date(basicSearchDto.toDate);
       const toDate = `${toDateWithTime.getFullYear()}-${(toDateWithTime.getMonth() + 1).toString().padStart(2, "0")}-${toDateWithTime.getDate().toString().padStart(2, "0")}`;
-      whereClause.push(`observed_date_time_start <= $${params.length + 1}`);
+      whereClause.push(`observed_date_time <= $${params.length + 1}`);
       params.push(toDate);
     }
 

@@ -1,5 +1,6 @@
 import BCGovLogo from "@/assets/gov-bc-logo-horiz.png"
 import { AppBar, Toolbar, Box } from "@mui/material"
+import config from "../config"
 // import Typography from '@mui/material/Typography'
 import Navbar from "./Navbar"
 
@@ -39,7 +40,7 @@ const styles = {
 export default function Header() {
   // Set header color based on environment
   let headerBgColor = "#003366";
-  const env = import.meta.env.VITE_ENVIRONMENT;
+  const env = config.ENVIRONMENT;
   if (env === "PROD") {
     headerBgColor = "#003366";
   } else if (env === "TEST") {
@@ -114,7 +115,7 @@ export default function Header() {
           <Toolbar sx={styles.navToolbar}>
             {env !== "PROD" && (
               <a
-                href={import.meta.env.VITE_PROD_LINK}
+                href={config.PROD_LINK}
                 style={{
                   fontSize: "0.85rem",
                   paddingLeft: "90%",

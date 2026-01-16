@@ -41,6 +41,7 @@ export default function Header() {
   // Set header color based on environment
   let headerBgColor = "#003366";
   const env = config.ENVIRONMENT;
+  const prodLink = config.PROD_LINK;
   if (env === "PROD") {
     headerBgColor = "#003366";
   } else if (env === "TEST") {
@@ -115,7 +116,7 @@ export default function Header() {
           <Toolbar sx={styles.navToolbar}>
             {env !== "PROD" && (
               <a
-                href={config.PROD_LINK}
+                href={prodLink}
                 style={{
                   fontSize: "0.85rem",
                   paddingLeft: "90%",

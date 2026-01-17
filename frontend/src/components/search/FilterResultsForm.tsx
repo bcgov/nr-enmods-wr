@@ -130,7 +130,7 @@ export default function FilterResultsForm(props: any) {
               sx={{ width: 380 }}
               renderInput={(params) => <TextField {...params} label="Media" />}
             />
-            <TooltipInfo title="Media" />
+            <TooltipInfo title="The type of environmental media analyzed, for example, water, soils, or air." />
           </div>
           <div className="flex items-center">
             <Autocomplete
@@ -149,7 +149,7 @@ export default function FilterResultsForm(props: any) {
                 <TextField {...params} label="Projects" />
               )}
             />
-            <TooltipInfo title="Projects" />
+            <TooltipInfo title="The project, if applicable, that observational data was collected for." />
           </div>
         </div>
 
@@ -177,7 +177,7 @@ export default function FilterResultsForm(props: any) {
                     <TextField {...params} label="Observed Property" />
                   )}
                 />
-                <TooltipInfo title="Observed Property" />
+                <TooltipInfo title="The name of the property that was observed or analyzed for at a lab." />
               </div>
 
               <div className="flex items-center">
@@ -207,7 +207,7 @@ export default function FilterResultsForm(props: any) {
                     <TextField {...params} label="Work Order Number" />
                   )}
                 />
-                <TooltipInfo title="Work Order Number" />
+                <TooltipInfo title="A unique identifier for a set of lab analysis." />
               </div>
             </div>
 
@@ -233,7 +233,7 @@ export default function FilterResultsForm(props: any) {
                     <TextField {...params} label="Sampling Agency" />
                   )}
                 />
-                <TooltipInfo title="Sampling Agency" />
+                <TooltipInfo title="The group or agency that collected the samples in the field." />
               </div>
 
               <div className="flex items-center">
@@ -257,7 +257,7 @@ export default function FilterResultsForm(props: any) {
                     <TextField {...params} label="Analyzing Agency" />
                   )}
                 />
-                <TooltipInfo title="Analyzing Agency" />
+                <TooltipInfo title="The group or agency that analyzed the samples, typically a lab." />
               </div>
             </div>
           </>
@@ -284,7 +284,7 @@ export default function FilterResultsForm(props: any) {
                   <TextField {...params} label="Analytical Method" />
                 )}
               />
-              <TooltipInfo title="Analytical Method" />
+              <TooltipInfo title="The laboratory analytical method used to analyze a sample." />
             </div>
           </div>
         )}

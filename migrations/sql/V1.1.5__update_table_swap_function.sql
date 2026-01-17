@@ -74,9 +74,9 @@ BEGIN
             RAISE NOTICE 'Dropping index: idx_aqi_stg_location_name';
             EXECUTE 'DROP INDEX public.idx_aqi_stg_location_name';
         END IF;
-        IF EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname='public' AND indexname='idx_aqi_stg_locationtype') THEN
-            RAISE NOTICE 'Dropping index: idx_aqi_stg_locationtype';   
-            EXECUTE 'DROP INDEX public.idx_aqi_stg_locationtype';
+        IF EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname='public' AND indexname='idx_aqi_stg_location_type') THEN
+            RAISE NOTICE 'Dropping index: idx_aqi_stg_location_type';   
+            EXECUTE 'DROP INDEX public.idx_aqi_stg_location_type';
         END IF;
         IF EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname='public' AND indexname='idx_aqi_stg_location_latitude') THEN
             RAISE NOTICE 'Dropping index: idx_aqi_stg_location_latitude';
@@ -335,8 +335,8 @@ BEGIN
     RAISE NOTICE 'Creating index: idx_aqi_stg_location_name';
     EXECUTE format('CREATE INDEX idx_aqi_stg_location_name                     ON %I.%I (Location_Name)',                             v_schema, v_stg);
 
-    RAISE NOTICE 'Creating index: idx_aqi_stg_locationtype';
-    EXECUTE format('CREATE INDEX idx_aqi_stg_locationtype                      ON %I.%I (LocationType)',                             v_schema, v_stg);
+    RAISE NOTICE 'Creating index: idx_aqi_stg_location_type';
+    EXECUTE format('CREATE INDEX idx_aqi_stg_location_type                      ON %I.%I (Location_Type)',                             v_schema, v_stg);
 
     RAISE NOTICE 'Creating index: idx_aqi_stg_location_latitude';
     EXECUTE format('CREATE INDEX idx_aqi_stg_location_latitude                 ON %I.%I (Location_Latitude)',                         v_schema, v_stg);
@@ -576,9 +576,9 @@ BEGIN
             RAISE NOTICE 'Dropping index: idx_aqi_stg_location_name';
             EXECUTE 'DROP INDEX public.idx_aqi_stg_location_name';
         END IF;
-        IF EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname='public' AND indexname='idx_aqi_stg_locationtype') THEN
-            RAISE NOTICE 'Dropping index: idx_aqi_stg_locationtype';   
-            EXECUTE 'DROP INDEX public.idx_aqi_stg_locationtype';
+        IF EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname='public' AND indexname='idx_aqi_stg_location_type') THEN
+            RAISE NOTICE 'Dropping index: idx_aqi_stg_location_type';   
+            EXECUTE 'DROP INDEX public.idx_aqi_stg_location_type';
         END IF;
         IF EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname='public' AND indexname='idx_aqi_stg_location_latitude') THEN
             RAISE NOTICE 'Dropping index: idx_aqi_stg_location_latitude';

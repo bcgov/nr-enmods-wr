@@ -20,8 +20,8 @@
 		}
 		respond `
 			window.REACT_APP_API_URL={$BACKEND_URL}
-			window.REACT_APP_ENVIRONMENT={$ENVIRONMENT}
-			window.REACT_APP_PROD_LINK={$PROD_LINK};`
+			window.REACT_APP_ENVIRONMENT={$REACT_APP_ENVIRONMENT}
+			window.REACT_APP_PROD_LINK={$REACT_APP_PROD_LINK};`
   	}
 	root * /srv
 	encode zstd gzip

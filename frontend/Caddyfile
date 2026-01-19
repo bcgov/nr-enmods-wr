@@ -27,7 +27,7 @@
 	encode zstd gzip
 	file_server
 	@spa_router {
-		not path /api/*
+		not path /api/* /static/js/config.js
 		file {
 			try_files {path} /index.html
 		}

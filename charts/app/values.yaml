@@ -44,6 +44,8 @@ global:
     objectstoreFolder: ~
     #-- frontend
     port: "3000"
+    reactAppEnvironment: ~
+    reactAppProdLink: ~
     #-- flyway
     flywayLocations:
       dev: "filesystem:/flyway/sql, filesystem:/flyway/sql-test"
@@ -166,7 +168,7 @@ bitnami-pg:
     registry: ghcr.io
     repository: bcgov/nr-enmods-wr/custom-postgres-with-aws
     # prettier-ignore
-    tag: 108
+    tag: 128
   auth:
     existingSecret: "{{ .Release.Name }}-database"
     username: "enmodswr"

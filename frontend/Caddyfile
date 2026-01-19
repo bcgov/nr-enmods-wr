@@ -18,13 +18,16 @@
 		header {
 		Content-Type text/javascript
 		}
-		respond `window.REACT_APP_API_URL={$BACKEND_URL};`
+		respond `
+			window.REACT_APP_CADDY_TEST="test";
+			window.REACT_APP_ENVIRONMENT="{$REACT_APP_ENVIRONMENT}";
+			window.REACT_APP_PROD_LINK="{$REACT_APP_PROD_LINK}";`
   	}
 	root * /srv
 	encode zstd gzip
 	file_server
 	@spa_router {
-		not path /api/*
+		not path /api/* /static/js/config.js
 		file {
 			try_files {path} /index.html
 		}

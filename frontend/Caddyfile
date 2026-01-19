@@ -19,7 +19,7 @@
 		Content-Type text/javascript
 		}
 		respond `
-			window.REACT_APP_API_URL="{$BACKEND_URL}";
+			window.REACT_APP_CADDY_TEST="test";
 			window.REACT_APP_ENVIRONMENT="{$REACT_APP_ENVIRONMENT}";
 			window.REACT_APP_PROD_LINK="{$REACT_APP_PROD_LINK}";`
   	}

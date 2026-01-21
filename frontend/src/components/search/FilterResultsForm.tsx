@@ -76,7 +76,7 @@ export default function FilterResultsForm(props: any) {
           />
         </div>
         <div className="flex flex-col lg:flex-row justify-between px-4 pb-4 gap-4">
-          <div className="flex items-center">
+          <div className="flex items-center" style={{ minWidth: 0 }}>
             <DatePicker
               customInput={<CustomDatePickerInput label={"From"} />}
               onChange={(val) =>
@@ -93,7 +93,7 @@ export default function FilterResultsForm(props: any) {
               useShortMonthInDropdown
             />
           </div>
-          <div className="flex items-center">
+          <div className="flex items-center" style={{ paddingRight: 40 }}>
             <DatePicker
               customInput={<CustomDatePickerInput label={"To"} />}
               minDate={formData.fromDate}
@@ -109,7 +109,6 @@ export default function FilterResultsForm(props: any) {
               showMonthDropdown
               useShortMonthInDropdown
             />
-            <TooltipInfo title="Date Range" />
           </div>
         </div>
         <div className="flex flex-col lg:flex-row gap-4 justify-between px-4 pb-4">

@@ -152,11 +152,54 @@ export class SearchController {
       return response.send(html);
     }
 
-    // If job is complete, redirect to download
+    // If job is complete, show download link
     if (job.status === "complete" && job.filePath) {
-      return response.redirect(
-        `/api/v1/search/observationSearch/download/${jobId}`,
-      );
+      const html = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Download Ready</title>
+            <style>
+              body {
+                font-family: Arial, sans-serif;
+                max-width: 600px;
+                margin: 50px auto;
+                padding: 20px;
+              }
+              .success-box {
+                background-color: #d4edda;
+                border: 1px solid #c3e6cb;
+                border-radius: 4px;
+                padding: 20px;
+                margin: 20px 0;
+              }
+              .download-link {
+                display: inline-block;
+                background-color: #007bff;
+                color: white;
+                padding: 10px 20px;
+                text-decoration: none;
+                border-radius: 4px;
+                margin: 10px 0;
+              }
+              .download-link:hover {
+                background-color: #0056b3;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="success-box">
+              <h2>✓ Your file is ready!</h2>
+              <p>Click the button below to download your CSV file:</p>
+              <a href="/api/v1/search/observationSearch/download/${jobId}" class="download-link">
+                Download ObservationSearchResult.csv
+              </a>
+            </div>
+          </body>
+        </html>
+      `;
+      response.setHeader("Content-Type", "text/html");
+      return response.send(html);
     }
 
     // Unexpected status

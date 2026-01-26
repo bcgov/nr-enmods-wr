@@ -88,7 +88,6 @@ export class SearchController {
   ) {
     const queryParams = JSON.parse(JSON.stringify(query));
     const params = this.normalizeQueryParameters(queryParams);
-    params.fileFormat = "";
 
     const jobId = uuidv4();
     jobs[jobId] = { id: jobId, status: "pending" };

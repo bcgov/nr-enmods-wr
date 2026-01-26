@@ -24,52 +24,71 @@ export class SearchController {
   private readonly logger = new Logger("SearchController");
   constructor(private searchService: SearchService) {}
 
+  /**
+   * Converts query string parameters to the format expected by the search service.
+   * Query strings from URLs come in as single strings, but need to be converted to arrays
+   * for fields that use ANY() in SQL (media, observedProperty, etc.)
+   */
+  private normalizeQueryParameters(
+    queryParams: Record<string, any>,
+  ): BasicSearchDto {
+    // Array fields that should be split on commas if they come as strings
+    const arrayFields = [
+      "locationName",
+      "permitNumber",
+      "media",
+      "observedProperty",
+      "projects",
+      "samplingAgency",
+      "analyzingAgency",
+      "analyticalMethod",
+      "collectionMethod",
+      "qcSampleType",
+      "dataClassification",
+    ];
+
+    const normalized: any = {};
+
+    for (const [key, value] of Object.entries(queryParams)) {
+      if (arrayFields.includes(key)) {
+        // Convert string to array
+        if (typeof value === "string" && value) {
+          normalized[key] = [value];
+        } else if (Array.isArray(value)) {
+          normalized[key] = value;
+        } else {
+          normalized[key] = "";
+        }
+      } else if (key === "locationType") {
+        // Special handling for locationType which is an object
+        normalized[key] = queryParams.locationType
+          ? {
+              id: queryParams.locationType,
+              customId: queryParams.locationTypeCustomId,
+            }
+          : "";
+      } else if (key === "workedOrderNo") {
+        // Special handling for workedOrderNo which is an object
+        normalized[key] = queryParams.workedOrderNo
+          ? { id: queryParams.workedOrderNo, text: queryParams.workOrderNoText }
+          : "";
+      } else if (key !== "locationTypeCustomId" && key !== "workOrderNoText") {
+        // Copy other fields as-is, excluding the intermediate fields
+        normalized[key] = value || "";
+      }
+    }
+
+    return normalized as BasicSearchDto;
+  }
+
   @Get("downloadReport")
   public async search(
     @Res() response: Response,
     @Query() query: Record<string, any>,
   ) {
     const queryParams = JSON.parse(JSON.stringify(query));
-    let params: BasicSearchDto = {
-      locationType: queryParams.locationType
-        ? {
-            id: queryParams.locationType,
-            customId: queryParams.locationTypeCustomId,
-          }
-        : "",
-      locationName: queryParams.locationName ? queryParams.locationName : "",
-      permitNumber: queryParams.permitNumber ? queryParams.permitNumber : "",
-      fromDate: queryParams.fromDate ? queryParams.fromDate : "",
-      toDate: queryParams.toDate ? queryParams.toDate : "",
-      media: queryParams.media ? queryParams.media : "",
-      observedProperty: queryParams.observedProperty
-        ? queryParams.observedProperty
-        : "",
-      projects: queryParams.projects ? queryParams.projects : "",
-      workedOrderNo: queryParams.workedOrderNo
-        ? { id: queryParams.workedOrderNo, text: queryParams.workOrderNoText }
-        : "",
-      samplingAgency: queryParams.samplingAgency
-        ? queryParams.samplingAgency
-        : "",
-      analyzingAgency: queryParams.analyzingAgency
-        ? queryParams.analyzingAgency
-        : "",
-      analyticalMethod: queryParams.analyticalMethod
-        ? queryParams.analyticalMethod
-        : "",
-      collectionMethod: queryParams.collectionMethod
-        ? queryParams.collectionMethod
-        : "",
-      qcSampleType: queryParams.qcSampleType ? queryParams.qcSampleType : "",
-      dataClassification: queryParams.data_classification
-        ? queryParams.data_classification
-        : "",
-      sampleDepth: queryParams.sampleDepth ? queryParams.sampleDepth : "",
-      labBatchId: queryParams.labBatchId ? queryParams.labBatchId : "",
-      specimenId: queryParams.specimenId ? queryParams.specimenId : "",
-      fileFormat: "",
-    };
+    const params = this.normalizeQueryParameters(queryParams);
+    params.fileFormat = "";
 
     const jobId = uuidv4();
     jobs[jobId] = { id: jobId, status: "pending" };

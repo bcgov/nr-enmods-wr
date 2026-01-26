@@ -23,6 +23,7 @@ export default function RequestLoadingIndicator({
   useEffect(() => {
     // Subscribe to loading state changes
     const unsubscribe = apiService.subscribeToLoadingState((loading) => {
+      console.log("[RequestLoadingIndicator] Loading state:", loading) // Debug log
       setIsLoading(loading)
     })
 
@@ -34,7 +35,7 @@ export default function RequestLoadingIndicator({
   // Top bar loader (minimal, non-intrusive)
   if (position === "bar") {
     return (
-      <div className="fixed top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 to-indigo-600 z-50 animate-pulse" />
+      <div className="fixed top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 to-indigo-600 z-50 animate-pulse shadow-lg" />
     )
   }
 

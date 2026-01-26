@@ -94,8 +94,10 @@ const AdvanceSearch = (props: Props) => {
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null)
   const [isPolling, setIsPolling] = useState(false)
   const [params, setParams] = useState<any>("")
-  const [lastSyncTime, setLastSyncTime] = useState(null)
   const [lastSearchParams, setLastSearchParams] = useState<any>(null)
+
+  // Get last sync time from Redux store (cached, no repeated API calls)
+  const lastSyncTime = useSelector((state: any) => state.syncInfo.lastSyncTime)
 
   // Initialize form with empty values for all search fields
   const [formData, setFormData] = useState<AdvanceSearchFormType>({
@@ -164,18 +166,8 @@ const AdvanceSearch = (props: Props) => {
   }, [formData])
 
   useEffect(() => {
-    // Fetch last sync time from the server
-    const fetchLastSyncTime = async () => {
-      try {
-        const response = await apiService
-          .getAxiosInstance()
-          .get(`${API_VERSION}/s3-sync-log/last-sync-time`)
-        setLastSyncTime(response.data)
-      } catch (error) {
-        console.error("Error fetching last sync time:", error)
-      }
-    }
-    fetchLastSyncTime()
+    // Last sync time is now fetched once at app initialization and cached in Redux
+    // No need to fetch it again here
   }, [])
 
   const dropdowns = {

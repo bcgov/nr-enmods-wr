@@ -63,8 +63,10 @@ const BasicSearch = () => {
   const [isLoading, setIsLoading] = useState(false) // Loading state during export
   const [isApiLoading, setIsApiLoading] = useState(false) // API request state
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null) // Download link after export
-  const [lastSyncTime, setLastSyncTime] = useState(null) // Last data sync time display
   const [lastSearchParams, setLastSearchParams] = useState<any>(null) // Last search params for statistics
+
+  // Get last sync time from Redux store (cached, no repeated API calls)
+  const lastSyncTime = useSelector((state: any) => state.syncInfo.lastSyncTime)
 
   // Redux-based dropdown data access
   // useDropdowns() hook provides cached dropdown options for search form fields.
@@ -178,19 +180,8 @@ const BasicSearch = () => {
    * Runs on component mount to show users when data was last synchronized.
    * Helps users understand data freshness.
    */
-  useEffect(() => {
-    const fetchLastSyncTime = async () => {
-      try {
-        const response = await apiService
-          .getAxiosInstance()
-          .get(`${API_VERSION}/s3-sync-log/last-sync-time`)
-        setLastSyncTime(response.data)
-      } catch (error) {
-        console.error("Error fetching last sync time:", error)
-      }
-    }
-    fetchLastSyncTime()
-  }, [])
+  // Last sync time is now fetched once at app initialization and cached in Redux
+  // No need to fetch it again here
 
   /**
    * Debounced input handler for search fields

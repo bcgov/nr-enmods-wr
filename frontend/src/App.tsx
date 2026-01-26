@@ -10,6 +10,7 @@ import { Footer } from "@bcgov/design-system-react-components"
 import apiService from "./service/api-service"
 import { useDispatch } from "react-redux"
 import { fetchAllDropdowns } from "./store/dropdownSlice"
+import RequestLoadingIndicator from "@/components/RequestLoadingIndicator"
 
 export default function App() {
   const dispatch = useDispatch()
@@ -51,6 +52,7 @@ export default function App() {
 
   return (
     <BrowserRouter>
+      <RequestLoadingIndicator position="bar" />
       <div className="flex flex-col min-h-screen max-w-[1240px] m-auto">
         <div className="h-[40px]">
           <Header setOpenNav={setOpenNav} openNav={openNav} />

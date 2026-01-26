@@ -44,11 +44,8 @@ export default function App() {
   // Determine if we should show loading
   // Show if API is loading (search/polling), OR if dropdowns are loading and nothing else is loading
   const shouldShowLoading = isLoading || (isDropdownsLoading && !isLoading)
-  const loadingText = isLoading
-    ? undefined
-    : isDropdownsLoading
-      ? "Loading, please wait"
-      : undefined
+  // Use custom text only when dropdowns are loading and API is not loading
+  const loadingText = isDropdownsLoading && !isLoading ? "Loading, please wait" : undefined
 
   const handleClickNavMenu = () => {
     setOpenNav(!openNav)

@@ -22,7 +22,10 @@ export default function App() {
   const lastSyncTime = useSelector(
     (state: RootState) => state.syncInfo.lastSyncTime,
   )
-  const { isLoading: isDropdownsLoading } = useDropdowns()
+  const {
+    isLoading: isDropdownsLoading,
+    isInitialized: isDropdownsInitialized,
+  } = useDropdowns()
 
   useEffect(() => {
     // Subscribe to api request loading state
@@ -41,11 +44,15 @@ export default function App() {
     dispatch(fetchLastSyncTime() as any)
   }, [dispatch])
 
-  // Determine if we should show loading
-  // Show if API is loading (search/polling), OR if dropdowns are loading and nothing else is loading
-  const shouldShowLoading = isLoading || (isDropdownsLoading && !isLoading)
-  // Use custom text only when dropdowns are loading and API is not loading
-  const loadingText = isDropdownsLoading && !isLoading ? "Loading, please wait" : undefined
+  // Determine loading text:
+  // - If dropdowns still loading: "Loading, please wait" (initial app load)
+  // - If dropdowns initialized but API loading: default search text
+  // - Otherwise: no custom text (uses default)
+  const shouldShowLoading = isLoading || isDropdownsLoading
+  const loadingText =
+    !isDropdownsInitialized || isDropdownsLoading
+      ? "Loading, please wait"
+      : undefined
 
   const handleClickNavMenu = () => {
     setOpenNav(!openNav)

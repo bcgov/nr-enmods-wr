@@ -41,10 +41,8 @@ import FilterResultsForm from "@/components/search/FilterResultsForm"
 import AdditionalCriteria from "@/components/search/AdditionalCriteria"
 import { SearchAttr } from "@/enum/searchEnum"
 import apiService from "@/service/api-service"
-import { API_VERSION } from "@/util/utility"
 import { debounce } from "lodash"
 import Loading from "@/components/Loading"
-import LoadingSpinner from "../components/LoadingSpinner"
 import { InfoOutlined } from "@mui/icons-material"
 import type AdvanceSearchFormType from "@/interfaces/AdvanceSearchFormType"
 import DownloadReadyDialog from "@/components/search/DownloadReadyDialog"
@@ -91,7 +89,6 @@ const AdvanceSearch = (props: Props) => {
   const [errors, setErrors] = useState<string[]>([])
   const [isDisabled, setIsDisabled] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [isApiLoading, setIsApiLoading] = useState(false)
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null)
   const [isPolling, setIsPolling] = useState(false)
   const [params, setParams] = useState<any>("")
@@ -212,7 +209,6 @@ const AdvanceSearch = (props: Props) => {
         status = res.data?.status
         if (status === "complete") {
           setIsDisabled(false)
-          setIsApiLoading(false)
           setIsLoading(false)
           setDownloadUrl(
             `${apiBase}/v1/search/observationSearch/download/${jobId}`,
@@ -227,7 +223,6 @@ const AdvanceSearch = (props: Props) => {
           break
         } else if (status === "error") {
           setIsDisabled(false)
-          setIsApiLoading(false)
           setIsLoading(false)
           setErrors([res.data.error || "Export failed"])
           break
@@ -388,7 +383,6 @@ const AdvanceSearch = (props: Props) => {
   return (
     <div className="p-3">
       <Loading isLoading={isLoading} />
-      <LoadingSpinner isLoading={isApiLoading} />
       <div className="flex-row px-1 py-4">
         <Link
           to="/search/basic"

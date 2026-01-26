@@ -34,11 +34,8 @@ import apiService from "@/service/api-service"
 import type BasicSearchFormType from "@/interfaces/BasicSearchFormType"
 import { Link } from "react-router-dom"
 import { debounce } from "lodash"
-import { SearchAttr } from "@/enum/searchEnum"
-import { API_VERSION } from "@/util/utility"
 import { InfoOutlined } from "@mui/icons-material"
 import Loading from "@/components/Loading"
-import LoadingSpinner from "../components/LoadingSpinner"
 import config from "@/config"
 import DownloadReadyDialog from "@/components/search/DownloadReadyDialog"
 import SyncIcon from "@mui/icons-material/Sync"
@@ -62,7 +59,6 @@ const BasicSearch = () => {
   const [errors, setErrors] = useState<string[]>([]) // Form validation errors
   const [alertMsg, setAlertMsg] = useState("") // User alert messages
   const [isLoading, setIsLoading] = useState(false) // Loading state during export
-  const [isApiLoading, setIsApiLoading] = useState(false) // API request state
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null) // Download link after export
   const [lastSearchParams, setLastSearchParams] = useState<any>(null) // Last search params for statistics
 
@@ -359,8 +355,7 @@ const BasicSearch = () => {
   // error alerts, and action buttons (Clear/Search) for user interaction
   return (
     <div className="p-3">
-      {/* Loading indicators for async operations */}
-      <LoadingSpinner isLoading={isApiLoading} />
+      {/* Loading indicator for export operations */}
       <Loading isLoading={isLoading} />
 
       {/* Navigation tabs: Basic (active) and Advanced search options */}

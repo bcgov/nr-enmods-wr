@@ -5,40 +5,29 @@ import { BrowserRouter } from "react-router-dom"
 import Sidebar from "./components/Sidebar"
 import "./index.css"
 import { useEffect, useState } from "react"
-import { API_VERSION } from "@/util/utility"
 import { Footer } from "@bcgov/design-system-react-components"
-import apiService from "./service/api-service"
-import { useDispatch } from "react-redux"
+import { useDispatch, useSelector } from "react-redux"
 import { fetchAllDropdowns } from "./store/dropdownSlice"
+import { fetchLastSyncTime } from "./store/syncInfoSlice"
 import RequestLoadingIndicator from "@/components/RequestLoadingIndicator"
+import type { RootState } from "@/store"
 
 export default function App() {
   const dispatch = useDispatch()
 
   const [openNav, setOpenNav] = useState(false)
-  const [lastSyncTime, setLastSyncTime] = useState(null)
+  const lastSyncTime = useSelector(
+    (state: RootState) => state.syncInfo.lastSyncTime,
+  )
 
   useEffect(() => {
     // Initialize dropdown data on app mount
     // This fetches all 15 dropdown types once and caches them in Redux
     // Components throughout the app use useDropdowns() to access this cached data
     dispatch(fetchAllDropdowns() as any)
+    // Fetch last sync time and cache it in Redux
+    dispatch(fetchLastSyncTime() as any)
   }, [dispatch])
-
-  useEffect(() => {
-    // Fetch last sync time from the server
-    const fetchLastSyncTime = async () => {
-      try {
-        const response = await apiService
-          .getAxiosInstance()
-          .get(`${API_VERSION}/s3-sync-log/last-sync-time`)
-        setLastSyncTime(response.data)
-      } catch (error) {
-        console.error("Error fetching last sync time:", error)
-      }
-    }
-    fetchLastSyncTime()
-  }, [])
 
   const handleClickNavMenu = () => {
     setOpenNav(!openNav)

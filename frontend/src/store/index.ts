@@ -9,6 +9,7 @@
 
 import { configureStore } from "@reduxjs/toolkit"
 import dropdownReducer from "./dropdownSlice"
+import syncInfoReducer from "./syncInfoSlice"
 
 /**
  * Configure and create the Redux store with all reducers.
@@ -19,6 +20,8 @@ export const store = configureStore({
   reducer: {
     /** Dropdown data state slice - manages all dropdown options for search forms */
     dropdowns: dropdownReducer,
+    /** Sync info state slice - manages cached sync data (last sync time) */
+    syncInfo: syncInfoReducer,
   },
 })
 

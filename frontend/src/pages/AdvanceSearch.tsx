@@ -581,6 +581,7 @@ const AdvanceSearch = (props: Props) => {
           id="urlText"
           disabled
           value={params}
+          helperText="Copy this URL and paste it into your browser's address bar to download the CSV file directly without using the UI. The file will be generated automatically."
         />
         <Btn
           text={"Copy"}

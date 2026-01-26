@@ -74,23 +74,57 @@ export class SearchController {
     const jobId = uuidv4();
     jobs[jobId] = { id: jobId, status: "pending" };
 
-    await this.searchService.runExport(params, jobId);
+    // Start background job (non-blocking)
+    this.searchService.runExport(params, jobId);
 
+    // Return a redirect to a polling endpoint that will redirect to download when ready
+    response.redirect(`/api/v1/search/observationSearch/get/${jobId}`);
+  }
+
+  /**
+   * GET endpoint for browser-friendly CSV download
+   * Users can paste the URL directly in browser and get automatic download
+   * Usage: /api/v1/search/observationSearch/get?param1=value1&param2=value2...
+   */
+  @Get("observationSearch/get/:jobId")
+  public async getBrowserFriendlyDownload(
+    @Param("jobId") jobId: string,
+    @Res() response: Response,
+  ) {
     const job = jobs[jobId];
-    if (!job || job.status !== "complete" || !job.filePath) {
-      return response.status(404).json({ message: job.error });
+
+    if (!job) {
+      return response.status(404).json({ message: "Job not found" });
     }
-    response.attachment("ObservationSearchResult.csv");
-    const stream = fs.createReadStream(job.filePath);
-    stream.pipe(response);
-    stream.on("close", () => {
-      fs.unlinkSync(job.filePath);
-      delete jobs[jobId];
-    });
-    stream.on("error", () => {
-      response.status(500).send("Failed to stream file.");
-      delete jobs[jobId];
-    });
+
+    // If job is still pending, return polling page with auto-refresh
+    if (job.status === "pending") {
+      const html = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Downloading...</title>
+            <meta http-equiv="refresh" content="2">
+          </head>
+          <body>
+            <p>Your file is being prepared. Please wait...</p>
+          </body>
+        </html>
+      `;
+      response.setHeader("Content-Type", "text/html");
+      return response.send(html);
+    }
+
+    // If job is complete, redirect to download
+    if (job.status === "complete" && job.filePath) {
+      return response.redirect(
+        `/api/v1/search/observationSearch/download/${jobId}`,
+      );
+    }
+
+    // If job failed or other status
+    const errorMessage = job.error || "Unknown error";
+    response.status(500).json({ message: errorMessage });
   }
 
   @Post("observationSearch")

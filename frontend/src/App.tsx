@@ -52,7 +52,7 @@ export default function App() {
 
   return (
     <BrowserRouter>
-      <RequestLoadingIndicator position="bar" />
+      <RequestLoadingIndicator position="overlay" />
       <div className="flex flex-col min-h-screen max-w-[1240px] m-auto">
         <div className="h-[40px]">
           <Header setOpenNav={setOpenNav} openNav={openNav} />

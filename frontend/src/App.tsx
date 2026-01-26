@@ -49,10 +49,12 @@ export default function App() {
   // - If dropdowns initialized and API loading: "Please wait while your data is being processed..." (user search)
   // - Otherwise: no custom text
   const shouldShowLoading = isLoading || isDropdownsLoading
-  const loadingText = isDropdownsLoading 
-    ? "Loading, please wait" 
+  const loadingText = isDropdownsLoading
+    ? "Loading, please wait"
     : isLoading && isDropdownsInitialized
       ? "Please wait while your data is being processed..."
+      : undefined
+
   const handleClickNavMenu = () => {
     setOpenNav(!openNav)
   }

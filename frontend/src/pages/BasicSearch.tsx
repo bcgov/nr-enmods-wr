@@ -35,7 +35,6 @@ import type BasicSearchFormType from "@/interfaces/BasicSearchFormType"
 import { Link } from "react-router-dom"
 import { debounce } from "lodash"
 import { InfoOutlined } from "@mui/icons-material"
-import Loading from "@/components/Loading"
 import config from "@/config"
 import DownloadReadyDialog from "@/components/search/DownloadReadyDialog"
 import SyncIcon from "@mui/icons-material/Sync"
@@ -355,9 +354,6 @@ const BasicSearch = () => {
   // error alerts, and action buttons (Clear/Search) for user interaction
   return (
     <div className="p-3">
-      {/* Loading indicator for export operations */}
-      <Loading isLoading={isLoading} />
-
       {/* Navigation tabs: Basic (active) and Advanced search options */}
       <div className="flex flex-row px-1 py-4">
         <Link

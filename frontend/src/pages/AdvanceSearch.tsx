@@ -42,7 +42,6 @@ import AdditionalCriteria from "@/components/search/AdditionalCriteria"
 import { SearchAttr } from "@/enum/searchEnum"
 import apiService from "@/service/api-service"
 import { debounce } from "lodash"
-import Loading from "@/components/Loading"
 import { InfoOutlined } from "@mui/icons-material"
 import type AdvanceSearchFormType from "@/interfaces/AdvanceSearchFormType"
 import DownloadReadyDialog from "@/components/search/DownloadReadyDialog"
@@ -382,7 +381,6 @@ const AdvanceSearch = (props: Props) => {
 
   return (
     <div className="p-3">
-      <Loading isLoading={isLoading} />
       <div className="flex-row px-1 py-4">
         <Link
           to="/search/basic"

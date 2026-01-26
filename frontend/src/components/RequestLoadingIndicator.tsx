@@ -71,7 +71,7 @@ export default function RequestLoadingIndicator({
   // Full overlay (centered modal)
   if (position === "overlay") {
     return (
-      <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none bg-transparent">
+      <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none bg-gray-500 bg-opacity-5">
         <div className="p-8 pointer-events-auto">
           <div className="flex flex-col items-center gap-4">
             <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-500 border-t-transparent" />

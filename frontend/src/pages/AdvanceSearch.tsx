@@ -157,9 +157,12 @@ const AdvanceSearch = (props: Props) => {
 
     if (urlString) urlString = urlString.substring(0, urlString.length - 1)
 
+    // Build full absolute URL for browser-friendly sharing
+    const protocol = window.location.protocol
+    const host = window.location.host
     const url = urlString
-      ? `${apiBase}/v1/search/downloadReport?${urlString}`
-      : `${apiBase}/v1/search/downloadReport`
+      ? `${protocol}//${host}/api/v1/search/downloadReport?${urlString}`
+      : `${protocol}//${host}/api/v1/search/downloadReport`
     setParams(encodeURI(url))
   }, [formData])
 
@@ -581,6 +584,7 @@ const AdvanceSearch = (props: Props) => {
           id="urlText"
           disabled
           value={params}
+          helperText="Copy this URL and paste it into your browser's address bar to download the CSV file directly without using the UI. The file will be generated automatically."
         />
         <Btn
           text={"Copy"}

@@ -24,73 +24,198 @@ export class SearchController {
   private readonly logger = new Logger("SearchController");
   constructor(private searchService: SearchService) {}
 
+  /**
+   * Converts query string parameters to the format expected by the search service.
+   * Query strings from URLs come in as single strings, but need to be converted to arrays
+   * for fields that use ANY() in SQL (media, observedProperty, etc.)
+   */
+  private normalizeQueryParameters(
+    queryParams: Record<string, any>,
+  ): BasicSearchDto {
+    // Array fields that should be split on commas if they come as strings
+    const arrayFields = [
+      "locationName",
+      "permitNumber",
+      "media",
+      "observedProperty",
+      "projects",
+      "samplingAgency",
+      "analyzingAgency",
+      "analyticalMethod",
+      "collectionMethod",
+      "qcSampleType",
+      "dataClassification",
+    ];
+
+    const normalized: any = {};
+
+    for (const [key, value] of Object.entries(queryParams)) {
+      if (arrayFields.includes(key)) {
+        // Convert string to array
+        if (typeof value === "string" && value) {
+          normalized[key] = [value];
+        } else if (Array.isArray(value)) {
+          normalized[key] = value;
+        } else {
+          normalized[key] = "";
+        }
+      } else if (key === "locationType") {
+        // Special handling for locationType which is an object
+        normalized[key] = queryParams.locationType
+          ? {
+              id: queryParams.locationType,
+              customId: queryParams.locationTypeCustomId,
+            }
+          : "";
+      } else if (key === "workedOrderNo") {
+        // Special handling for workedOrderNo which is an object
+        normalized[key] = queryParams.workedOrderNo
+          ? { id: queryParams.workedOrderNo, text: queryParams.workOrderNoText }
+          : "";
+      } else if (key !== "locationTypeCustomId" && key !== "workOrderNoText") {
+        // Copy other fields as-is, excluding the intermediate fields
+        normalized[key] = value || "";
+      }
+    }
+
+    return normalized as BasicSearchDto;
+  }
+
   @Get("downloadReport")
   public async search(
     @Res() response: Response,
     @Query() query: Record<string, any>,
   ) {
     const queryParams = JSON.parse(JSON.stringify(query));
-    let params: BasicSearchDto = {
-      locationType: queryParams.locationType
-        ? {
-            id: queryParams.locationType,
-            customId: queryParams.locationTypeCustomId,
-          }
-        : "",
-      locationName: queryParams.locationName ? queryParams.locationName : "",
-      permitNumber: queryParams.permitNumber ? queryParams.permitNumber : "",
-      fromDate: queryParams.fromDate ? queryParams.fromDate : "",
-      toDate: queryParams.toDate ? queryParams.toDate : "",
-      media: queryParams.media ? queryParams.media : "",
-      observedProperty: queryParams.observedProperty
-        ? queryParams.observedProperty
-        : "",
-      projects: queryParams.projects ? queryParams.projects : "",
-      workedOrderNo: queryParams.workedOrderNo
-        ? { id: queryParams.workedOrderNo, text: queryParams.workOrderNoText }
-        : "",
-      samplingAgency: queryParams.samplingAgency
-        ? queryParams.samplingAgency
-        : "",
-      analyzingAgency: queryParams.analyzingAgency
-        ? queryParams.analyzingAgency
-        : "",
-      analyticalMethod: queryParams.analyticalMethod
-        ? queryParams.analyticalMethod
-        : "",
-      collectionMethod: queryParams.collectionMethod
-        ? queryParams.collectionMethod
-        : "",
-      qcSampleType: queryParams.qcSampleType ? queryParams.qcSampleType : "",
-      dataClassification: queryParams.data_classification
-        ? queryParams.data_classification
-        : "",
-      sampleDepth: queryParams.sampleDepth ? queryParams.sampleDepth : "",
-      labBatchId: queryParams.labBatchId ? queryParams.labBatchId : "",
-      specimenId: queryParams.specimenId ? queryParams.specimenId : "",
-      fileFormat: "",
-    };
+    const params = this.normalizeQueryParameters(queryParams);
 
     const jobId = uuidv4();
     jobs[jobId] = { id: jobId, status: "pending" };
 
-    await this.searchService.runExport(params, jobId);
+    // Start background job (non-blocking)
+    this.searchService.runExport(params, jobId);
 
+    // Return a redirect to a polling endpoint that will redirect to download when ready
+    response.redirect(`/api/v1/search/observationSearch/get/${jobId}`);
+  }
+
+  /**
+   * GET endpoint for browser-friendly CSV download
+   * Users can paste the URL directly in browser and get automatic download
+   * Usage: /api/v1/search/observationSearch/get?param1=value1&param2=value2...
+   */
+  @Get("observationSearch/get/:jobId")
+  public async getBrowserFriendlyDownload(
+    @Param("jobId") jobId: string,
+    @Res() response: Response,
+  ) {
     const job = jobs[jobId];
-    if (!job || job.status !== "complete" || !job.filePath) {
-      return response.status(404).json({ message: job.error });
+
+    if (!job) {
+      return response.status(404).json({ message: "Job not found" });
     }
-    response.attachment("ObservationSearchResult.csv");
-    const stream = fs.createReadStream(job.filePath);
-    stream.pipe(response);
-    stream.on("close", () => {
-      fs.unlinkSync(job.filePath);
-      delete jobs[jobId];
-    });
-    stream.on("error", () => {
-      response.status(500).send("Failed to stream file.");
-      delete jobs[jobId];
-    });
+
+    // If job failed, show error immediately
+    if (job.status === "error" || job.error) {
+      const html = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Error</title>
+          </head>
+          <body>
+            <h2>Error</h2>
+            <p>${job.error || "An error occurred while processing your request"}</p>
+            <p><a href="javascript:history.back()">Go back</a></p>
+          </body>
+        </html>
+      `;
+      response.setHeader("Content-Type", "text/html");
+      return response.status(500).send(html);
+    }
+
+    // If job is still pending, return polling page with auto-refresh
+    if (job.status === "pending") {
+      const html = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Downloading...</title>
+            <meta http-equiv="refresh" content="2">
+          </head>
+          <body>
+            <p>Your file is being prepared. Please wait...</p>
+          </body>
+        </html>
+      `;
+      response.setHeader("Content-Type", "text/html");
+      return response.send(html);
+    }
+
+    // If job is complete, show download link
+    if (job.status === "complete" && job.filePath) {
+      const html = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Download Ready</title>
+            <style>
+              body {
+                font-family: Arial, sans-serif;
+                max-width: 600px;
+                margin: 50px auto;
+                padding: 20px;
+              }
+              .success-box {
+                background-color: #d4edda;
+                border: 1px solid #c3e6cb;
+                border-radius: 4px;
+                padding: 20px;
+                margin: 20px 0;
+              }
+              .download-link {
+                display: inline-block;
+                background-color: #007bff;
+                color: white;
+                padding: 10px 20px;
+                text-decoration: none;
+                border-radius: 4px;
+                margin: 10px 0;
+              }
+              .download-link:hover {
+                background-color: #0056b3;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="success-box">
+              <h2>✓ Your file is ready!</h2>
+              <p>Click the button below to download your CSV file:</p>
+              <a href="/api/v1/search/observationSearch/download/${jobId}" class="download-link">
+                Download ObservationSearchResult.csv
+              </a>
+            </div>
+          </body>
+        </html>
+      `;
+      response.setHeader("Content-Type", "text/html");
+      return response.send(html);
+    }
+
+    // Unexpected status
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Unknown Status</title>
+        </head>
+        <body>
+          <p>Unknown job status. Please try again.</p>
+        </body>
+      </html>
+    `;
+    response.setHeader("Content-Type", "text/html");
+    response.status(400).send(html);
   }
 
   @Post("observationSearch")

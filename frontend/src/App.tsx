@@ -9,16 +9,28 @@ import { Footer } from "@bcgov/design-system-react-components"
 import { useDispatch, useSelector } from "react-redux"
 import { fetchAllDropdowns } from "./store/dropdownSlice"
 import { fetchLastSyncTime } from "./store/syncInfoSlice"
-import RequestLoadingIndicator from "@/components/RequestLoadingIndicator"
+import Loading from "@/components/Loading"
+import apiService from "./service/api-service"
+import { useDropdowns } from "@/store/useDropdowns"
 import type { RootState } from "@/store"
 
 export default function App() {
   const dispatch = useDispatch()
 
   const [openNav, setOpenNav] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
   const lastSyncTime = useSelector(
     (state: RootState) => state.syncInfo.lastSyncTime,
   )
+  const { isLoading: isDropdownsLoading } = useDropdowns()
+
+  useEffect(() => {
+    // Subscribe to api request loading state
+    const unsubscribe = apiService.subscribeToLoadingState((loading) => {
+      setIsLoading(loading)
+    })
+    return unsubscribe
+  }, [])
 
   useEffect(() => {
     // Initialize dropdown data on app mount
@@ -28,6 +40,15 @@ export default function App() {
     // Fetch last sync time and cache it in Redux
     dispatch(fetchLastSyncTime() as any)
   }, [dispatch])
+
+  // Determine if we should show loading
+  // Show if API is loading (search/polling), OR if dropdowns are loading and nothing else is loading
+  const shouldShowLoading = isLoading || (isDropdownsLoading && !isLoading)
+  const loadingText = isLoading
+    ? undefined
+    : isDropdownsLoading
+      ? "Loading, please wait"
+      : undefined
 
   const handleClickNavMenu = () => {
     setOpenNav(!openNav)
@@ -41,7 +62,7 @@ export default function App() {
 
   return (
     <BrowserRouter>
-      <RequestLoadingIndicator position="overlay" />
+      <Loading isLoading={shouldShowLoading} loadingText={loadingText} />
       <div className="flex flex-col min-h-screen max-w-[1240px] m-auto">
         <div className="h-[40px]">
           <Header setOpenNav={setOpenNav} openNav={openNav} />

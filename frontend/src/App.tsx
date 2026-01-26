@@ -44,16 +44,9 @@ export default function App() {
     dispatch(fetchLastSyncTime() as any)
   }, [dispatch])
 
-  // Determine loading text:
-  // - If dropdowns still loading: "Loading, please wait" (initial app load)
-  // - If dropdowns initialized and API loading: "Please wait while your data is being processed..." (user search)
-  // - Otherwise: no custom text
-  const shouldShowLoading = isLoading || isDropdownsLoading
-  const loadingText = isDropdownsLoading
-    ? "Loading, please wait"
-    : isLoading && isDropdownsInitialized
-      ? "Please wait while your data is being processed..."
-      : undefined
+  // Show Loading only during app initialization (dropdowns + sync time)
+  const shouldShowLoading = isDropdownsLoading
+  const loadingText = "Loading, please wait"
 
   const handleClickNavMenu = () => {
     setOpenNav(!openNav)

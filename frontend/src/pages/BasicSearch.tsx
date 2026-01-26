@@ -354,6 +354,10 @@ const BasicSearch = () => {
   // error alerts, and action buttons (Clear/Search) for user interaction
   return (
     <div className="p-3">
+      <Loading
+        isLoading={isLoading}
+        loadingText="Please wait while your data is being processed..."
+      />
       {/* Navigation tabs: Basic (active) and Advanced search options */}
       <div className="flex flex-row px-1 py-4">
         <Link

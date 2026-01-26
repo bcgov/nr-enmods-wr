@@ -5,39 +5,48 @@ import { BrowserRouter } from "react-router-dom"
 import Sidebar from "./components/Sidebar"
 import "./index.css"
 import { useEffect, useState } from "react"
-import { API_VERSION } from "@/util/utility"
 import { Footer } from "@bcgov/design-system-react-components"
-import apiService from "./service/api-service"
-import { useDispatch } from "react-redux"
+import { useDispatch, useSelector } from "react-redux"
 import { fetchAllDropdowns } from "./store/dropdownSlice"
+import { fetchLastSyncTime } from "./store/syncInfoSlice"
+import Loading from "@/components/Loading"
+import apiService from "./service/api-service"
+import { useDropdowns } from "@/store/useDropdowns"
+import type { RootState } from "@/store"
 
 export default function App() {
   const dispatch = useDispatch()
 
   const [openNav, setOpenNav] = useState(false)
-  const [lastSyncTime, setLastSyncTime] = useState(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const lastSyncTime = useSelector(
+    (state: RootState) => state.syncInfo.lastSyncTime,
+  )
+  const {
+    isLoading: isDropdownsLoading,
+    isInitialized: isDropdownsInitialized,
+  } = useDropdowns()
+
+  useEffect(() => {
+    // Subscribe to api request loading state
+    const unsubscribe = apiService.subscribeToLoadingState((loading) => {
+      setIsLoading(loading)
+    })
+    return unsubscribe
+  }, [])
 
   useEffect(() => {
     // Initialize dropdown data on app mount
     // This fetches all 15 dropdown types once and caches them in Redux
     // Components throughout the app use useDropdowns() to access this cached data
     dispatch(fetchAllDropdowns() as any)
+    // Fetch last sync time and cache it in Redux
+    dispatch(fetchLastSyncTime() as any)
   }, [dispatch])
 
-  useEffect(() => {
-    // Fetch last sync time from the server
-    const fetchLastSyncTime = async () => {
-      try {
-        const response = await apiService
-          .getAxiosInstance()
-          .get(`${API_VERSION}/s3-sync-log/last-sync-time`)
-        setLastSyncTime(response.data)
-      } catch (error) {
-        console.error("Error fetching last sync time:", error)
-      }
-    }
-    fetchLastSyncTime()
-  }, [])
+  // Show Loading only during app initialization (dropdowns + sync time)
+  const shouldShowLoading = isDropdownsLoading
+  const loadingText = "Loading, please wait"
 
   const handleClickNavMenu = () => {
     setOpenNav(!openNav)
@@ -51,6 +60,7 @@ export default function App() {
 
   return (
     <BrowserRouter>
+      <Loading isLoading={shouldShowLoading} loadingText={loadingText} />
       <div className="flex flex-col min-h-screen max-w-[1240px] m-auto">
         <div className="h-[40px]">
           <Header setOpenNav={setOpenNav} openNav={openNav} />

@@ -36,14 +36,13 @@ import { GridExpandMoreIcon } from "@mui/x-data-grid"
 import TitleText from "@/components/TitleText"
 import LocationParametersForm from "@/components/search/LocationParametersForm"
 import { useEffect, useState } from "react"
+import { useSelector } from "react-redux"
 import FilterResultsForm from "@/components/search/FilterResultsForm"
 import AdditionalCriteria from "@/components/search/AdditionalCriteria"
 import { SearchAttr } from "@/enum/searchEnum"
 import apiService from "@/service/api-service"
-import { API_VERSION } from "@/util/utility"
 import { debounce } from "lodash"
 import Loading from "@/components/Loading"
-import LoadingSpinner from "../components/LoadingSpinner"
 import { InfoOutlined } from "@mui/icons-material"
 import type AdvanceSearchFormType from "@/interfaces/AdvanceSearchFormType"
 import DownloadReadyDialog from "@/components/search/DownloadReadyDialog"
@@ -90,12 +89,13 @@ const AdvanceSearch = (props: Props) => {
   const [errors, setErrors] = useState<string[]>([])
   const [isDisabled, setIsDisabled] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [isApiLoading, setIsApiLoading] = useState(false)
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null)
   const [isPolling, setIsPolling] = useState(false)
   const [params, setParams] = useState<any>("")
-  const [lastSyncTime, setLastSyncTime] = useState(null)
   const [lastSearchParams, setLastSearchParams] = useState<any>(null)
+
+  // Get last sync time from Redux store (cached, no repeated API calls)
+  const lastSyncTime = useSelector((state: any) => state.syncInfo.lastSyncTime)
 
   // Initialize form with empty values for all search fields
   const [formData, setFormData] = useState<AdvanceSearchFormType>({
@@ -164,18 +164,8 @@ const AdvanceSearch = (props: Props) => {
   }, [formData])
 
   useEffect(() => {
-    // Fetch last sync time from the server
-    const fetchLastSyncTime = async () => {
-      try {
-        const response = await apiService
-          .getAxiosInstance()
-          .get(`${API_VERSION}/s3-sync-log/last-sync-time`)
-        setLastSyncTime(response.data)
-      } catch (error) {
-        console.error("Error fetching last sync time:", error)
-      }
-    }
-    fetchLastSyncTime()
+    // Last sync time is now fetched once at app initialization and cached in Redux
+    // No need to fetch it again here
   }, [])
 
   const dropdowns = {
@@ -219,7 +209,6 @@ const AdvanceSearch = (props: Props) => {
         status = res.data?.status
         if (status === "complete") {
           setIsDisabled(false)
-          setIsApiLoading(false)
           setIsLoading(false)
           setDownloadUrl(
             `${apiBase}/v1/search/observationSearch/download/${jobId}`,
@@ -234,7 +223,6 @@ const AdvanceSearch = (props: Props) => {
           break
         } else if (status === "error") {
           setIsDisabled(false)
-          setIsApiLoading(false)
           setIsLoading(false)
           setErrors([res.data.error || "Export failed"])
           break
@@ -394,8 +382,10 @@ const AdvanceSearch = (props: Props) => {
 
   return (
     <div className="p-3">
-      <Loading isLoading={isLoading} />
-      <LoadingSpinner isLoading={isApiLoading} />
+      <Loading
+        isLoading={isLoading}
+        loadingText="Please wait while your data is being processed..."
+      />
       <div className="flex-row px-1 py-4">
         <Link
           to="/search/basic"

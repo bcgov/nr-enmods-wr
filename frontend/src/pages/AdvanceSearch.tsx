@@ -157,9 +157,12 @@ const AdvanceSearch = (props: Props) => {
 
     if (urlString) urlString = urlString.substring(0, urlString.length - 1)
 
+    // Build full URL with domain for browser-friendly sharing
+    // Use window.location.origin for production environments where apiBase might be empty
+    const baseUrl = apiBase || window.location.origin + "/api"
     const url = urlString
-      ? `${apiBase}/v1/search/downloadReport?${urlString}`
-      : `${apiBase}/v1/search/downloadReport`
+      ? `${baseUrl}/v1/search/downloadReport?${urlString}`
+      : `${baseUrl}/v1/search/downloadReport`
     setParams(encodeURI(url))
   }, [formData])
 

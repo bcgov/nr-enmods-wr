@@ -97,6 +97,25 @@ export class SearchController {
       return response.status(404).json({ message: "Job not found" });
     }
 
+    // If job failed, show error immediately
+    if (job.status === "error" || job.error) {
+      const html = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Error</title>
+          </head>
+          <body>
+            <h2>Error</h2>
+            <p>${job.error || "An error occurred while processing your request"}</p>
+            <p><a href="javascript:history.back()">Go back</a></p>
+          </body>
+        </html>
+      `;
+      response.setHeader("Content-Type", "text/html");
+      return response.status(500).send(html);
+    }
+
     // If job is still pending, return polling page with auto-refresh
     if (job.status === "pending") {
       const html = `
@@ -122,9 +141,20 @@ export class SearchController {
       );
     }
 
-    // If job failed or other status
-    const errorMessage = job.error || "Unknown error";
-    response.status(500).json({ message: errorMessage });
+    // Unexpected status
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Unknown Status</title>
+        </head>
+        <body>
+          <p>Unknown job status. Please try again.</p>
+        </body>
+      </html>
+    `;
+    response.setHeader("Content-Type", "text/html");
+    response.status(400).send(html);
   }
 
   @Post("observationSearch")

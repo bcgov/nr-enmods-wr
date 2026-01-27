@@ -181,6 +181,7 @@ export default function FilterResultsForm(props: any) {
 
               <div className="flex items-center">
                 <Autocomplete
+                  multiple
                   value={formData?.workedOrderNo}
                   inputValue={workOrderInputValue}
                   onInputChange={(e, val) => {

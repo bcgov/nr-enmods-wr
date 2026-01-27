@@ -184,14 +184,24 @@ export default function FilterResultsForm(props: any) {
                   multiple
                   freeSolo
                   value={formData?.workedOrderNo || []}
-                  options={filterResultDrpdwns.workedOrderNos || []}
+                  inputValue={workOrderInputValue}
+                  onInputChange={(e, val) => {
+                    setWorkOrderInputValue(val)
+                  }}
+                  options={getFilteredWorkOrders()}
                   getOptionKey={(option) => option.text}
                   isOptionEqualToValue={(option, value) =>
                     option.text === value.text
                   }
                   getOptionLabel={(option) => option.text || ""}
-                  onChange={(e, val) =>
+                  onChange={(e, val) => {
                     handleOnChange(e, val, SearchAttr.WorkedOrderNo)
+                    setWorkOrderInputValue("")
+                  }}
+                  noOptionsText={
+                    workOrderInputValue.length < 3
+                      ? `Type at least ${3 - workOrderInputValue.length} more characters`
+                      : "No matching work orders"
                   }
                   sx={{ width: 380 }}
                   renderInput={(params) => (

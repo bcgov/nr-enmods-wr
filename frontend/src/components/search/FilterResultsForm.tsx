@@ -182,13 +182,13 @@ export default function FilterResultsForm(props: any) {
               <div className="flex items-center">
                 <Autocomplete
                   multiple
-                  freeSolo
                   value={formData?.workedOrderNo || []}
                   inputValue={workOrderInputValue}
                   onInputChange={(e, val) => {
                     setWorkOrderInputValue(val)
                   }}
                   options={getFilteredWorkOrders()}
+                  filterOptions={(options) => options}
                   getOptionKey={(option) => option.text}
                   isOptionEqualToValue={(option, value) =>
                     option.text === value.text

@@ -111,8 +111,13 @@ export class SearchService {
       basicSearchDto.workedOrderNo &&
       basicSearchDto.workedOrderNo.length >= 1
     ) {
-      whereClause.push(`work_order_number = ANY($${params.length + 1})`);
-      params.push(basicSearchDto.workedOrderNo.map((order: any) => order.text));
+      const validOrderNumbers = basicSearchDto.workedOrderNo
+        .filter((order: any) => order && order.text)
+        .map((order: any) => order.text);
+      if (validOrderNumbers.length > 0) {
+        whereClause.push(`work_order_number = ANY($${params.length + 1})`);
+        params.push(validOrderNumbers);
+      }
     }
 
     if (

@@ -107,9 +107,12 @@ export class SearchService {
       params.push(basicSearchDto.observedProperty);
     }
 
-    if (basicSearchDto.workedOrderNo) {
-      whereClause.push(`work_order_number = $${params.length + 1}`);
-      params.push(basicSearchDto.workedOrderNo.text);
+    if (
+      basicSearchDto.workedOrderNo &&
+      basicSearchDto.workedOrderNo.length >= 1
+    ) {
+      whereClause.push(`work_order_number = ANY($${params.length + 1})`);
+      params.push(basicSearchDto.workedOrderNo.map((order: any) => order.text));
     }
 
     if (

@@ -183,15 +183,20 @@ export default function FilterResultsForm(props: any) {
                 <Autocomplete
                   multiple
                   value={formData?.workedOrderNo || []}
+                  inputValue={workOrderInputValue}
+                  onInputChange={(e, val) => {
+                    setWorkOrderInputValue(val)
+                  }}
                   options={filterResultDrpdwns.workedOrderNos || []}
                   getOptionKey={(option) => option.text}
                   isOptionEqualToValue={(option, value) =>
                     option.text === value.text
                   }
                   getOptionLabel={(option) => option.text || ""}
-                  onChange={(e, val) =>
+                  onChange={(e, val) => {
                     handleOnChange(e, val, SearchAttr.WorkedOrderNo)
-                  }
+                    setWorkOrderInputValue("")
+                  }}
                   sx={{ width: 380 }}
                   renderInput={(params) => (
                     <TextField {...params} label="Work Order Number" />

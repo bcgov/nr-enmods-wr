@@ -181,21 +181,23 @@ export default function FilterResultsForm(props: any) {
 
               <div className="flex items-center">
                 <Autocomplete
-                  value={formData?.workedOrderNo}
+                  multiple
+                  value={formData?.workedOrderNo || []}
                   inputValue={workOrderInputValue}
                   onInputChange={(e, val) => {
                     setWorkOrderInputValue(val)
                   }}
                   options={getFilteredWorkOrders()}
                   filterOptions={(options) => options}
-                  getOptionKey={(option) => option.id}
+                  getOptionKey={(option) => option.text}
                   isOptionEqualToValue={(option, value) =>
-                    option.id === value.id
+                    option.text === value.text
                   }
                   getOptionLabel={(option) => option.text || ""}
-                  onChange={(e, val) =>
+                  onChange={(e, val) => {
                     handleOnChange(e, val, SearchAttr.WorkedOrderNo)
-                  }
+                    setWorkOrderInputValue("")
+                  }}
                   noOptionsText={
                     workOrderInputValue.length < 3
                       ? `Type at least ${3 - workOrderInputValue.length} more characters`

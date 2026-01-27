@@ -45,6 +45,7 @@ export class SearchController {
       "collectionMethod",
       "qcSampleType",
       "dataClassification",
+      "workedOrderNo",
     ];
 
     const normalized: any = {};
@@ -67,12 +68,7 @@ export class SearchController {
               customId: queryParams.locationTypeCustomId,
             }
           : "";
-      } else if (key === "workedOrderNo") {
-        // Special handling for workedOrderNo which is an object
-        normalized[key] = queryParams.workedOrderNo
-          ? { id: queryParams.workedOrderNo, text: queryParams.workOrderNoText }
-          : "";
-      } else if (key !== "locationTypeCustomId" && key !== "workOrderNoText") {
+      } else if (key !== "locationTypeCustomId") {
         // Copy other fields as-is, excluding the intermediate fields
         normalized[key] = value || "";
       }

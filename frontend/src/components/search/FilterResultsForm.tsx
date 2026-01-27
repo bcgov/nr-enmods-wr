@@ -189,9 +189,9 @@ export default function FilterResultsForm(props: any) {
                   }}
                   options={getFilteredWorkOrders()}
                   filterOptions={(options) => options}
-                  getOptionKey={(option) => option.id}
+                  getOptionKey={(option) => option.text}
                   isOptionEqualToValue={(option, value) =>
-                    option.id === value.id
+                    option.text === value.text
                   }
                   getOptionLabel={(option) => option.text || ""}
                   onChange={(e, val) =>

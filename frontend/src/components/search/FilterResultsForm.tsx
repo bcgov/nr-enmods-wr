@@ -305,7 +305,7 @@ export default function FilterResultsForm(props: any) {
                   <TextField {...params} label="Analysis Method ID" />
                 )}
               />
-              <TooltipInfo title="The laboratory analytical method used to analyze a sample." />
+              <TooltipInfo title="The unique system ID for the lab analysis method." />
             </div>
 
           </div>

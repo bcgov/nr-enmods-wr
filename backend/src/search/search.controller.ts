@@ -75,8 +75,17 @@ export class SearchController {
               customId: queryParams.locationTypeCustomId,
             }
           : "";
-      } else if (key !== "locationTypeCustomId") {
-        // Copy other fields as-is, excluding the intermediate fields
+      } else if (key === "locationTypeCustomId") {
+        // Handle locationTypeCustomId - if locationType wasn't set, try to use just customId
+        if (!queryParams.locationType && queryParams.locationTypeCustomId) {
+          normalized["locationType"] = {
+            id: queryParams.locationTypeCustomId,
+            customId: queryParams.locationTypeCustomId,
+          };
+        }
+        // Otherwise skip it as it was already processed with locationType above
+      } else {
+        // Copy other fields as-is
         normalized[key] = value || "";
       }
     }
@@ -129,7 +138,6 @@ export class SearchController {
           <body>
             <h2>Error</h2>
             <p>${job.error || "An error occurred while processing your request"}</p>
-            <p><a href="javascript:history.back()">Go back</a></p>
           </body>
         </html>
       `;

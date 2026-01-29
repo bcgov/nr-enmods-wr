@@ -285,6 +285,29 @@ export default function FilterResultsForm(props: any) {
               />
               <TooltipInfo title="The laboratory analytical method used to analyze a sample." />
             </div>
+
+            <div className="flex items-center">
+              <Autocomplete
+                multiple
+                value={formData?.analyticalMethod}
+                getOptionKey={(option) => option.id}
+                options={filterResultDrpdwns.analyticalMethods}
+                isOptionEqualToValue={(option, value) => option.id === value.id}
+                getOptionLabel={(option) => option.id || ""}
+                onInputChange={(e, val) =>
+                  handleInputChange(e, val, SearchAttr.AnalyticalMethod)
+                }
+                onChange={(e, val) =>
+                  handleOnChange(e, val, SearchAttr.AnalyticalMethod)
+                }
+                sx={{ width: 380 }}
+                renderInput={(params) => (
+                  <TextField {...params} label="Analysis Method ID" />
+                )}
+              />
+              <TooltipInfo title="The laboratory analytical method used to analyze a sample." />
+            </div>
+
           </div>
         )}
       </div>

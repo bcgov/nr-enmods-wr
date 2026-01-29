@@ -17,7 +17,7 @@ import { MvAqiObservedPropertyResultType } from "./materialized-views/mv_aqi_obs
 import { MvAqiObservedPropertyAnalysisType } from "./materialized-views/mv_aqi_observed_property_analysis_type.entity";
 import { MvAqiDataClassification } from "./materialized-views/mv_aqi_data_classification.entity";
 import { MvAqiAnalyzingAgency } from "./materialized-views/mv_aqi_analyzing_agency.entity";
-import { MvAqiAnalysisMethod } from "./materialized-views/mv_aqi_analysis_method.entity";
+import { MvAqiAnalysisMethodCollection } from "./materialized-views/mv_aqi_analysis_method_collection.entity";
 import { MvAqiLabBatchId } from "./materialized-views/mv_aqi_lab_batch_id.entity";
 import { MvAqiQcType } from "./materialized-views/mv_aqi_qc_type.entity";
 import { S3SyncLog } from "./s3_sync_log/entities/s3_sync_log.entity";
@@ -49,7 +49,7 @@ const ormconfig: TypeOrmModuleOptions = {
     MvAqiObservedPropertyAnalysisType,
     MvAqiDataClassification,
     MvAqiAnalyzingAgency,
-    MvAqiAnalysisMethod,
+    MvAqiAnalysisMethodCollection,
     MvAqiLabBatchId,
     MvAqiQcType,
     S3SyncLog,

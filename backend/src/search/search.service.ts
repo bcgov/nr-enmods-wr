@@ -145,7 +145,7 @@ export class SearchService {
       basicSearchDto.analyticalMethod &&
       basicSearchDto.analyticalMethod.length >= 1
     ) {
-      whereClause.push(`analysis_method = ANY($${params.length + 1})`);
+      whereClause.push(`analysis_method_id = ANY($${params.length + 1})`);
       params.push(basicSearchDto.analyticalMethod);
     }
 
@@ -627,20 +627,20 @@ export class SearchService {
    */
   public async getAnalyticalMethods(): Promise<any[]> {
     this.logger.log(
-      "getAnalyticalMethods called, querying materialized view mv_aqi_analysis_method",
+      "getAnalyticalMethods called, querying materialized view mv_aqi_analysis_method_collection",
     );
     const repo = this["observationRepository"].manager.getRepository(
-      "mv_aqi_analysis_method",
+      "mv_aqi_analysis_method_collection",
     );
     const raw = await repo
       .createQueryBuilder()
       .select()
-      .orderBy("MvAqiAnalysisMethod.analysis_method", "ASC")
+      .orderBy("MvAqiAnalysisMethodCollection.analysis_method", "ASC")
       .getRawMany();
     // Return as array of objects for frontend dropdown compatibility
     return raw.map((item) => ({
-      id: item.MvAqiAnalysisMethod_analysis_method,
-      name: item.MvAqiAnalysisMethod_analysis_method,
+      id: item.MvAqiAnalysisMethodCollection_analysis_method_id,
+      name: item.MvAqiAnalysisMethodCollection_analysis_method,
     }));
   }
 

@@ -45,6 +45,7 @@ export class SearchController {
       "collectionMethod",
       "qcSampleType",
       "dataClassification",
+      "workedOrderNo",
     ];
 
     const normalized: any = {};
@@ -59,6 +60,13 @@ export class SearchController {
         } else {
           normalized[key] = "";
         }
+      } else if (key === "workOrderNoText") {
+        // Handle workOrderNoText from URL and convert to workedOrderNo format
+        if (typeof value === "string" && value) {
+          normalized["workedOrderNo"] = [{ text: value }];
+        } else {
+          normalized["workedOrderNo"] = "";
+        }
       } else if (key === "locationType") {
         // Special handling for locationType which is an object
         normalized[key] = queryParams.locationType
@@ -67,12 +75,7 @@ export class SearchController {
               customId: queryParams.locationTypeCustomId,
             }
           : "";
-      } else if (key === "workedOrderNo") {
-        // Special handling for workedOrderNo which is an object
-        normalized[key] = queryParams.workedOrderNo
-          ? { id: queryParams.workedOrderNo, text: queryParams.workOrderNoText }
-          : "";
-      } else if (key !== "locationTypeCustomId" && key !== "workOrderNoText") {
+      } else if (key !== "locationTypeCustomId") {
         // Copy other fields as-is, excluding the intermediate fields
         normalized[key] = value || "";
       }

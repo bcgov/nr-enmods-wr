@@ -52,9 +52,10 @@ export class SearchController {
 
     for (const [key, value] of Object.entries(queryParams)) {
       if (arrayFields.includes(key)) {
-        // Convert string to array
+        // Convert string to array, splitting on commas if needed
         if (typeof value === "string" && value) {
-          normalized[key] = [value];
+          // Split on commas and trim whitespace from each value
+          normalized[key] = value.split(",").map((v: string) => v.trim());
         } else if (Array.isArray(value)) {
           normalized[key] = value;
         } else {
@@ -62,8 +63,11 @@ export class SearchController {
         }
       } else if (key === "workOrderNoText") {
         // Handle workOrderNoText from URL and convert to workedOrderNo format
+        // Split on commas (with or without spaces) and create objects with text property
         if (typeof value === "string" && value) {
-          normalized["workedOrderNo"] = [{ text: value }];
+          normalized["workedOrderNo"] = value
+            .split(",")
+            .map((v: string) => ({ text: v.trim() }));
         } else {
           normalized["workedOrderNo"] = "";
         }

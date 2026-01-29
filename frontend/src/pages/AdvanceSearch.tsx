@@ -105,7 +105,7 @@ const AdvanceSearch = (props: Props) => {
     permitNumber: [],
     media: [],
     observedProperty: [],
-    workedOrderNo: null,
+    workedOrderNo: [],
     samplingAgency: [],
     analyzingAgency: [],
     projects: [],
@@ -129,7 +129,9 @@ const AdvanceSearch = (props: Props) => {
       permitNumber: params.permitNumber.toString(),
       media: params.media.toString(),
       observedProperty: params.observedProperty.toString(),
-      workedOrderNo: params.workedOrderNo?.id || "",
+      workedOrderNo: Array.isArray(params.workedOrderNo)
+        ? params.workedOrderNo.map((wo: any) => wo?.id || "").join(",")
+        : params.workedOrderNo?.id || "",
       samplingAgency: params.samplingAgency.toString(),
       analyzingAgency: params.analyzingAgency.toString(),
       projects: params.projects.toString(),
@@ -145,7 +147,11 @@ const AdvanceSearch = (props: Props) => {
       locationTypeCustomId: params.locationType
         ? params.locationType?.customId
         : "",
-      workOrderNoText: params.workedOrderNo ? params.workedOrderNo?.text : "",
+      workOrderNoText: Array.isArray(params.workedOrderNo)
+        ? params.workedOrderNo.map((wo: any) => wo?.text || "").join(", ")
+        : params.workedOrderNo
+          ? params.workedOrderNo?.text
+          : "",
     }
 
     let urlString = ""
@@ -370,6 +376,9 @@ const AdvanceSearch = (props: Props) => {
         data[key] = arr
       } else if (key === "fromDate" || key === "toDate") {
         data[key] = formData[key] ? formData[key].toISOString() : ""
+      } else if (key === SearchAttr.WorkedOrderNo && formData[key]) {
+        // Wrap single workedOrderNo object in array
+        data[key] = [formData[key]]
       }
     }
     return data

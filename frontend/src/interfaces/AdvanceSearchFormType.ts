@@ -1,4 +1,4 @@
-import BasicSearchFormType from "./BasicSearchFormType"
+import type BasicSearchFormType from "./BasicSearchFormType"
 
 export default interface AdvanceSearchFormType extends BasicSearchFormType {
   observationIds: string[]

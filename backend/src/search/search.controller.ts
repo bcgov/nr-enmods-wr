@@ -60,6 +60,13 @@ export class SearchController {
         } else {
           normalized[key] = "";
         }
+      } else if (key === "workOrderNoText") {
+        // Handle workOrderNoText from URL and convert to workedOrderNo format
+        if (typeof value === "string" && value) {
+          normalized["workedOrderNo"] = [{ text: value }];
+        } else {
+          normalized["workedOrderNo"] = "";
+        }
       } else if (key === "locationType") {
         // Special handling for locationType which is an object
         normalized[key] = queryParams.locationType

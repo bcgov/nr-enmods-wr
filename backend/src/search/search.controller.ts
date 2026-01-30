@@ -111,8 +111,47 @@ export class SearchController {
     // Start background job (non-blocking)
     this.searchService.runExport(params, jobId);
 
-    // Return a redirect to a polling endpoint that will redirect to download when ready
-    response.redirect(`/api/v1/search/observationSearch/get/${jobId}`);
+    // Wait for job to complete with timeout
+    const maxWaitTime = 5 * 60 * 1000; // 5 minutes
+    const pollInterval = 200; // milliseconds
+    const startTime = Date.now();
+
+    while (true) {
+      const job = jobs[jobId];
+
+      if (job?.status === "complete" && job.filePath) {
+        // Job completed, stream the CSV file
+        response.attachment("ObservationSearchResult.csv");
+        const stream = fs.createReadStream(job.filePath);
+        stream.pipe(response);
+        stream.on("close", () => {
+          fs.unlinkSync(job.filePath);
+          delete jobs[jobId];
+        });
+        stream.on("error", () => {
+          response.status(500).send("Failed to stream file.");
+          delete jobs[jobId];
+        });
+        return;
+      } else if (job?.status === "error") {
+        // Job failed
+        delete jobs[jobId];
+        return response.status(400).json({
+          error: job.error || "Export job failed",
+        });
+      }
+
+      // Check timeout
+      if (Date.now() - startTime > maxWaitTime) {
+        delete jobs[jobId];
+        return response.status(408).json({
+          error: "Request timeout - export took too long",
+        });
+      }
+
+      // Wait before polling again
+      await new Promise((resolve) => setTimeout(resolve, pollInterval));
+    }
   }
 
   /**

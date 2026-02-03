@@ -42,8 +42,7 @@ export class GeodataService {
     wellTagNumber: null,
   };
 
-  // @Cron(process.env.GEODATA_REFRESH_CRON || CronExpression.EVERY_DAY_AT_2AM, {
-  @Cron("0 30 5,16 * * *", {
+  @Cron(process.env.GEODATA_REFRESH_CRON || CronExpression.EVERY_DAY_AT_2AM, {
     timeZone: "America/Vancouver",
   })
   async processAndUpload(): Promise<void> {
@@ -68,10 +67,8 @@ export class GeodataService {
         })
         .replace(/[\/\s,:]/g, "_");
       // Fetch latest gpkg from S3
-      // const { latestFilePath, latestDateCreated } =
-      //   await this.fetchLatestGpkg();
-      const latestFilePath = null;
-      const latestDateCreated = null;
+      const { latestFilePath, latestDateCreated } =
+        await this.fetchLatestGpkg();
       // Fetch data that has been uploaded since the last run
       const rawData = await this.fetchSamplingLocations(latestDateCreated);
       // Transform the raw data to geojson format
@@ -832,7 +829,13 @@ export class GeodataService {
         LEFT JOIN WHSE_BASEMAPPING_FWA_WATERSHED_GROUPS_POLY w
         ON ST_Intersects(p.geometry, w.geometry)
       )
-      SELECT * 
+      SELECT ID, NAME, DESCRIPTION, TYPE, LATITUDE, LONGITUDE, 
+        ELEVATION, ELEVATION_UNITS, WELL_IDENTIFICATION_TAG_NO,
+        ESTABLISHED_DATE, CLOSED_DATE, OBSERVATION_COUNT,
+        FIELD_VISIT_COUNT, LATEST_FIELD_VISIT, GROUP_NAMES,
+        GEOREFERENCE_SOURCE, geometry,
+        WATERSHED_GROUP_CODE,
+        WATERSHED_GROUP_NAME
       FROM ranked 
       WHERE rn = 1;
     `.replace(/\s+/g, " ");
@@ -921,7 +924,13 @@ export class GeodataService {
         LEFT JOIN WHSE_BASEMAPPING_FWA_WATERSHED_GROUPS_POLY w
         ON ST_Intersects(p.geometry, w.geometry)
       )
-      SELECT * 
+      SELECT ID, NAME, DESCRIPTION, TYPE, LATITUDE, LONGITUDE, 
+        ELEVATION, ELEVATION_UNITS, WELL_IDENTIFICATION_TAG_NO,
+        ESTABLISHED_DATE, CLOSED_DATE, OBSERVATION_COUNT,
+        FIELD_VISIT_COUNT, LATEST_FIELD_VISIT, GROUP_NAMES,
+        GEOREFERENCE_SOURCE, geometry,
+        WATERSHED_GROUP_CODE,
+        WATERSHED_GROUP_NAME
       FROM ranked 
       WHERE rn = 1;`.replace(/\s+/g, " ");
 

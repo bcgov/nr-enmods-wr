@@ -1,5 +1,5 @@
 # Build
-FROM ghcr.io/osgeo/gdal:alpine-small-3.11.0 AS builder
+FROM ghcr.io/osgeo/gdal:alpine-normal-3.11.0 AS builder
 
 # Install dependencies and show versions
 RUN apk add --no-cache nodejs npm
@@ -10,7 +10,7 @@ COPY . ./
 RUN npm ci && npm run build
 
 # Create final image
-FROM ghcr.io/osgeo/gdal:alpine-small-3.11.0
+FROM ghcr.io/osgeo/gdal:alpine-normal-3.11.0
 
 # Install Node.js and show versions
 RUN apk add --no-cache nodejs npm
@@ -35,5 +35,5 @@ USER appuser
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 CMD curl -f http://localhost:3000/api
 
-# limit heap size to 512 MB~
-CMD ["node", "--max-old-space-size=512", "/app/dist/main.js"]
+# limit heap size to 4096 MB~
+CMD ["node", "--max-old-space-size=4096", "/app/dist/main.js"]

@@ -656,7 +656,7 @@ export class GeodataService {
                 LOCATION_NAME: feature.properties.NAME,
                 LOCATION_LATITUDE: feature.properties.LATITUDE || "",
                 LOCATION_LONGITUDE: feature.properties.LONGITUDE || "",
-                WATERSHED_GROUP_CD: feature.properties.WATERSHED_GROUP_CD,
+                WATERSHED_GROUP_CD: feature.properties.WATERSHED_GROUP_CODE,
                 WATERSHED_GROUP_NAME: feature.properties.WATERSHED_GROUP_NAME,
               },
             });

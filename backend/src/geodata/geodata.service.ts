@@ -48,6 +48,8 @@ export class GeodataService {
   async processAndUpload(): Promise<void> {
     try {
       this.logger.debug("Starting sampling location cron job");
+      // Clean up the locally generated files
+      await this.cleanUpFiles();
       const start = Date.now();
       await this.fetchExtendedAttributes();
       // Used for file names & datebase timestamp
@@ -101,9 +103,6 @@ export class GeodataService {
         locationGroupCsvPath,
         samplingLocationGroupGpkgPath,
       );
-
-      // Clean up the locally generated files
-      await this.cleanUpFiles();
 
       // Timer logs
       this.logger.debug("Finished sampling location cron job");
@@ -657,7 +656,7 @@ export class GeodataService {
                 LOCATION_NAME: feature.properties.NAME,
                 LOCATION_LATITUDE: feature.properties.LATITUDE || "",
                 LOCATION_LONGITUDE: feature.properties.LONGITUDE || "",
-                WATERSHED_GROUP_CD: feature.properties.WATERSHED_GROUP_CD,
+                WATERSHED_GROUP_CD: feature.properties.WATERSHED_GROUP_CODE,
                 WATERSHED_GROUP_NAME: feature.properties.WATERSHED_GROUP_NAME,
               },
             });
@@ -777,9 +776,6 @@ export class GeodataService {
     );
     const watershedLayer = "WHSE_BASEMAPPING_FWA_WATERSHED_GROUPS_POLY";
 
-    // Layer name
-    // const intersectedLayerName = "sampling_locations";
-
     // new transformed data gpkg path after intersection
     const gpkgOutputPath = path.join(
       this.tempDir,
@@ -819,14 +815,29 @@ export class GeodataService {
 
       this.logger.debug("Intesecting data...");
       const sql = `
-      SELECT
-        p.*,
-        MIN(w.WATERSHED_GROUP_CODE) AS WATERSHED_GROUP_CD,
-        MIN(w.WATERSHED_GROUP_NAME) AS WATERSHED_GROUP_NAME
-      FROM ${intersectedLayerName} p
-      LEFT JOIN ${watershedLayer} w
-      ON ST_Intersects(p.geometry, w.geometry)
-      GROUP BY p.id
+      WITH ranked AS (
+        SELECT 
+          p.*,
+          w.WATERSHED_GROUP_CODE,
+          w.WATERSHED_GROUP_NAME,
+          w.OBJECTID_1,
+          ROW_NUMBER() OVER (
+            PARTITION BY p.ID 
+            ORDER BY ST_Distance(p.geometry, ST_Centroid(w.geometry)) ASC
+          ) AS rn
+        FROM sampling_locations p
+        LEFT JOIN WHSE_BASEMAPPING_FWA_WATERSHED_GROUPS_POLY w
+        ON ST_Intersects(p.geometry, w.geometry)
+      )
+      SELECT ID, NAME, DESCRIPTION, TYPE, LATITUDE, LONGITUDE, 
+        ELEVATION, ELEVATION_UNITS, WELL_IDENTIFICATION_TAG_NO,
+        ESTABLISHED_DATE, CLOSED_DATE, OBSERVATION_COUNT,
+        FIELD_VISIT_COUNT, LATEST_FIELD_VISIT, GROUP_NAMES,
+        GEOREFERENCE_SOURCE, geometry,
+        WATERSHED_GROUP_CODE,
+        WATERSHED_GROUP_NAME
+      FROM ranked 
+      WHERE rn = 1;
     `.replace(/\s+/g, " ");
 
       this.logger.debug("Generating Watershed Intersected GPKG");
@@ -843,7 +854,6 @@ export class GeodataService {
         this.logger.error(`Watershed join failed: ${error.message}`);
         throw error;
       }
-
       // Copy the old GPKG to the output GPKG
       try {
         this.logger.debug(
@@ -900,23 +910,36 @@ export class GeodataService {
       fs.writeFileSync(vrtPath, vrtXml.trim());
 
       this.logger.debug("Intesecting data...");
-      const sql = `
-      SELECT
-        p.*,
-        MIN(w.WATERSHED_GROUP_CODE) AS WATERSHED_GROUP_CD,
-        MIN(w.WATERSHED_GROUP_NAME) AS WATERSHED_GROUP_NAME
-      FROM ${intersectedLayerName} p
-      LEFT JOIN ${watershedLayer} w
-      ON ST_Intersects(p.geometry, w.geometry)
-      GROUP BY p.id
-    `.replace(/\s+/g, " ");
+      const sql = `WITH ranked AS (
+        SELECT 
+          p.*,
+          w.WATERSHED_GROUP_CODE,
+          w.WATERSHED_GROUP_NAME,
+          w.OBJECTID_1,
+          ROW_NUMBER() OVER (
+            PARTITION BY p.ID 
+            ORDER BY ST_Distance(p.geometry, ST_Centroid(w.geometry)) ASC
+          ) AS rn
+        FROM sampling_locations p
+        LEFT JOIN WHSE_BASEMAPPING_FWA_WATERSHED_GROUPS_POLY w
+        ON ST_Intersects(p.geometry, w.geometry)
+      )
+      SELECT ID, NAME, DESCRIPTION, TYPE, LATITUDE, LONGITUDE, 
+        ELEVATION, ELEVATION_UNITS, WELL_IDENTIFICATION_TAG_NO,
+        ESTABLISHED_DATE, CLOSED_DATE, OBSERVATION_COUNT,
+        FIELD_VISIT_COUNT, LATEST_FIELD_VISIT, GROUP_NAMES,
+        GEOREFERENCE_SOURCE, geometry,
+        WATERSHED_GROUP_CODE,
+        WATERSHED_GROUP_NAME
+      FROM ranked 
+      WHERE rn = 1;`.replace(/\s+/g, " ");
 
       this.logger.debug("Generating Watershed Intersected GPKG");
 
       // New Intersected GPKG, copy directly into output GPKG
       try {
         const { stdout, stderr } = await this.execAsync(
-          `ogr2ogr -f GPKG "${gpkgPath}" "${vrtPath}" -dialect sqlite -sql "${sql}" -nln ${intersectedLayerName} -lco SPATIAL_INDEX=YES`,
+          `ogr2ogr -f GPKG "${gpkgPath}" "${vrtPath}" -dialect sqlite -sql "${sql}" -nln ${intersectedLayerName} -lco SPATIAL_INDEX=YES --config GDAL_CACHEMAX 500 --config OGR_SQLITE_CACHE 200000`,
         );
         if (stderr) {
           this.logger.warn(`Watershed join stderr: ${stderr}`);

@@ -12,7 +12,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { FileInfo } from "./entities/file-info.entity";
 import { Repository } from "typeorm";
 import process from "process";
-
+//
 @Injectable()
 export class GeodataService {
   constructor(

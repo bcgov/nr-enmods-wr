@@ -35,5 +35,5 @@ USER appuser
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 CMD curl -f http://localhost:3000/api
 
-# limit heap size to 4096 MB~
-CMD ["node", "--max-old-space-size=4096", "/app/dist/main.js"]
+# limit heap size to 1024 MB~
+CMD ["node", "--max-old-space-size=1024", "/app/dist/main.js"]

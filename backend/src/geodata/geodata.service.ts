@@ -829,12 +829,25 @@ export class GeodataService {
         LEFT JOIN WHSE_BASEMAPPING_FWA_WATERSHED_GROUPS_POLY w
         ON ST_Intersects(p.geometry, w.geometry)
       )
-      SELECT ID, NAME, DESCRIPTION, TYPE, LATITUDE, LONGITUDE, 
-        ELEVATION, ELEVATION_UNITS, WELL_IDENTIFICATION_TAG_NO,
-        ESTABLISHED_DATE, CLOSED_DATE, OBSERVATION_COUNT,
-        FIELD_VISIT_COUNT, LATEST_FIELD_VISIT, GROUP_NAMES,
-        GEOREFERENCE_SOURCE, geometry,
-        WATERSHED_GROUP_CODE,
+      SELECT 
+        ID, 
+        NAME, 
+        DESCRIPTION, 
+        TYPE, 
+        LATITUDE, 
+        LONGITUDE, 
+        ELEVATION, 
+        ELEVATION_UNITS, 
+        WELL_IDENTIFICATION_TAG_NO,
+        ESTABLISHED_DATE, 
+        CLOSED_DATE, 
+        OBSERVATION_COUNT,
+        FIELD_VISIT_COUNT, 
+        LATEST_FIELD_VISIT, 
+        GROUP_NAMES,
+        GEOREFERENCE_SOURCE, 
+        geometry,
+        WATERSHED_GROUP_CODE AS WATERSHED_GROUP_CD,
         WATERSHED_GROUP_NAME
       FROM ranked 
       WHERE rn = 1;
@@ -924,12 +937,25 @@ export class GeodataService {
         LEFT JOIN WHSE_BASEMAPPING_FWA_WATERSHED_GROUPS_POLY w
         ON ST_Intersects(p.geometry, w.geometry)
       )
-      SELECT ID, NAME, DESCRIPTION, TYPE, LATITUDE, LONGITUDE, 
-        ELEVATION, ELEVATION_UNITS, WELL_IDENTIFICATION_TAG_NO,
-        ESTABLISHED_DATE, CLOSED_DATE, OBSERVATION_COUNT,
-        FIELD_VISIT_COUNT, LATEST_FIELD_VISIT, GROUP_NAMES,
-        GEOREFERENCE_SOURCE, geometry,
-        WATERSHED_GROUP_CODE,
+      SELECT 
+        ID, 
+        NAME, 
+        DESCRIPTION, 
+        TYPE, 
+        LATITUDE, 
+        LONGITUDE, 
+        ELEVATION, 
+        ELEVATION_UNITS, 
+        WELL_IDENTIFICATION_TAG_NO,
+        ESTABLISHED_DATE, 
+        CLOSED_DATE, 
+        OBSERVATION_COUNT,
+        FIELD_VISIT_COUNT, 
+        LATEST_FIELD_VISIT, 
+        GROUP_NAMES,
+        GEOREFERENCE_SOURCE, 
+        geometry,
+        WATERSHED_GROUP_CODE AS WATERSHED_GROUP_CD,
         WATERSHED_GROUP_NAME
       FROM ranked 
       WHERE rn = 1;`.replace(/\s+/g, " ");

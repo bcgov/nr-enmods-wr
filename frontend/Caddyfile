@@ -27,7 +27,7 @@
 	encode zstd gzip
 	file_server
 	@spa_router {
-		not path /api/* /static/js/config.js
+		not path /api/* /swagger* /docs* /static/js/config.js
 		file {
 			try_files {path} /index.html
 		}
@@ -39,6 +39,19 @@
 		header_up X-Real-IP {remote_host}
 		header_up X-Forwarded-For {remote_host}
 	}
+
+	reverse_proxy /swagger* {$BACKEND_URL} {
+		header_up Host {http.reverse_proxy.upstream.hostport}
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-For {remote_host}
+	}
+
+	reverse_proxy /docs* {$BACKEND_URL} {
+		header_up Host {http.reverse_proxy.upstream.hostport}
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-For {remote_host}
+	}
+
 	header {
 		X-Frame-Options "SAMEORIGIN"
 		X-XSS-Protection "1;mode=block"

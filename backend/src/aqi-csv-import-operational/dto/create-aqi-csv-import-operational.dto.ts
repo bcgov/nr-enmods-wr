@@ -6,7 +6,7 @@ export class CreateAqiCsvImportOperationalDto {
   work_order_number?: string;
   location_id?: string;
   location_name?: string;
-  locationType?: string;
+  location_type?: string;
   location_latitude?: string;
   location_longitude?: string;
   location_elevation?: string;

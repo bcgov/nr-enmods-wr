@@ -1,9 +1,8 @@
 import { Divider, List, ListItemButton, ListItemText } from "@mui/material";
 import { NavLink } from "react-router-dom";
-import { Home, Search } from "@mui/icons-material";
+import { Search } from "@mui/icons-material";
 
 const items = [
-  { name: "Home", link: "/home", icon: <Home /> },
   { name: "Search", link: "/search", icon: <Search /> },
 ]
 

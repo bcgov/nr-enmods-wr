@@ -15,18 +15,28 @@ services:
       SAMPLING_LOCATIONS_ENDPOINT: ${SAMPLING_LOCATIONS_ENDPOINT}
       SAMPLING_LOCATION_GROUPS_ENDPOINT: ${SAMPLING_LOCATION_GROUPS_ENDPOINT}
       EXTENDED_ATTRIBUTES_ENDPOINT: ${EXTENDED_ATTRIBUTES_ENDPOINT}
-      OBJECTSTORE_FOLDER: ${OBJECTSTORE_FOLDER}      
+      OBJECTSTORE_FOLDER: ${OBJECTSTORE_FOLDER}
       API_KEY: ${API_KEY}
       AUTH_TOKEN: ${AUTH_TOKEN}
       POSTGRES_HOST: postgres
-      POSTGRES_USER: enmodswr_user
+      POSTGRES_USER: enmodswr
       POSTGRES_PASSWORD: enmodswr_password
       POSTGRES_DATABASE: enmodswr_db
     # image: node:22
     ports: ["3001:3000"]
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/api"]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--quiet",
+          "--tries=1",
+          "--spider",
+          "http://localhost:3000/api",
+        ]
     working_dir: "/app"
+    volumes:
+      - ./backend/data:/app/data
 
   frontend:
     container_name: frontend
@@ -50,20 +60,20 @@ services:
     container_name: postgres
     restart: always
     environment:
-      POSTGRES_USER: enmodswr_user
+      POSTGRES_USER: enmodswr
       POSTGRES_PASSWORD: enmodswr_password
       POSTGRES_DB: enmodswr_db
     ports:
-      - '5432:5432'
+      - "5432:5432"
     healthcheck:
-      test: ["CMD", "pg_isready", "-U", "enmodswr_user", "-d", "enmodswr"]
+      test: ["CMD", "pg_isready", "-U", "enmodswr", "-d", "enmodswr_db"]
     # Install AWS CLI on container startup
     command: >
       bash -c "
       apt-get update &&
       apt-get install -y curl unzip miller &&
       curl 'https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip' -o 'awscliv2.zip' &&
-      unzip awscliv2.zip &&
+      unzip -o awscliv2.zip &&
       ./aws/install &&
       rm -rf awscliv2.zip aws &&
       docker-entrypoint.sh postgres
@@ -75,7 +85,7 @@ services:
     volumes: ["./migrations/sql:/flyway/sql:ro"]
     environment:
       FLYWAY_URL: jdbc:postgresql://postgres:5432/enmodswr_db
-      FLYWAY_USER: enmodswr_user
+      FLYWAY_USER: enmodswr
       FLYWAY_PASSWORD: enmodswr_password
       FLYWAY_BASELINE_ON_MIGRATE: true
     depends_on:
@@ -98,4 +108,3 @@ services:
     depends_on:
       backend:
         condition: service_healthy
-

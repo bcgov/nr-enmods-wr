@@ -48,7 +48,7 @@ export class SearchService {
     }
 
     if (basicSearchDto.locationType) {
-      whereClause.push(`locationType = $${params.length + 1}`);
+      whereClause.push(`location_type = $${params.length + 1}`);
       params.push(basicSearchDto.locationType.customId);
     }
 
@@ -56,45 +56,47 @@ export class SearchService {
       basicSearchDto.permitNumber &&
       basicSearchDto.permitNumber.length >= 1
     ) {
-      whereClause.push(`location_group = ANY($${params.length + 1})`);
-      params.push(basicSearchDto.permitNumber);
+      // Split comma-separated values in permitNumber array to match split dropdowns
+      const expandedPermitNumbers = basicSearchDto.permitNumber.flatMap(
+        (permit) => permit.split(",").map((p) => p.trim()),
+      );
+      // Use regex pattern to match location_group values that contain any of the selected permit numbers
+      // This handles both split values (e.g., "1") and comma-separated values (e.g., "1,2,3")
+      const patterns = expandedPermitNumbers.map(
+        (num) => `(^|,)\\s*${num}\\s*($|,)`,
+      );
+      const orConditions = patterns
+        .map((_, i) => `location_group ~ $${params.length + 1 + i}`)
+        .join(" OR ");
+      whereClause.push(`(${orConditions})`);
+      patterns.forEach((pattern) => params.push(pattern));
     }
 
     if (basicSearchDto.fromDate && basicSearchDto.toDate) {
       const fromDateWithTime = new Date(basicSearchDto.fromDate);
       const fromDate = `${fromDateWithTime.getFullYear()}-${(fromDateWithTime.getMonth() + 1).toString().padStart(2, "0")}-${fromDateWithTime.getDate().toString().padStart(2, "0")}`;
-      whereClause.push(`observed_date_time_start >= $${params.length + 1}`);
+      whereClause.push(`observed_date_time >= $${params.length + 1}`);
       params.push(fromDate);
 
       const toDateWithTime = new Date(basicSearchDto.toDate);
       const toDate = `${toDateWithTime.getFullYear()}-${(toDateWithTime.getMonth() + 1).toString().padStart(2, "0")}-${toDateWithTime.getDate().toString().padStart(2, "0")}`;
-      whereClause.push(`observed_date_time_end <= $${params.length + 1}`);
+      whereClause.push(`observed_date_time <= $${params.length + 1}`);
       params.push(toDate);
     } else if (basicSearchDto.fromDate) {
       const fromDateWithTime = new Date(basicSearchDto.fromDate);
       const fromDate = `${fromDateWithTime.getFullYear()}-${(fromDateWithTime.getMonth() + 1).toString().padStart(2, "0")}-${fromDateWithTime.getDate().toString().padStart(2, "0")}`;
-      whereClause.push(`observed_date_time_start >= $${params.length + 1}`);
+      whereClause.push(`observed_date_time >= $${params.length + 1}`);
       params.push(fromDate);
     } else if (basicSearchDto.toDate) {
       const toDateWithTime = new Date(basicSearchDto.toDate);
       const toDate = `${toDateWithTime.getFullYear()}-${(toDateWithTime.getMonth() + 1).toString().padStart(2, "0")}-${toDateWithTime.getDate().toString().padStart(2, "0")}`;
-      whereClause.push(`observed_date_time_end <= $${params.length + 1}`);
+      whereClause.push(`observed_date_time <= $${params.length + 1}`);
       params.push(toDate);
     }
 
     if (basicSearchDto.media && basicSearchDto.media.length >= 1) {
       whereClause.push(`medium = ANY($${params.length + 1})`);
       params.push(basicSearchDto.media);
-    }
-
-    if (
-      basicSearchDto.observedPropertyGrp &&
-      basicSearchDto.observedPropertyGrp.length >= 1
-    ) {
-      whereClause.push(
-        `observed_property_description = ANY($${params.length + 1})`,
-      );
-      params.push(basicSearchDto.observedPropertyGrp);
     }
 
     if (
@@ -105,9 +107,17 @@ export class SearchService {
       params.push(basicSearchDto.observedProperty);
     }
 
-    if (basicSearchDto.workedOrderNo) {
-      whereClause.push(`work_order_number = $${params.length + 1}`);
-      params.push(basicSearchDto.workedOrderNo.text);
+    if (
+      basicSearchDto.workedOrderNo &&
+      basicSearchDto.workedOrderNo.length >= 1
+    ) {
+      const validOrderNumbers = basicSearchDto.workedOrderNo
+        .filter((order: any) => order && order.text)
+        .map((order: any) => order.text);
+      if (validOrderNumbers.length > 0) {
+        whereClause.push(`work_order_number = ANY($${params.length + 1})`);
+        params.push(validOrderNumbers);
+      }
     }
 
     if (
@@ -135,7 +145,7 @@ export class SearchService {
       basicSearchDto.analyticalMethod &&
       basicSearchDto.analyticalMethod.length >= 1
     ) {
-      whereClause.push(`analysis_method = ANY($${params.length + 1})`);
+      whereClause.push(`analysis_method_id = ANY($${params.length + 1})`);
       params.push(basicSearchDto.analyticalMethod);
     }
 
@@ -189,9 +199,10 @@ export class SearchService {
 
   /**
    * Streams the results of a database query to a CSV file using the provided search criteria.
+   * While streaming, collects statistics: record count, unique location IDs, min/max observation dates
    * @param basicSearchDto - The search criteria DTO
    * @param filePath - The file path to write the CSV to
-   * @returns An object containing the stream, file path, and status
+   * @returns An object containing the stream, file path, status, and statistics
    */
   public async streamToCSV(basicSearchDto: BasicSearchDto, filePath: string) {
     const start = Date.now();
@@ -200,18 +211,69 @@ export class SearchService {
       const queryRunner = this.dataSource.createQueryRunner();
       await queryRunner.connect();
 
-      const sql = `SELECT * FROM aqi_csv_import_operational ${whereSql}`;
+      const sql = `SELECT *, CONCAT('''', location_group::text, '''') AS location_group FROM aqi_csv_import_operational ${whereSql}`;
       const stream = await queryRunner.stream(sql, params);
 
       const writeStream = fs.createWriteStream(filePath);
-      const csvStream = fastcsv.format({ headers: true });
+      const csvStream = fastcsv.format({ headers: true, quoteColumns: true });
 
       let rowCount = 0;
       let aborted = false;
+      const uniqueLocations = new Set<string>();
+      let minObservationDate: string | null = null;
+      let maxObservationDate: string | null = null;
 
-      // Listen for data events to count rows
-      stream.on("data", (row) => {
+      let list_of_timecolumns = [
+        "field_visit_start_time",
+        "field_visit_end_time",
+        "observed_date_time",
+        "observed_date_time_start",
+        "observed_date_time_end",
+        "analyzed_date_time",
+        "lab_arrival_date_time",
+        "lab_prepared_date_time",
+      ];
+
+      // Listen for data events to count rows, collect statistics, and ensure ISO date/time
+      stream.on("data", (row: any) => {
         rowCount++;
+
+        // from the list of timecolumns, write the value as-is (no conversion)
+        // This preserves the original string from the database
+        // If the value is a Date object, convert to string without timezone conversion
+        for (const col of list_of_timecolumns) {
+          if (row[col]) {
+            if (row[col] instanceof Date) {
+              const d = row[col];
+              const pad = (n: number, z = 2) => ("00" + n).slice(-z);
+              row[col] =
+                `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.${d.getMilliseconds().toString().padStart(3, "0")}-08:00`;
+            } else {
+              row[col] = `${row[col]}-08:00`;
+            }
+          }
+        }
+
+        // Track unique location IDs
+        if (row.location_id) {
+          uniqueLocations.add(String(row.location_id));
+        }
+
+        // Track min/max observation dates
+        if (row.observed_date_time) {
+          const dateStr =
+            row.observed_date_time instanceof Date
+              ? row.observed_date_time.toISOString()
+              : String(row.observed_date_time);
+
+          if (!minObservationDate || dateStr < minObservationDate) {
+            minObservationDate = dateStr;
+          }
+          if (!maxObservationDate || dateStr > maxObservationDate) {
+            maxObservationDate = dateStr;
+          }
+        }
+
         if (!aborted && rowCount > this.MAX_API_DATA_LIMIT) {
           aborted = true;
           const abortError = new Error("ABORT_EXPORT");
@@ -261,6 +323,12 @@ export class SearchService {
         data: stream,
         path: filePath,
         status: HttpStatus.OK,
+        statistics: {
+          recordCount: rowCount,
+          uniqueLocations: uniqueLocations.size,
+          minObservationDate,
+          maxObservationDate,
+        },
       };
     } catch (error) {
       this.logger.error(error);
@@ -386,6 +454,7 @@ export class SearchService {
 
   /**
    * Runs the export job for the given search criteria and job ID, updating job status and file path.
+   * Also stores calculated statistics (record count, unique locations, date range).
    * @param basicSearchDto - The search criteria DTO
    * @param jobId - The job identifier
    */
@@ -395,6 +464,9 @@ export class SearchService {
       if (result.data && result.path) {
         jobs[jobId].status = "complete";
         jobs[jobId].filePath = result.path;
+        if (result.statistics) {
+          jobs[jobId].statistics = result.statistics;
+        }
       } else {
         jobs[jobId].status = "error";
         jobs[jobId].error = result.message || "Unknown error";
@@ -436,20 +508,20 @@ export class SearchService {
    */
   public async getLocationTypes(): Promise<any[]> {
     this.logger.log(
-      "getLocationTypes called, querying materialized view mv_aqi_locationtype",
+      "getLocationTypes called, querying materialized view mv_aqi_location_type",
     );
     // Use TypeORM to query the materialized view entity and return raw data
     const repo = this["observationRepository"].manager.getRepository(
-      "mv_aqi_locationtype",
+      "mv_aqi_location_type",
     );
     const raw = await repo
       .createQueryBuilder()
       .select()
-      .orderBy("MvAqiLocationType.locationtype", "ASC")
+      .orderBy("MvAqiLocationType.location_type", "ASC")
       .getRawMany();
     // Return as array of objects for frontend dropdown compatibility
     return raw.map((item) => ({
-      customId: item.MvAqiLocationType_locationtype,
+      customId: item.MvAqiLocationType_location_type,
     }));
   }
 
@@ -555,20 +627,20 @@ export class SearchService {
    */
   public async getAnalyticalMethods(): Promise<any[]> {
     this.logger.log(
-      "getAnalyticalMethods called, querying materialized view mv_aqi_analysis_method",
+      "getAnalyticalMethods called, querying materialized view mv_aqi_analysis_method_collection",
     );
     const repo = this["observationRepository"].manager.getRepository(
-      "mv_aqi_analysis_method",
+      "mv_aqi_analysis_method_collection",
     );
     const raw = await repo
       .createQueryBuilder()
       .select()
-      .orderBy("MvAqiAnalysisMethod.analysis_method", "ASC")
+      .orderBy("MvAqiAnalysisMethodCollection.analysis_method", "ASC")
       .getRawMany();
     // Return as array of objects for frontend dropdown compatibility
     return raw.map((item) => ({
-      id: item.MvAqiAnalysisMethod_analysis_method,
-      name: item.MvAqiAnalysisMethod_analysis_method,
+      id: item.MvAqiAnalysisMethodCollection_analysis_method_id,
+      name: item.MvAqiAnalysisMethodCollection_analysis_method,
     }));
   }
 

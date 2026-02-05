@@ -36,6 +36,7 @@ jobs:
     with:
       triggers: ('backend/' 'frontend/' 'migrations/')
       params: --set global.secrets.persist=false
+        --set bitnami-pg.image.tag=${{ github.event.number }}
 
   results:
     name: PR Results

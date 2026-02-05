@@ -3,7 +3,7 @@ import TitleText from "../TitleText"
 import TooltipInfo from "../TooltipInfo"
 import { Autocomplete, TextField } from "@mui/material"
 import "react-datepicker/dist/react-datepicker.css"
-import { forwardRef, useEffect } from "react"
+import { forwardRef, useEffect, useState } from "react"
 import { SearchAttr } from "@/enum/searchEnum"
 
 export default function FilterResultsForm(props: any) {
@@ -16,11 +16,29 @@ export default function FilterResultsForm(props: any) {
     filterResultDrpdwns,
   } = props
 
+  // State for Work Order Number typeahead filter
+  const [workOrderInputValue, setWorkOrderInputValue] = useState("")
+
   interface props {
     value?: any
     onClick?: React.MouseEventHandler
     onChange?: React.ChangeEventHandler
     label: string
+  }
+
+  /**
+   * Filter work order numbers based on user input
+   * Searches through Redux-loaded work order numbers
+   * Only filters when user has typed at least 3 characters
+   */
+  const getFilteredWorkOrders = () => {
+    if (workOrderInputValue.length < 3) {
+      return []
+    }
+    const query = workOrderInputValue.toLowerCase()
+    return (filterResultDrpdwns.workedOrderNos || []).filter((order: any) =>
+      (order.text || "").toLowerCase().includes(query),
+    )
   }
 
   const CustomDatePickerInput = forwardRef<HTMLInputElement, props>(
@@ -58,7 +76,7 @@ export default function FilterResultsForm(props: any) {
           />
         </div>
         <div className="flex flex-col lg:flex-row justify-between px-4 pb-4 gap-4">
-          <div className="flex items-center">
+          <div className="flex items-center" style={{ minWidth: 0 }}>
             <DatePicker
               customInput={<CustomDatePickerInput label={"From"} />}
               onChange={(val) =>
@@ -75,7 +93,7 @@ export default function FilterResultsForm(props: any) {
               useShortMonthInDropdown
             />
           </div>
-          <div className="flex items-center">
+          <div className="flex items-center" style={{ paddingRight: 40 }}>
             <DatePicker
               customInput={<CustomDatePickerInput label={"To"} />}
               minDate={formData.fromDate}
@@ -91,7 +109,6 @@ export default function FilterResultsForm(props: any) {
               showMonthDropdown
               useShortMonthInDropdown
             />
-            <TooltipInfo title="Date Range" />
           </div>
         </div>
         <div className="flex flex-col lg:flex-row gap-4 justify-between px-4 pb-4">
@@ -101,7 +118,9 @@ export default function FilterResultsForm(props: any) {
               value={formData?.media}
               getOptionKey={(option) => option.customId}
               options={filterResultDrpdwns.mediums}
-              isOptionEqualToValue={(option, value) => option.customId === value.customId}
+              isOptionEqualToValue={(option, value) =>
+                option.customId === value.customId
+              }
               getOptionLabel={(option) => option.customId || ""}
               onInputChange={(e, val) =>
                 handleInputChange(e, val, SearchAttr.Media)
@@ -110,28 +129,26 @@ export default function FilterResultsForm(props: any) {
               sx={{ width: 380 }}
               renderInput={(params) => <TextField {...params} label="Media" />}
             />
-            <TooltipInfo title="Media" />
+            <TooltipInfo title="The type of environmental media analyzed, for example, water, soils, or air." />
           </div>
           <div className="flex items-center">
             <Autocomplete
               multiple
-              value={formData?.observedPropertyGrp}
+              value={formData?.projects}
               getOptionKey={(option) => option.id}
-              options={filterResultDrpdwns.observedPropGroups}
+              options={filterResultDrpdwns.projects}
               isOptionEqualToValue={(option, value) => option.id === value.id}
-              getOptionLabel={(option) => option.name || ""}
+              getOptionLabel={(option) => option.customId || ""}
               onInputChange={(e, val) =>
-                handleInputChange(e, val, SearchAttr.ObservedPropertyGrp)
+                handleInputChange(e, val, SearchAttr.Projects)
               }
-              onChange={(e, val) =>
-                handleOnChange(e, val, SearchAttr.ObservedPropertyGrp)
-              }
+              onChange={(e, val) => handleOnChange(e, val, SearchAttr.Projects)}
               sx={{ width: 380 }}
               renderInput={(params) => (
-                <TextField {...params} label="Observed Property Group" />
+                <TextField {...params} label="Projects" />
               )}
             />
-            <TooltipInfo title="Observed Property Group" />
+            <TooltipInfo title="The project, if applicable, that observational data was collected for." />
           </div>
         </div>
 
@@ -159,30 +176,37 @@ export default function FilterResultsForm(props: any) {
                     <TextField {...params} label="Observed Property" />
                   )}
                 />
-                <TooltipInfo title="Observed Property" />
+                <TooltipInfo title="The name of the property that was observed or analyzed for at a lab." />
               </div>
 
               <div className="flex items-center">
                 <Autocomplete
                   value={formData?.workedOrderNo}
+                  inputValue={workOrderInputValue}
+                  onInputChange={(e, val) => {
+                    setWorkOrderInputValue(val)
+                  }}
+                  options={getFilteredWorkOrders()}
+                  filterOptions={(options) => options}
                   getOptionKey={(option) => option.id}
-                  options={filterResultDrpdwns.workedOrderNos}
                   isOptionEqualToValue={(option, value) =>
                     option.id === value.id
                   }
                   getOptionLabel={(option) => option.text || ""}
-                  onInputChange={(e, val) =>
-                    handleInputChange(e, val, SearchAttr.WorkedOrderNo)
-                  }
                   onChange={(e, val) =>
                     handleOnChange(e, val, SearchAttr.WorkedOrderNo)
+                  }
+                  noOptionsText={
+                    workOrderInputValue.length < 3
+                      ? `Type at least ${3 - workOrderInputValue.length} more characters`
+                      : "No matching work orders"
                   }
                   sx={{ width: 380 }}
                   renderInput={(params) => (
                     <TextField {...params} label="Work Order Number" />
                   )}
                 />
-                <TooltipInfo title="Work Order Number" />
+                <TooltipInfo title="A unique identifier for a set of lab analysis." />
               </div>
             </div>
 
@@ -208,7 +232,7 @@ export default function FilterResultsForm(props: any) {
                     <TextField {...params} label="Sampling Agency" />
                   )}
                 />
-                <TooltipInfo title="Sampling Agency" />
+                <TooltipInfo title="The group or agency that collected the samples in the field." />
               </div>
 
               <div className="flex items-center">
@@ -232,34 +256,14 @@ export default function FilterResultsForm(props: any) {
                     <TextField {...params} label="Analyzing Agency" />
                   )}
                 />
-                <TooltipInfo title="Analyzing Agency" />
+                <TooltipInfo title="The group or agency that analyzed the samples, typically a lab." />
               </div>
             </div>
           </>
         )}
 
-        <div className="flex flex-col lg:flex-row gap-4 justify-between px-4 pb-4">
-          <div className="flex items-center">
-            <Autocomplete
-              multiple
-              value={formData?.projects}
-              getOptionKey={(option) => option.id}
-              options={filterResultDrpdwns.projects}
-              isOptionEqualToValue={(option, value) => option.id === value.id}
-              getOptionLabel={(option) => option.customId || ""}
-              onInputChange={(e, val) =>
-                handleInputChange(e, val, SearchAttr.Projects)
-              }
-              onChange={(e, val) => handleOnChange(e, val, SearchAttr.Projects)}
-              sx={{ width: 380 }}
-              renderInput={(params) => (
-                <TextField {...params} label="Projects" />
-              )}
-            />
-            <TooltipInfo title="Projects" />
-          </div>
-
-          {searchType === "advance" && (
+        {searchType === "advance" && (
+          <div className="flex flex-col lg:flex-row gap-4 justify-between px-4 pb-4">
             <div className="flex items-center">
               <Autocomplete
                 multiple
@@ -279,10 +283,33 @@ export default function FilterResultsForm(props: any) {
                   <TextField {...params} label="Analytical Method" />
                 )}
               />
-              <TooltipInfo title="Analytical Method" />
+              <TooltipInfo title="The laboratory analytical method used to analyze a sample." />
             </div>
-          )}
-        </div>
+
+            <div className="flex items-center">
+              <Autocomplete
+                multiple
+                value={formData?.analyticalMethod}
+                getOptionKey={(option) => option.id}
+                options={filterResultDrpdwns.analyticalMethods}
+                isOptionEqualToValue={(option, value) => option.id === value.id}
+                getOptionLabel={(option) => option.id || ""}
+                onInputChange={(e, val) =>
+                  handleInputChange(e, val, SearchAttr.AnalyticalMethod)
+                }
+                onChange={(e, val) =>
+                  handleOnChange(e, val, SearchAttr.AnalyticalMethod)
+                }
+                sx={{ width: 380 }}
+                renderInput={(params) => (
+                  <TextField {...params} label="Analysis Method ID" />
+                )}
+              />
+              <TooltipInfo title="The unique system ID for the lab analysis method." />
+            </div>
+
+          </div>
+        )}
       </div>
     </>
   )

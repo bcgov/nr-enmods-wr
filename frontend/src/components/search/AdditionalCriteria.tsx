@@ -59,7 +59,7 @@ export default function AdditionalCriteria(props: any) {
                 <TextField {...params} label="Collection Method" />
               )}
             />
-            <TooltipInfo title="Collection Method" />
+            <TooltipInfo title="The method used to collect the sample in the field." />
           </div>
           <div className="flex items-center">
             <Autocomplete
@@ -81,7 +81,7 @@ export default function AdditionalCriteria(props: any) {
               )}
             />
 
-            <TooltipInfo title="QC Sample Type" />
+            <TooltipInfo title="The quality control type of the sample." />
           </div>
         </div>
         <div className="flex flex-col lg:flex-row gap-4 justify-between px-4 pb-4">
@@ -105,7 +105,7 @@ export default function AdditionalCriteria(props: any) {
               )}
             />
 
-            <TooltipInfo title="Data Classification" />
+            <TooltipInfo title="The type of data, classified by source." />
           </div>
           <div className="flex items-center">
             <TextField
@@ -114,7 +114,7 @@ export default function AdditionalCriteria(props: any) {
               label="Sample Depth"
               sx={{ width: 380 }}
             />
-            <TooltipInfo title="Sample Depth" />
+            <TooltipInfo title="The depth in metres a sample was collected below the surface of a body of water." />
           </div>
         </div>
         <div className="flex flex-col lg:flex-row gap-4 justify-between px-4 pb-4">
@@ -125,7 +125,7 @@ export default function AdditionalCriteria(props: any) {
               label="Lab Batch ID"
               sx={{ width: 380 }}
             />
-            <TooltipInfo title="Lab Batch ID" />
+            <TooltipInfo title="A internal tracking number used by some analytical labs." />
           </div>
           <div className="flex items-center">
             <TextField
@@ -134,7 +134,7 @@ export default function AdditionalCriteria(props: any) {
               label="Specimen ID"
               sx={{ width: 380 }}
             />
-            <TooltipInfo title="Specimen ID" />
+            <TooltipInfo title="The name or ID given to an individual bottle or specimen." />
           </div>
         </div>
       </div>

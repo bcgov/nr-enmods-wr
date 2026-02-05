@@ -1,7 +1,7 @@
 import { Backdrop, CircularProgress, Typography } from "@mui/material"
 
 export default function Loading(props: any) {
-  const { isLoading } = props
+  const { isLoading, loadingText } = props
 
   return (
     <Backdrop
@@ -23,10 +23,8 @@ export default function Loading(props: any) {
         variant="subtitle1"
         sx={{ fontSize: "1.2rem", maxWidth: 600 }}
       >
-        Please wait while your data is being processed. This may take several
-        minutes.
-        <br />
-        <strong>Please do not refresh your screen.</strong>
+        {loadingText ||
+          "Please wait while your data is being processed. This may take several minutes.\n\nPlease do not refresh your screen."}
       </Typography>
     </Backdrop>
   )

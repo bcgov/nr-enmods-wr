@@ -174,8 +174,13 @@ export class SearchService {
     }
 
     if (basicSearchDto.sampleDepth) {
+      let decimalVal = basicSearchDto.sampleDepth
+
+      if (/^-?\d+$/.test(basicSearchDto.sampleDepth)) {
+        decimalVal = `${basicSearchDto.sampleDepth}.0`
+      }
       whereClause.push(`depth_upper = $${params.length + 1}`);
-      params.push(basicSearchDto.sampleDepth);
+      params.push(decimalVal);
     }
 
     if (basicSearchDto.labBatchId) {

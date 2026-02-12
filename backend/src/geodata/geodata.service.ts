@@ -1,6 +1,5 @@
 import "multer";
 import { Injectable, Logger } from "@nestjs/common";
-import { Cron, CronExpression } from "@nestjs/schedule";
 import axios from "axios";
 import * as crypto from "crypto";
 import * as fs from "fs";
@@ -42,9 +41,8 @@ export class GeodataService {
     wellTagNumber: null,
   };
 
-  @Cron(process.env.GEODATA_REFRESH_CRON || CronExpression.EVERY_DAY_AT_2AM, {
-    timeZone: "America/Vancouver",
-  })
+  // Note: This method is now invoked via OpenShift CronJob instead of scheduled from the backend.
+  // See charts/app/templates/geodata-cronjob.yaml for the cronjob configuration.
   async processAndUpload(): Promise<void> {
     try {
       this.logger.debug("Starting sampling location cron job");

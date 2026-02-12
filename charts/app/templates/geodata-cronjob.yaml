@@ -21,10 +21,7 @@ spec:
               env:
                 # Database credentials
                 - name: POSTGRES_HOST
-                  valueFrom:
-                    secretKeyRef:
-                      name: "{{ .Release.Name }}-database"
-                      key: POSTGRES_HOST
+                  value: "{{ .Release.Name }}-bitnami-pg.{{ .Release.Namespace }}.svc.cluster.local"
                 - name: POSTGRES_USER
                   valueFrom:
                     secretKeyRef:

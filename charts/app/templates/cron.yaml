@@ -5,6 +5,7 @@ metadata:
   namespace: "{{ .Release.Namespace }}"
 spec:
   schedule: "0 23 * * 1" #change this to every saturday at midnight
+  timeZone: "America/Vancouver"
   successfulJobsHistoryLimit: 2
   failedJobsHistoryLimit: 2
   jobTemplate:

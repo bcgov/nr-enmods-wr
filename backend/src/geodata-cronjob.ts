@@ -10,6 +10,7 @@ import { DataSource } from "typeorm";
 import { Logger } from "@nestjs/common";
 import ormconfig from "src/ormconfig";
 import { GeodataService } from "./geodata/geodata.service";
+import { FileInfo } from "./geodata/entities/file-info.entity";
 
 const logger = new Logger("GeodataSync");
 
@@ -26,7 +27,7 @@ async function runGeodataSync() {
     logger.log("Database connection established");
 
     // Get the FileInfo repository to pass to GeodataService
-    const fileInfoRepository = dataSource.getRepository("FileInfo");
+    const fileInfoRepository = dataSource.getRepository(FileInfo);
 
     // Instantiate the GeodataService
     logger.log("Instantiating GeodataService...");

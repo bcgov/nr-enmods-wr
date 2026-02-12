@@ -12,6 +12,8 @@ spec:
   failedJobsHistoryLimit: 2
   jobTemplate:
     spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 28800  # 8 hours to allow the job to complete
       template:
         spec:
           containers:

@@ -5,8 +5,8 @@ metadata:
   name: {{ .Release.Name }}-geodata-sync
   namespace: "{{ .Release.Namespace }}"
 spec:
-  # Schedule: Every day at 2 AM Vancouver time (changed to 4 AM UTC to account for PDT/PST)
-  schedule: "{{ .Values.global.geodataSync.schedule | default \"0 2 * * *\" }}"
+  # Schedule: Every day at 2 AM Vancouver time (in America/Vancouver timezone)
+  schedule: "{{ .Values.global.geodataSync.schedule | default "0 2 * * *" }}"
   timeZone: "America/Vancouver"
   successfulJobsHistoryLimit: 2
   failedJobsHistoryLimit: 2

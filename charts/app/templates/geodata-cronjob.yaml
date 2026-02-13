@@ -1,0 +1,122 @@
+{{- if .Values.global.geodataSync.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ .Release.Name }}-geodata-sync
+  namespace: "{{ .Release.Namespace }}"
+spec:
+  # Schedule: Every day at 2 AM Vancouver time (in America/Vancouver timezone)
+  schedule: "{{ .Values.global.geodataSync.schedule | default "0 2 * * *" }}"
+  timeZone: "America/Vancouver"
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 28800  # 8 hours to allow the job to complete
+      template:
+        spec:
+          containers:
+            - name: geodata-sync
+              image: "{{.Values.global.registry}}/{{.Values.global.repository}}/backend:{{ .Values.global.tag | default .Chart.AppVersion }}"
+              imagePullPolicy: IfNotPresent
+              env:
+                # Database credentials
+                - name: POSTGRES_HOST
+                  value: "{{ .Release.Name }}-bitnami-pg.{{ .Release.Namespace }}.svc.cluster.local"
+                - name: POSTGRES_USER
+                  valueFrom:
+                    secretKeyRef:
+                      name: "{{ .Release.Name }}-database"
+                      key: POSTGRES_USER
+                - name: POSTGRES_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: "{{ .Release.Name }}-database"
+                      key: POSTGRES_PASSWORD
+                - name: POSTGRES_DATABASE
+                  valueFrom:
+                    secretKeyRef:
+                      name: "{{ .Release.Name }}-database"
+                      key: POSTGRES_DATABASE
+
+                # BC API credentials
+                - name: BASE_URL_BC_API
+                  valueFrom:
+                    secretKeyRef:
+                      name: "{{ .Release.Name }}-backend"
+                      key: BASE_URL_BC_API
+                      optional: true
+                - name: AUTH_TOKEN
+                  valueFrom:
+                    secretKeyRef:
+                      name: "{{ .Release.Name }}-backend"
+                      key: AUTH_TOKEN
+                      optional: true
+                - name: SAMPLING_LOCATIONS_ENDPOINT
+                  valueFrom:
+                    secretKeyRef:
+                      name: "{{ .Release.Name }}-backend"
+                      key: SAMPLING_LOCATIONS_ENDPOINT
+                      optional: true
+                - name: SAMPLING_LOCATION_GROUPS_ENDPOINT
+                  valueFrom:
+                    secretKeyRef:
+                      name: "{{ .Release.Name }}-backend"
+                      key: SAMPLING_LOCATION_GROUPS_ENDPOINT
+                      optional: true
+                - name: EXTENDED_ATTRIBUTES_ENDPOINT
+                  valueFrom:
+                    secretKeyRef:
+                      name: "{{ .Release.Name }}-backend"
+                      key: EXTENDED_ATTRIBUTES_ENDPOINT
+                      optional: true
+
+                # ObjectStore/S3 credentials
+                - name: OBJECTSTORE_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: "{{ .Release.Name }}-backend"
+                      key: OBJECTSTORE_URL
+                      optional: true
+                - name: OBJECTSTORE_BUCKET
+                  valueFrom:
+                    secretKeyRef:
+                      name: "{{ .Release.Name }}-backend"
+                      key: OBJECTSTORE_BUCKET
+                      optional: true
+                - name: OBJECTSTORE_FOLDER
+                  valueFrom:
+                    secretKeyRef:
+                      name: "{{ .Release.Name }}-backend"
+                      key: OBJECTSTORE_FOLDER
+                      optional: true
+                - name: OBJECTSTORE_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: "{{ .Release.Name }}-backend"
+                      key: OBJECTSTORE_ACCESS_KEY
+                      optional: true
+                - name: OBJECTSTORE_SECRET_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: "{{ .Release.Name }}-backend"
+                      key: OBJECTSTORE_SECRET_KEY
+                      optional: true
+
+                - name: NODE_ENV
+                  value: "production"
+
+              command:
+                - node
+                - --max-old-space-size=1024
+                - /app/dist/geodata-cronjob.js
+
+              # Resource limits
+              resources:
+                requests:
+                  memory: "512Mi"
+                  cpu: "100m"
+          restartPolicy: OnFailure
+          serviceAccountName: default
+{{- end }}

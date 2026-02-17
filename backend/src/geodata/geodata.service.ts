@@ -120,7 +120,7 @@ export class GeodataService {
     axios.defaults.method = "GET";
     axios.defaults.headers.common["Authorization"] =
       "token " + process.env.AUTH_TOKEN;
-    axios.defaults.headers.common["x-api-key"] = process.env.AUTH_TOKEN;
+    axios.defaults.headers.common["x-api-key"] = process.env.API_KEY;
     const url = `${this.baseUrl}${this.extendedAttributesEndpoint}`;
     const response = await axios.get(url);
 
@@ -292,7 +292,7 @@ export class GeodataService {
     axios.defaults.method = "GET";
     axios.defaults.headers.common["Authorization"] =
       "token " + process.env.AUTH_TOKEN;
-    axios.defaults.headers.common["x-api-key"] = process.env.AUTH_TOKEN;
+    axios.defaults.headers.common["x-api-key"] = process.env.API_KEY;
 
     this.logger.debug("Fetching sampling locations...");
     const start = Date.now();

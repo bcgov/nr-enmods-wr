@@ -12,12 +12,14 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import ormconfig from "src/ormconfig";
 import { ObservationsModule } from "./observations/observations.module";
 import { S3SyncLogModule } from "./s3_sync_log/s3_sync_log.module";
+import { ScheduleModule } from "@nestjs/schedule";
 
 @Module({
   imports: [
     TypeOrmModule.forRoot(ormconfig),
     ConfigModule.forRoot(),
     TerminusModule,
+    ScheduleModule.forRoot(),
     SearchModule,
     GeodataModule,
     ObservationsModule,

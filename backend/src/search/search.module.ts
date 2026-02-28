@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { SearchController } from "./search.controller";
 import { SearchService } from "./search.service";
+import { SearchCleanupService } from "./search-cleanup.service";
 import { HttpModule } from "@nestjs/axios";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { Observation } from "../observations/entities/observation.entity";
@@ -8,7 +9,7 @@ import { AqiCsvImportOperational } from "../aqi-csv-import-operational/entities/
 
 @Module({
   controllers: [SearchController],
-  providers: [SearchService],
+  providers: [SearchService, SearchCleanupService],
   imports: [
     HttpModule.register({
       responseType: "blob" as "blob",
@@ -18,7 +19,7 @@ import { AqiCsvImportOperational } from "../aqi-csv-import-operational/entities/
         "x-api-key": process.env.API_KEY,
       },
     }),
-  TypeOrmModule.forFeature([Observation, AqiCsvImportOperational]),
+    TypeOrmModule.forFeature([Observation, AqiCsvImportOperational]),
   ],
   exports: [SearchService],
 })

@@ -174,10 +174,10 @@ export class SearchService {
     }
 
     if (basicSearchDto.sampleDepth) {
-      let decimalVal = basicSearchDto.sampleDepth
+      let decimalVal = basicSearchDto.sampleDepth;
 
       if (/^-?\d+$/.test(basicSearchDto.sampleDepth)) {
-        decimalVal = `${basicSearchDto.sampleDepth}.0`
+        decimalVal = `${basicSearchDto.sampleDepth}.0`;
       }
       whereClause.push(`depth_upper = $${params.length + 1}`);
       params.push(decimalVal);
@@ -468,7 +468,9 @@ export class SearchService {
       const result = await this.exportDataFromDb(basicSearchDto);
       if (result.data && result.path) {
         jobs[jobId].status = "complete";
-        jobs[jobId].filePath = result.path;
+        // Extract just the filename from the full path
+        const fileName = result.path.split("/").pop();
+        jobs[jobId].fileName = fileName;
         if (result.statistics) {
           jobs[jobId].statistics = result.statistics;
         }

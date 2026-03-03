@@ -8,7 +8,8 @@ export interface SearchStatistics {
 export interface SearchJob {
   id: string;
   status: "pending" | "complete" | "error";
-  filePath?: string;
+  fileName?: string; // Just the filename, not full path
+  createdAt: number; // Timestamp for cleanup
   error?: string;
   statistics?: SearchStatistics;
 }

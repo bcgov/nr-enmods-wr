@@ -106,7 +106,7 @@ export class SearchController {
     const params = this.normalizeQueryParameters(queryParams);
 
     const jobId = uuidv4();
-    jobs[jobId] = { id: jobId, status: "pending" };
+    jobs[jobId] = { id: jobId, status: "pending", createdAt: Date.now() };
 
     // Start background job (non-blocking)
     this.searchService.runExport(params, jobId);
@@ -119,20 +119,30 @@ export class SearchController {
     while (true) {
       const job = jobs[jobId];
 
-      if (job?.status === "complete" && job.filePath) {
-        // Job completed, stream the CSV file
-        response.attachment("ObservationSearchResult.csv");
-        const stream = fs.createReadStream(job.filePath);
-        stream.pipe(response);
-        stream.on("close", () => {
-          fs.unlinkSync(job.filePath);
+      if (job?.status === "complete" && job.fileName) {
+        // Job completed, stream the CSV file from mounted volume
+        const filePath = `${process.cwd()}/data/${job.fileName}`;
+        if (fs.existsSync(filePath)) {
+          response.attachment("ObservationSearchResult.csv");
+          const stream = fs.createReadStream(filePath);
+          stream.pipe(response);
+          stream.on("close", () => {
+            try {
+              fs.unlinkSync(filePath);
+            } catch (err) {
+              this.logger.error(`Error deleting file ${filePath}:`, err);
+            }
+            delete jobs[jobId];
+          });
+          stream.on("error", () => {
+            response.status(500).send("Failed to stream file.");
+            delete jobs[jobId];
+          });
+          return;
+        } else {
           delete jobs[jobId];
-        });
-        stream.on("error", () => {
-          response.status(500).send("Failed to stream file.");
-          delete jobs[jobId];
-        });
-        return;
+          return response.status(404).json({ error: "File not found on disk" });
+        }
       } else if (job?.status === "error") {
         // Job failed
         delete jobs[jobId];
@@ -206,8 +216,8 @@ export class SearchController {
       return response.send(html);
     }
 
-    // If job is complete, show download link
-    if (job.status === "complete" && job.filePath) {
+    // If job is complete, show download link using fileName
+    if (job.status === "complete" && job.fileName) {
       const html = `
         <!DOCTYPE html>
         <html>
@@ -245,7 +255,7 @@ export class SearchController {
             <div class="success-box">
               <h2>✓ Your file is ready!</h2>
               <p>Click the button below to download your CSV file:</p>
-              <a href="/api/v1/search/observationSearch/download/${jobId}" class="download-link">
+              <a href="/api/v1/search/observationSearch/downloadFile/${encodeURIComponent(job.fileName)}" class="download-link">
                 Download ObservationSearchResult.csv
               </a>
             </div>
@@ -278,7 +288,7 @@ export class SearchController {
     @Body() basicSearchDto: BasicSearchDto,
   ) {
     const jobId = uuidv4();
-    jobs[jobId] = { id: jobId, status: "pending" };
+    jobs[jobId] = { id: jobId, status: "pending", createdAt: Date.now() };
 
     // Start background job (non-blocking)
     // this.searchService.runExportJob(basicSearchDto, jobId);
@@ -301,20 +311,65 @@ export class SearchController {
     response.json(statusData);
   }
 
-  @Get("observationSearch/download/:jobId")
+  @Get("observationSearch/downloadFile/:fileName")
   public downloadResult(
+    @Param("fileName") fileName: string,
+    @Res() response: Response,
+  ) {
+    // Sanitize fileName to prevent directory traversal attacks
+    if (!fileName || fileName.includes("..") || fileName.includes("/")) {
+      return response.status(400).json({ message: "Invalid file name" });
+    }
+
+    const filePath = `${process.cwd()}/data/${fileName}`;
+
+    // Verify file exists and is in the correct directory
+    if (!fs.existsSync(filePath)) {
+      return response.status(404).json({ message: "File not found" });
+    }
+
+    response.attachment("ObservationSearchResult.csv");
+    const stream = fs.createReadStream(filePath);
+    stream.pipe(response);
+    stream.on("close", () => {
+      try {
+        fs.unlinkSync(filePath);
+        this.logger.log(`Deleted file: ${filePath}`);
+      } catch (err) {
+        this.logger.error(`Error deleting file ${filePath}:`, err);
+      }
+    });
+    stream.on("error", () => {
+      response.status(500).send("Failed to stream file.");
+    });
+  }
+
+  // Legacy endpoint for backwards compatibility
+  @Get("observationSearch/download/:jobId")
+  public downloadResultLegacy(
     @Param("jobId") jobId: string,
     @Res() response: Response,
   ) {
     const job = jobs[jobId];
-    if (!job || job.status !== "complete" || !job.filePath) {
+    if (!job || job.status !== "complete" || !job.fileName) {
       return response.status(404).json({ message: "File not ready" });
     }
+
+    const filePath = `${process.cwd()}/data/${job.fileName}`;
+    if (!fs.existsSync(filePath)) {
+      return response.status(404).json({ message: "File not found" });
+    }
+
     response.attachment("ObservationSearchResult.csv");
-    const stream = fs.createReadStream(job.filePath);
+    const stream = fs.createReadStream(filePath);
     stream.pipe(response);
     stream.on("close", () => {
-      fs.unlinkSync(job.filePath);
+      try {
+        fs.unlinkSync(filePath);
+        this.logger.log(`Deleted file: ${filePath}`);
+      } catch (err) {
+        this.logger.error(`Error deleting file ${filePath}:`, err);
+      }
       delete jobs[jobId];
     });
     stream.on("error", () => {
@@ -331,12 +386,13 @@ export class SearchController {
     }
 
     // Delete the CSV file if it exists
-    if (job.filePath) {
+    if (job.fileName) {
+      const filePath = `${process.cwd()}/data/${job.fileName}`;
       try {
-        fs.unlinkSync(job.filePath);
-        this.logger.log(`Deleted file: ${job.filePath}`);
+        fs.unlinkSync(filePath);
+        this.logger.log(`Deleted file: ${filePath}`);
       } catch (err) {
-        this.logger.error(`Error deleting file ${job.filePath}:`, err);
+        this.logger.error(`Error deleting file ${filePath}:`, err);
       }
     }
 

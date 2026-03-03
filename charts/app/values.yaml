@@ -194,7 +194,7 @@ bitnami-pg:
       storageClass: netapp-block-standard
       accessModes:
         - ReadWriteOnce
-      size: 38Gi
+      size: 60Gi
     containerSecurityContext:
       enabled: false
     podSecurityContext:

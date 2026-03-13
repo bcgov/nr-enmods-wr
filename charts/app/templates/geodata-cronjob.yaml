@@ -53,6 +53,12 @@ spec:
                       name: "{{ .Release.Name }}-backend"
                       key: AUTH_TOKEN
                       optional: true
+                - name: API_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: "{{ .Release.Name }}-backend"
+                      key: API_KEY
+                      optional: true
                 - name: SAMPLING_LOCATIONS_ENDPOINT
                   valueFrom:
                     secretKeyRef:

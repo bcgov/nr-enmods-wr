@@ -115,10 +115,19 @@ export class GeodataService {
   }
 
   async fetchExtendedAttributes(): Promise<void> {
+    const authToken = process.env.AUTH_TOKEN;
+    const apiKey = process.env.API_KEY;
+
+    if (!authToken) {
+      throw new Error("AUTH_TOKEN environment variable is missing or empty.");
+    }
+    if (!apiKey) {
+      throw new Error("API_KEY environment variable is missing or empty.");
+    }
+
     axios.defaults.method = "GET";
-    axios.defaults.headers.common["Authorization"] =
-      "token " + process.env.AUTH_TOKEN;
-    axios.defaults.headers.common["x-api-key"] = process.env.API_KEY;
+    axios.defaults.headers.common["Authorization"] = "token " + authToken;
+    axios.defaults.headers.common["x-api-key"] = apiKey;
     const url = `${this.baseUrl}${this.extendedAttributesEndpoint}`;
     const response = await axios.get(url);
 

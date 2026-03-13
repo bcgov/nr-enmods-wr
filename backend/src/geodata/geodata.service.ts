@@ -119,14 +119,10 @@ export class GeodataService {
     const apiKey = process.env.API_KEY;
 
     if (!authToken) {
-      throw new Error(
-        "AUTH_TOKEN environment variable is missing or empty. Cannot authenticate with BC API.",
-      );
+      throw new Error("AUTH_TOKEN environment variable is missing or empty.");
     }
     if (!apiKey) {
-      throw new Error(
-        "API_KEY environment variable is missing or empty. Cannot authenticate with BC API.",
-      );
+      throw new Error("API_KEY environment variable is missing or empty.");
     }
 
     axios.defaults.method = "GET";

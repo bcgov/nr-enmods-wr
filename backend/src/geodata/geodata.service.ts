@@ -47,7 +47,7 @@ export class GeodataService {
     try {
       this.logger.debug("Starting sampling location cron job");
       // Clean up the locally generated files
-      await this.cleanUpFiles();
+      // await this.cleanUpFiles();
       const start = Date.now();
       await this.fetchExtendedAttributes();
       // Used for file names & datebase timestamp
@@ -119,16 +119,25 @@ export class GeodataService {
     const apiKey = process.env.API_KEY;
 
     if (!authToken) {
-      throw new Error("AUTH_TOKEN environment variable is missing or empty.");
+      console.log(
+        "fetchExtendedAttributes: AUTH_TOKEN environment variable is missing or empty.",
+      );
+    } else {
+      console.log("fetchExtendedAttributes: AUTH_TOKEN found.");
     }
     if (!apiKey) {
-      throw new Error("API_KEY environment variable is missing or empty.");
+      console.log(
+        "fetchExtendedAttributes: API_KEY environment variable is missing or empty.",
+      );
+    } else {
+      console.log("fetchExtendedAttributes: API_KEY found.");
     }
 
     axios.defaults.method = "GET";
     axios.defaults.headers.common["Authorization"] = "token " + authToken;
     axios.defaults.headers.common["x-api-key"] = apiKey;
     const url = `${this.baseUrl}${this.extendedAttributesEndpoint}`;
+    console.log("Fetching data from ", url);
     const response = await axios.get(url);
 
     if (response.status != 200) {
@@ -296,10 +305,27 @@ export class GeodataService {
     let entries = [];
     let allEntries = [];
 
+    const authToken = process.env.AUTH_TOKEN;
+    const apiKey = process.env.API_KEY;
+
+    if (!authToken) {
+      console.log(
+        "fetchSamplingLocations: AUTH_TOKEN environment variable is missing or empty.",
+      );
+    } else {
+      console.log("fetchSamplingLocations: AUTH_TOKEN found.");
+    }
+    if (!apiKey) {
+      console.log(
+        "fetchSamplingLocations: API_KEY environment variable is missing or empty.",
+      );
+    } else {
+      console.log("fetchSamplingLocations: API_KEY found.");
+    }
+
     axios.defaults.method = "GET";
-    axios.defaults.headers.common["Authorization"] =
-      "token " + process.env.AUTH_TOKEN;
-    axios.defaults.headers.common["x-api-key"] = process.env.API_KEY;
+    axios.defaults.headers.common["Authorization"] = "token " + authToken;
+    axios.defaults.headers.common["x-api-key"] = apiKey;
 
     this.logger.debug("Fetching sampling locations...");
     const start = Date.now();

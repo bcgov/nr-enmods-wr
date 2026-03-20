@@ -161,7 +161,7 @@ export class SearchService {
       basicSearchDto.qcSampleType &&
       basicSearchDto.qcSampleType.length >= 1
     ) {
-      whereClause.push(`qc_type = ANY($${params.length + 1})`);  
+      whereClause.push(`qc_type = ANY($${params.length + 1})`);
       params.push(basicSearchDto.qcSampleType);
     }
 

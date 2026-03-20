@@ -12,6 +12,7 @@ spec:
     spec:
       template:
         spec:
+          serviceAccountName: "aqi-cronjob-sa"        
           containers:
             - name: db-sync
               image: "{{.Values.global.registry}}/{{.Values.global.repository}}/custom-postgres-with-aws:{{ .Values.global.tag | default .Chart.AppVersion }}"
@@ -64,6 +65,13 @@ spec:
                     secretKeyRef:
                       name: "{{ .Release.Name }}-database"
                       key: AWS_SECRET_ACCESS_KEY
+
+                
+                # Deployment environment variables for the oc postgres restart
+                - name: POSTGRES_DEPLOYMENT
+                  value: "{{ .Release.Name }}-bitnami-pg-0"
+                - name: RELEASE_NAMESPACE
+                  value: "{{ .Release.Namespace }}"
               args:
                 - /bin/bash
                 - "-c"
@@ -214,4 +222,31 @@ spec:
 
                   log INFO "Table swap completed."
                   log INFO "AQI hourly sync completed."
+
+                  # ---------------------------------------------------------------------------
+                  # Restart the psql po via an oc restart command
+                  # ---------------------------------------------------------------------------
+
+                  log INFO "Initializing the PostgreSQL pod restart process of $POSTGRES_DEPLOYMENT using oc CLI..."
+
+                  # Log into OpenShift using the service account token
+                  oc login \
+                    --token="$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" \
+                    --server="https://kubernetes.default.svc" \
+                    --certificate-authority=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt \
+                    > /dev/null 2>&1
+
+                  if ! oc rollout restart deployment "$POSTGRES_DEPLOYMENT" -n "$RELEASE_NAMESPACE"; then
+                    log ERROR "Failed to restart PostgreSQL deployment $POSTGRES_DEPLOYMENT in namespace $RELEASE_NAMESPACE"
+                    exit 1
+                  fi
+
+                  log INFO "PostgreSQL deployment restart initiated successfully."
+                  log INFO "Waiting for PostgreSQL pods restart to complete (timeout: 120 seconds)..."
+
+                  if ! oc rollout status deployment "$POSTGRES_DEPLOYMENT" -n "$RELEASE_NAMESPACE" --timeout=120s; then
+                    log ERROR "PostgreSQL deployment $POSTGRES_DEPLOYMENT failed to restart within the expected time."
+                    exit 1
+                  fi
+
           restartPolicy: OnFailure

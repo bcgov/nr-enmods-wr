@@ -4,7 +4,7 @@ FROM postgres:15
 # Switch to root user to install additional packages
 USER root
 
-# Install desired CLI tools
+# Install desired CLI tools like AWS and OpenShift CLI (oc)
 RUN apt-get update && apt-get install -y \
     curl \
     unzip \
@@ -14,6 +14,12 @@ RUN apt-get update && apt-get install -y \
     && ./aws/install \
     && rm -rf awscliv2.zip aws \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+RUN apt-get update && apt-get install -y curl tar \
+    && curl -LO https://mirror.openshift.com/pub/openshift-v4/clients/ocp/stable-4.12/openshift-client-linux.tar.gz \
+    && tar -xzf openshift-client-linux.tar.gz -C /usr/local/bin oc \
+    && rm openshift-client-linux.tar.gz \
+    && oc version --client
 
 # Switch back to the default non-root user used by Bitnami images
 USER postgres

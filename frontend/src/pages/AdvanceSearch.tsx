@@ -281,7 +281,7 @@ const AdvanceSearch = (props: Props) => {
     setErrors([])
 
     if (
-      attrName === SearchAttr.LabBatchId ||
+      attrName === SearchAttr.LabBatchId ||   
       attrName === SearchAttr.SpecimenId ||
       attrName === SearchAttr.SampleDepth
     )

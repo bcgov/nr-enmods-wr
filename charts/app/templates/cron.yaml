@@ -1,40 +1,3 @@
----
-# ServiceAccount for the cronjob with RBAC permissions to delete pods
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: {{ .Release.Name }}-aqi-sync-sa
-  namespace: "{{ .Release.Namespace }}"
-
----
-# Role granting permission to delete postgres pods
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: {{ .Release.Name }}-aqi-sync-role
-  namespace: "{{ .Release.Namespace }}"
-rules:
-  - apiGroups: [""]
-    resources: ["pods"]
-    verbs: ["get", "list", "delete"]
-
----
-# RoleBinding to bind the role to the service account
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: {{ .Release.Name }}-aqi-sync-rolebinding
-  namespace: "{{ .Release.Namespace }}"
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: Role
-  name: {{ .Release.Name }}-aqi-sync-role
-subjects:
-  - kind: ServiceAccount
-    name: {{ .Release.Name }}-aqi-sync-sa
-    namespace: "{{ .Release.Namespace }}"
-
----
 apiVersion: batch/v1
 kind: CronJob
 metadata:
@@ -49,7 +12,7 @@ spec:
     spec:
       template:
         spec:
-          serviceAccountName: "aqi-cronjob-sa"        
+          serviceAccountName: {{ .Release.Name }}-aqi-sync-sa
           containers:
             - name: db-sync
               image: "{{.Values.global.registry}}/{{.Values.global.repository}}/custom-postgres-with-aws:{{ .Values.global.tag | default .Chart.AppVersion }}"
@@ -275,4 +238,3 @@ spec:
                   log INFO "AQI weekly sync completed."
 
           restartPolicy: OnFailure
-          serviceAccountName: {{ .Release.Name }}-aqi-sync-sa

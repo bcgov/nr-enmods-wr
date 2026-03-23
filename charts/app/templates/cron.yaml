@@ -230,10 +230,12 @@ spec:
                   # Restart PostgreSQL pod after successful sync
                   log INFO "Triggering PostgreSQL pod restart..."
                   log INFO "DB Pod: {{ .Release.Name }}-bitnami-pg-0 in Namespace: {{ .Release.Namespace }}"
-                  if kubectl delete pod "{{ .Release.Name }}-bitnami-pg-0" -n "{{ .Release.Namespace }}" --wait=true > /dev/null 2>&1; then
+                  oc get pods -n "{{ .Release.Namespace }}" | grep "bitnami-pg"
+                  if oc get pod "{{ .Release.Name }}-bitnami-pg-0" -n "{{ .Release.Namespace }}" &>/dev/null; then
+                    oc delete pod "{{ .Release.Name }}-bitnami-pg-0" -n "{{ .Release.Namespace }}" --wait=false
                     log INFO "PostgreSQL pod restart triggered successfully."
                   else
-                    log WARN "Failed to trigger PostgreSQL pod restart (may already be restarting or pod may not exist)."
+                    log WARN "Pod not found — may have already restarted."
                   fi
                   
                   log INFO "AQI weekly sync completed."

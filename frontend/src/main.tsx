@@ -11,6 +11,7 @@ import { Provider } from "react-redux"
 import theme from "./theme"
 import App from "./App"
 import { store } from "./store"
+import { setUpSnowplow } from "./util/snowplow"
 
 /**
  * Main component that wraps the application with necessary providers.
@@ -22,6 +23,7 @@ import { store } from "./store"
  * 4. App - main application component
  */
 const Main = () => {
+  setUpSnowplow();
   return (
     // Redux Provider - makes Redux store available to all child components
     <Provider store={store}>

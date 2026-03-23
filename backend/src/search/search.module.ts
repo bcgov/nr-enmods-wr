@@ -15,7 +15,7 @@ import { AqiCsvImportOperational } from "../aqi-csv-import-operational/entities/
       responseType: "blob" as "blob",
       withCredentials: true,
       headers: {
-        Authorization: "token " + process.env.AUTH_TOKEN,
+        Authorization: "token " + process.env.AUTH_TOKEN,    
         "x-api-key": process.env.API_KEY,
       },
     }),

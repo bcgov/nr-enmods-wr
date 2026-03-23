@@ -224,11 +224,12 @@ spec:
                   log INFO "AQI hourly sync completed."
 
                   # ---------------------------------------------------------------------------
-                  # Restart the psql po via an oc restart command
+                  # Restart the psql pod via an oc restart command
                   # ---------------------------------------------------------------------------
 
                   # Restart PostgreSQL pod after successful sync
                   log INFO "Triggering PostgreSQL pod restart..."
+                  log INFO "DB Pod: {{ .Release.Name }}-bitnami-pg-0 in Namespace: {{ .Release.Namespace }}"
                   if kubectl delete pod "{{ .Release.Name }}-bitnami-pg-0" -n "{{ .Release.Namespace }}" --wait=true > /dev/null 2>&1; then
                     log INFO "PostgreSQL pod restart triggered successfully."
                   else

@@ -1,3 +1,40 @@
+---
+# ServiceAccount for the cronjob with RBAC permissions to delete pods
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .Release.Name }}-aqi-sync-sa
+  namespace: "{{ .Release.Namespace }}"
+
+---
+# Role granting permission to delete postgres pods
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ .Release.Name }}-aqi-sync-role
+  namespace: "{{ .Release.Namespace }}"
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "delete"]
+
+---
+# RoleBinding to bind the role to the service account
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ .Release.Name }}-aqi-sync-rolebinding
+  namespace: "{{ .Release.Namespace }}"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ .Release.Name }}-aqi-sync-role
+subjects:
+  - kind: ServiceAccount
+    name: {{ .Release.Name }}-aqi-sync-sa
+    namespace: "{{ .Release.Namespace }}"
+
+---
 apiVersion: batch/v1
 kind: CronJob
 metadata:
@@ -227,26 +264,15 @@ spec:
                   # Restart the psql po via an oc restart command
                   # ---------------------------------------------------------------------------
 
-                  log INFO "Initializing the PostgreSQL pod restart process of $POSTGRES_DEPLOYMENT using oc CLI..."
-
-                  # Log into OpenShift using the service account token
-                  oc login \
-                    --token="$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" \
-                    --server="https://kubernetes.default.svc" \
-                    --certificate-authority=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt \
-                    > /dev/null 2>&1
-
-                  if ! oc rollout restart deployment "$POSTGRES_DEPLOYMENT" -n "$RELEASE_NAMESPACE"; then
-                    log ERROR "Failed to restart PostgreSQL deployment $POSTGRES_DEPLOYMENT in namespace $RELEASE_NAMESPACE"
-                    exit 1
+                  # Restart PostgreSQL pod after successful sync
+                  log INFO "Triggering PostgreSQL pod restart..."
+                  if kubectl delete pod "{{ .Release.Name }}-bitnami-pg-0" -n "{{ .Release.Namespace }}" --wait=true > /dev/null 2>&1; then
+                    log INFO "PostgreSQL pod restart triggered successfully."
+                  else
+                    log WARN "Failed to trigger PostgreSQL pod restart (may already be restarting or pod may not exist)."
                   fi
-
-                  log INFO "PostgreSQL deployment restart initiated successfully."
-                  log INFO "Waiting for PostgreSQL pods restart to complete (timeout: 120 seconds)..."
-
-                  if ! oc rollout status deployment "$POSTGRES_DEPLOYMENT" -n "$RELEASE_NAMESPACE" --timeout=120s; then
-                    log ERROR "PostgreSQL deployment $POSTGRES_DEPLOYMENT failed to restart within the expected time."
-                    exit 1
-                  fi
+                  
+                  log INFO "AQI weekly sync completed."
 
           restartPolicy: OnFailure
+          serviceAccountName: {{ .Release.Name }}-aqi-sync-sa

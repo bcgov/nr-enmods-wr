@@ -8,7 +8,7 @@ import { Observation } from "../observations/entities/observation.entity";
 import { AqiCsvImportOperational } from "../aqi-csv-import-operational/entities/aqi-csv-import-operational.entity";
 
 @Module({
-  controllers: [SearchController],
+  controllers: [SearchController],    
   providers: [SearchService, SearchCleanupService],
   imports: [
     HttpModule.register({

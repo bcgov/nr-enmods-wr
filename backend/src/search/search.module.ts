@@ -9,7 +9,7 @@ import { AqiCsvImportOperational } from "../aqi-csv-import-operational/entities/
 
 @Module({
   controllers: [SearchController],    
-  providers: [SearchService, SearchCleanupService],
+  providers: [SearchService, SearchCleanupService],   
   imports: [
     HttpModule.register({
       responseType: "blob" as "blob",

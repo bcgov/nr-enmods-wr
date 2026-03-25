@@ -8,14 +8,14 @@ import { Observation } from "../observations/entities/observation.entity";
 import { AqiCsvImportOperational } from "../aqi-csv-import-operational/entities/aqi-csv-import-operational.entity";
 
 @Module({
-  controllers: [SearchController],
-  providers: [SearchService, SearchCleanupService],
+  controllers: [SearchController],    
+  providers: [SearchService, SearchCleanupService],   
   imports: [
     HttpModule.register({
       responseType: "blob" as "blob",
       withCredentials: true,
       headers: {
-        Authorization: "token " + process.env.AUTH_TOKEN,
+        Authorization: "token " + process.env.AUTH_TOKEN,    
         "x-api-key": process.env.API_KEY,
       },
     }),

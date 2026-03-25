@@ -12,6 +12,7 @@ spec:
     spec:
       template:
         spec:
+          serviceAccountName: {{ .Release.Name }}-aqi-sync-sa
           containers:
             - name: db-sync
               image: "{{.Values.global.registry}}/{{.Values.global.repository}}/custom-postgres-with-aws:{{ .Values.global.tag | default .Chart.AppVersion }}"
@@ -64,6 +65,13 @@ spec:
                     secretKeyRef:
                       name: "{{ .Release.Name }}-database"
                       key: AWS_SECRET_ACCESS_KEY
+
+                
+                # Deployment environment variables for the oc postgres restart
+                - name: POSTGRES_DEPLOYMENT
+                  value: "{{ .Release.Name }}-bitnami-pg-0"
+                - name: RELEASE_NAMESPACE
+                  value: "{{ .Release.Namespace }}"
               args:
                 - /bin/bash
                 - "-c"
@@ -214,4 +222,22 @@ spec:
 
                   log INFO "Table swap completed."
                   log INFO "AQI hourly sync completed."
+
+                  # ---------------------------------------------------------------------------
+                  # Restart the psql pod via an oc restart command
+                  # ---------------------------------------------------------------------------
+
+                  # Restart PostgreSQL pod after successful sync
+                  log INFO "Triggering PostgreSQL pod restart..."
+                  log INFO "DB Pod: {{ .Release.Name }}-bitnami-pg-0 in Namespace: {{ .Release.Namespace }}"
+                  oc get pods -n "{{ .Release.Namespace }}" | grep "bitnami-pg"
+                  if oc get pod "{{ .Release.Name }}-bitnami-pg-0" -n "{{ .Release.Namespace }}" &>/dev/null; then
+                    oc delete pod "{{ .Release.Name }}-bitnami-pg-0" -n "{{ .Release.Namespace }}" --wait=false
+                    log INFO "PostgreSQL pod restart triggered successfully."
+                  else
+                    log WARN "Pod not found — may have already restarted."
+                  fi
+                  
+                  log INFO "AQI weekly sync completed."
+
           restartPolicy: OnFailure

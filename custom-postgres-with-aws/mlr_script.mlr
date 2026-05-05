@@ -1,0 +1,50 @@
+
+if (NR == 1) {
+  print "[mlr] Miller script started. Processing records..." > "/dev/stderr";
+}
+
+for (k in $*) {
+  if ($[k] == "") {
+    $[k] = "";
+  }
+}
+
+if ($["Field_Visit_Start_Time"] != "" && !($["Field_Visit_Start_Time"] =~ "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}[+-][0-9]{2}:[0-9]{2}$")) {
+  print "[mlr] Normalizing Field_Visit_Start_Time: " . $["Field_Visit_Start_Time"] > "/dev/stderr";
+  $["Field_Visit_Start_Time"] = strftime(strptime($["Field_Visit_Start_Time"], "%Y-%m-%d %H:%M:%S"), "%Y-%m-%dT%H:%M:%S-07:00");
+}
+
+if ($["Field_Visit_End_Time"] != "" && !($["Field_Visit_End_Time"] =~ "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}[+-][0-9]{2}:[0-9]{2}$")) {
+  print "[mlr] Normalizing Field_Visit_End_Time: " . $["Field_Visit_End_Time"] > "/dev/stderr";
+  $["Field_Visit_End_Time"] = strftime(strptime($["Field_Visit_End_Time"], "%Y-%m-%d %H:%M:%S"), "%Y-%m-%dT%H:%M:%S-07:00");
+}
+
+if ($["Observed_Date_Time"] != "" && !($["Observed_Date_Time"] =~ "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}[+-][0-9]{2}:[0-9]{2}$")) {
+  print "[mlr] Normalizing Observed_Date_Time: " . $["Observed_Date_Time"] > "/dev/stderr";
+  $["Observed_Date_Time"] = strftime(strptime($["Observed_Date_Time"], "%Y-%m-%d %H:%M:%S"), "%Y-%m-%dT%H:%M:%S-07:00");
+}
+
+if ($["Observed_Date_Time_Start"] != "" && !($["Observed_Date_Time_Start"] =~ "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}[+-][0-9]{2}:[0-9]{2}$")) {
+  print "[mlr] Normalizing Observed_Date_Time_Start: " . $["Observed_Date_Time_Start"] > "/dev/stderr";
+  $["Observed_Date_Time_Start"] = strftime(strptime($["Observed_Date_Time_Start"], "%Y-%m-%d %H:%M:%S"), "%Y-%m-%dT%H:%M:%S-07:00");
+}
+
+if ($["Observed_Date_Time_End"] != "" && !($["Observed_Date_Time_End"] =~ "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}[+-][0-9]{2}:[0-9]{2}$")) {
+  print "[mlr] Normalizing Observed_Date_Time_End: " . $["Observed_Date_Time_End"] > "/dev/stderr";
+  $["Observed_Date_Time_End"] = strftime(strptime($["Observed_Date_Time_End"], "%Y-%m-%d %H:%M:%S"), "%Y-%m-%dT%H:%M:%S-07:00");
+}
+
+if ($["Analyzed_Date_Time"] != "" && !($["Analyzed_Date_Time"] =~ "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}[+-][0-9]{2}:[0-9]{2}$")) {
+  print "[mlr] Normalizing Analyzed_Date_Time: " . $["Analyzed_Date_Time"] > "/dev/stderr";
+  $["Analyzed_Date_Time"] = strftime(strptime($["Analyzed_Date_Time"], "%Y-%m-%d %H:%M:%S"), "%Y-%m-%dT%H:%M:%S-07:00");
+}
+
+if ($["Lab_Arrival_Date_Time"] != "" && !($["Lab_Arrival_Date_Time"] =~ "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}[+-][0-9]{2}:[0-9]{2}$")) {
+  print "[mlr] Normalizing Lab_Arrival_Date_Time: " . $["Lab_Arrival_Date_Time"] > "/dev/stderr";
+  $["Lab_Arrival_Date_Time"] = strftime(strptime($["Lab_Arrival_Date_Time"], "%Y-%m-%d %H:%M:%S"), "%Y-%m-%dT%H:%M:%S-07:00");
+}
+
+if ($["Lab_Prepared_Date_Time"] != "" && !($["Lab_Prepared_Date_Time"] =~ "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}[+-][0-9]{2}:[0-9]{2}$")) {
+  print "[mlr] Normalizing Lab_Prepared_Date_Time: " . $["Lab_Prepared_Date_Time"] > "/dev/stderr";
+  $["Lab_Prepared_Date_Time"] = strftime(strptime($["Lab_Prepared_Date_Time"], "%Y-%m-%d %H:%M:%S"), "%Y-%m-%dT%H:%M:%S-07:00");
+}

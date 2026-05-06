@@ -83,7 +83,17 @@ BEGIN
         ELSE
             -- Build AWS CLI command with credentials and S3 path
             v_copy_cmd := format(
-                'AWS_ACCESS_KEY_ID=%L AWS_SECRET_ACCESS_KEY=%L %s aws s3 cp s3://%s/%s - | gunzip -c | tr -d ''\r'' | mlr --icsv --ocsv put -f /scripts/mlr_script.mlr',
+                'AWS_ACCESS_KEY_ID=%L AWS_SECRET_ACCESS_KEY=%L %s aws s3 cp s3://%s/%s - | gunzip -c | tr -d ''\r'' | mlr --icsv --ocsv put ''for (k in $*) { if ($[k]=="") { $[k]=""; } }
+                    for (col in splitnv("field_visit_start_time,field_visit_end_time,observed_date_time,observed_date_time_start,observed_date_time_end,analyzed_date_time,lab_arrival_date_time,lab_prepared_date_time", ",")) {
+                    if (is_present($[col]) && $[col] != "") {
+                        if ($[col] =~ "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}-[0-9]{2}:[0-9]{2}$") {
+                        $[col] = regextract($[col], "^([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2})") . ":00-07:00";
+                        } elif ($[col] =~ "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}$") {
+                        $[col] = $[col] . ":00-07:00";
+                        }
+                    }
+                }
+                ''',
                 p_access_key,
                 p_secret_key,
                 CASE WHEN p_session_token IS NOT NULL THEN

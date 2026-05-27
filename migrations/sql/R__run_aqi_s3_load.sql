@@ -77,14 +77,13 @@ BEGIN
             END IF;
 
         ELSE
-            v_copy_cmd := format(
-                'AWS_ACCESS_KEY_ID=%L AWS_SECRET_ACCESS_KEY=%L %s aws s3 cp s3://%s/%s - | gunzip -c | tr -d ''\r'' | mlr --icsv --ocsv put ''for (k in $*) { if ($[k]=="") { $[k]=""; } }''',
+           v_copy_cmd := format(
+                $cmd$AWS_ACCESS_KEY_ID=%L AWS_SECRET_ACCESS_KEY=%L %s aws s3 cp s3://%s/%s - | gunzip -c | tr -d '\r' | mlr --icsv --ocsv put -f /scripts/mlr_script.mlr$cmd$,
                 p_access_key,
                 p_secret_key,
                 CASE WHEN p_session_token IS NOT NULL THEN
                     format('AWS_SESSION_TOKEN=%L ', p_session_token)
-                ELSE
-                    ''
+                ELSE ''
                 END,
                 p_bucket,
                 v_key

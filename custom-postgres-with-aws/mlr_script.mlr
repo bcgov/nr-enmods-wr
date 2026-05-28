@@ -24,21 +24,15 @@ func iso8601_to_utc(s) {
         fmt = "%Y-%m-%dT%H:%M:%S";
     }
 
-    print "DEBUG dt_str=" . dt_str;
-    print "DEBUG offset_str=" . offset_str;
+    var sign = (substr(offset_str, 0, 0) == "-") ? -1 : 1;
 
-    var sign = (offset_str =~ "^-") ? -1 : 1;
-    print "DEBUG sign=" . sign;
-    var off_h_str    = substr(offset_str, 1, 2);
-    print "DEBUG off_h_str=" . off_h_str;
-    var off_h_int = int(off_h_str);
-    print "DEBUG off_h_int=" . off_h_int;
-    var off_m_str    = substr(offset_str, 4, 2);
-    print "DEBUG off_m_str=" . off_m_str;
-    var off_m_int = int(off_m_str);
-    print "DEBUG off_m_int=" . off_m_int;
+    var off_h_str    = sub(substr(offset_str, 1, 2), "^0+", "");
+    var off_m_str    = sub(substr(offset_str, 4, 5), "^0+", "");
+    
+    var off_h_int = (off_h_str == "") ? 0 : int(off_h_str);
+    var off_m_int = (off_m_str == "") ? 0 : int(off_m_str);
+
     var off_secs = sign * ((off_h_int * 3600) + (off_m_int * 60));
-    print "DEBUG off_secs=" . off_secs;
 
     var epoch_utc = strptime(dt_str, fmt) - off_secs;
     var out_utc = strftime(epoch_utc, "%Y-%m-%dT%H:%M:%S+00:00");

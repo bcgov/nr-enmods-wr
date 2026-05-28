@@ -7,3 +7,13 @@ ALTER COLUMN Observed_Date_Time_End TYPE TIMESTAMPTZ USING Observed_Date_Time_En
 ALTER COLUMN Analyzed_Date_Time TYPE TIMESTAMPTZ USING Analyzed_Date_Time AT TIME ZONE 'UTC',
 ALTER COLUMN Lab_Arrival_Date_Time TYPE TIMESTAMPTZ USING Lab_Arrival_Date_Time AT TIME ZONE 'UTC',
 ALTER COLUMN Lab_Prepared_Date_Time TYPE TIMESTAMPTZ USING Lab_Prepared_Date_Time AT TIME ZONE 'UTC';
+
+ALTER TABLE aqi_csv_import_operational
+ALTER COLUMN Field_Visit_Start_Time TYPE TIMESTAMPTZ USING Field_Visit_Start_Time AT TIME ZONE 'UTC',
+ALTER COLUMN Field_Visit_End_Time TYPE TIMESTAMPTZ USING Field_Visit_End_Time AT TIME ZONE 'UTC',
+ALTER COLUMN Observed_Date_Time TYPE TIMESTAMPTZ USING Observed_Date_Time AT TIME ZONE 'UTC',
+ALTER COLUMN Observed_Date_Time_Start TYPE TIMESTAMPTZ USING Observed_Date_Time_Start AT TIME ZONE 'UTC',
+ALTER COLUMN Observed_Date_Time_End TYPE TIMESTAMPTZ USING Observed_Date_Time_End AT TIME ZONE 'UTC',
+ALTER COLUMN Analyzed_Date_Time TYPE TIMESTAMPTZ USING Analyzed_Date_Time AT TIME ZONE 'UTC',
+ALTER COLUMN Lab_Arrival_Date_Time TYPE TIMESTAMPTZ USING Lab_Arrival_Date_Time AT TIME ZONE 'UTC',
+ALTER COLUMN Lab_Prepared_Date_Time TYPE TIMESTAMPTZ USING Lab_Prepared_Date_Time AT TIME ZONE 'UTC';

@@ -21,6 +21,9 @@ RUN apt-get update && apt-get install -y curl tar \
     && rm openshift-client-linux.tar.gz \
     && oc version --client
 
+RUN mkdir -p /scripts
+COPY mlr_script.mlr /scripts/mlr_script.mlr
+
 # Switch back to the default non-root user used by Bitnami images
 USER postgres
 

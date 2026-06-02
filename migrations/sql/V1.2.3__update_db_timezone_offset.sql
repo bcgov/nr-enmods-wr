@@ -1,1 +1,1 @@
-ALTER DATABASE enmodswr_db SET TimeZone = '-07:00';
+ALTER DATABASE enmodswr SET TimeZone = '-07:00';

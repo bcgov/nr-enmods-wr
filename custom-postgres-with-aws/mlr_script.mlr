@@ -1,0 +1,54 @@
+func iso8601_to_utc(s) {
+    if (s == "" || s == "\\N" || s == "NULL") { return s }
+
+    var dt_str = "";
+    var offset_str = "";
+    var fmt = "";
+
+    if (string(s) =~ "Z$") {
+        dt_str     = sub(s, "Z$", "");
+        offset_str = "+00:00";
+    } elif (string(s) =~ "[+-][0-9]{2}:[0-9]{2}$") {
+        offset_str = substr(s, strlen(s) - 6, -1);
+        dt_str     = substr(s, 0, strlen(s) - 7);
+    } else {
+        dt_str = s;
+        offset_str = "+00:00";
+    }
+
+    if (dt_str =~ ":[0-9]{2}:[0-9]{2}$") {
+        fmt = "%Y-%m-%dT%H:%M:%S";
+    } elif (dt_str =~ ":[0-9]{2}$") {
+        fmt = "%Y-%m-%dT%H:%M";
+    } else {
+        fmt = "%Y-%m-%dT%H:%M:%S";
+    }
+
+    var sign = (substr(offset_str, 0, 0) == "-") ? -1 : 1;
+
+    var off_h_str    = sub(substr(offset_str, 1, 2), "^0+", "");
+    var off_m_str    = sub(substr(offset_str, 4, 5), "^0+", "");
+    
+    var off_h_int = (off_h_str == "") ? 0 : int(off_h_str);
+    var off_m_int = (off_m_str == "") ? 0 : int(off_m_str);
+
+    var off_secs = sign * ((off_h_int * 3600) + (off_m_int * 60));
+
+    var epoch_utc = strptime(dt_str, fmt) - off_secs;
+    var out_utc = strftime(epoch_utc, "%Y-%m-%dT%H:%M:%S+00:00");
+
+    return out_utc;
+}
+
+for (k in $*) {
+    if ($[k] == "") { $[k] = ""; }
+}
+
+$Field_Visit_Start_Time  = iso8601_to_utc($Field_Visit_Start_Time);
+$Field_Visit_End_Time    = iso8601_to_utc($Field_Visit_End_Time);
+$Observed_Date_Time      = iso8601_to_utc($Observed_Date_Time);
+$Observed_Date_Time_Start = iso8601_to_utc($Observed_Date_Time_Start);
+$Observed_Date_Time_End  = iso8601_to_utc($Observed_Date_Time_End);
+$Analyzed_Date_Time      = iso8601_to_utc($Analyzed_Date_Time);
+$Lab_Arrival_Date_Time   = iso8601_to_utc($Lab_Arrival_Date_Time);
+$Lab_Prepared_Date_Time  = iso8601_to_utc($Lab_Prepared_Date_Time);

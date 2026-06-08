@@ -250,11 +250,13 @@ export class SearchService {
           if (row[col]) {
             if (row[col] instanceof Date) {
               const d = row[col];
-              const pad = (n: number, z = 2) => ("00" + n).slice(-z);
-              row[col] =
-                `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.${d.getMilliseconds().toString().padStart(3, "0")}-08:00`;
+                const utcMinus7 = new Date(d.getTime() - 7 * 60 * 60 * 1000);
+                const pad = (n: number, z = 2) => ("00" + n).slice(-z);
+                row[col] =
+                  `${utcMinus7.getUTCFullYear()}-${pad(utcMinus7.getUTCMonth() + 1)}-${pad(utcMinus7.getUTCDate())}T${pad(utcMinus7.getUTCHours())}:${pad(utcMinus7.getUTCMinutes())}:${pad(utcMinus7.getUTCSeconds())}.${utcMinus7.getUTCMilliseconds().toString().padStart(3, "0")}-07:00`;
+                console.log(row[col]);
             } else {
-              row[col] = `${row[col]}-08:00`;
+                row[col] = `${row[col]}-07:00`;
             }
           }
         }

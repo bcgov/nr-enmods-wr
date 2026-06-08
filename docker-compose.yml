@@ -63,6 +63,8 @@ services:
       POSTGRES_USER: enmodswr
       POSTGRES_PASSWORD: enmodswr_password
       POSTGRES_DB: enmodswr_db
+    volumes:
+      - ./custom-postgres-with-aws/mlr_script.mlr:/scripts/mlr_script.mlr:ro
     ports:
       - "5432:5432"
     healthcheck:

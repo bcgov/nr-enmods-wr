@@ -304,7 +304,7 @@ const BasicSearch = () => {
         })
         data[key] = arr
       } else if (key === "fromDate" || key === "toDate") {
-        data[key] = formData[key] ? formData[key].toISOString() : ""
+        data[key] = formData[key] ? formData[key].toISOString().split("T")[0]  : ""
       }
     }
     return data

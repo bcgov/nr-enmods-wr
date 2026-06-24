@@ -72,7 +72,7 @@ export class SearchService {
       patterns.forEach((pattern) => params.push(pattern));
     }
 
-    if (basicSearchDto.fromDate && basicSearchDto.toDate) {
+    /*if (basicSearchDto.fromDate && basicSearchDto.toDate) {
       const fromDateWithTime = new Date(basicSearchDto.fromDate);
       const fromDate = `${fromDateWithTime.getFullYear()}-${(fromDateWithTime.getMonth() + 1).toString().padStart(2, "0")}-${fromDateWithTime.getDate().toString().padStart(2, "0")}`;
       whereClause.push(`observed_date_time >= $${params.length + 1}`);
@@ -90,6 +90,38 @@ export class SearchService {
     } else if (basicSearchDto.toDate) {
       const toDateWithTime = new Date(basicSearchDto.toDate);
       const toDate = `${toDateWithTime.getFullYear()}-${(toDateWithTime.getMonth() + 1).toString().padStart(2, "0")}-${toDateWithTime.getDate().toString().padStart(2, "0")}`;
+      whereClause.push(`observed_date_time <= $${params.length + 1}`);
+      params.push(toDate);
+    }*/
+    if (basicSearchDto.fromDate && basicSearchDto.toDate) {
+      const fromDate = `${basicSearchDto.fromDate}T00:00:00-07:00`;
+      const toDate = `${basicSearchDto.toDate}T23:59:59.999-07:00`;
+
+      whereClause.push(`observed_date_time >= $${params.length + 1}`);
+      params.push(fromDate);
+
+      whereClause.push(`observed_date_time <= $${params.length + 1}`);
+      params.push(toDate);
+
+    } else if (basicSearchDto.fromDate) {
+
+      const fromDate = `${basicSearchDto.fromDate}T00:00:00-07:00`;
+      const toDate = `${basicSearchDto.fromDate}T23:59:59.999-07:00`;
+
+      whereClause.push(`observed_date_time >= $${params.length + 1}`);
+      params.push(fromDate);
+
+      whereClause.push(`observed_date_time <= $${params.length + 1}`);
+      params.push(toDate);
+
+    } else if (basicSearchDto.toDate) {
+
+      const fromDate = `${basicSearchDto.toDate}T00:00:00-07:00`;
+      const toDate = `${basicSearchDto.toDate}T23:59:59.999-07:00`;
+
+      whereClause.push(`observed_date_time >= $${params.length + 1}`);
+      params.push(fromDate);
+
       whereClause.push(`observed_date_time <= $${params.length + 1}`);
       params.push(toDate);
     }

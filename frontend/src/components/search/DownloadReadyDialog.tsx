@@ -33,8 +33,9 @@ const DownloadReadyDialog: React.FC<DownloadReadyDialogProps> = ({
   const formatDate = (dateString: string | null): string => {
     if (!dateString) return "N/A"
     try {
-      const date = new Date(dateString)
-      return date.toISOString().split("T")[0] // Format as YYYY-MM-DD
+      //const date = new Date(dateString)
+      //return date.toISOString().split("T")[0] // Format as YYYY-MM-DD
+      return dateString.split("T")[0];// Format as YYYY-MM-DD
     } catch {
       return dateString
     }

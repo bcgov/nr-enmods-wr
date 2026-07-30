@@ -95,7 +95,7 @@ spec:
               memory: 1024Mi
             requests:
               cpu: 50m
-              memory: 128Mi
+              memory: 500Mi
           volumeMounts:
             - name: wr-csv-files
               mountPath: /app/data/

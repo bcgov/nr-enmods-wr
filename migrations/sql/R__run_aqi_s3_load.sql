@@ -28,6 +28,10 @@ DECLARE
     v_has_aws_ext boolean := false;
     v_s3_uri text;
     v_copy_cmd text;
+    v_alter_raw_varchar_cols_sql text;
+    v_column_list text;
+    v_select_list text;
+    v_insert_from_raw_sql text;
     v_key   text;
     v_item_start_time timestamp;
     v_item_end_time   timestamp;
@@ -45,7 +49,49 @@ BEGIN
     VALUES (p_process_name, 'IN_PROGRESS', now(), p_folder_name)
     RETURNING id INTO v_log_id;
 
+        CREATE TEMP TABLE IF NOT EXISTS aqi_csv_import_staging_raw
+        (LIKE public.aqi_csv_import_staging INCLUDING DEFAULTS)
+        ON COMMIT DROP;
+
+        SELECT string_agg(format('ALTER COLUMN %I TYPE text', column_name), ', ' ORDER BY ordinal_position)
+            INTO v_alter_raw_varchar_cols_sql
+            FROM information_schema.columns
+         WHERE table_schema = 'public'
+             AND table_name = 'aqi_csv_import_staging'
+             AND data_type = 'character varying';
+
+        IF v_alter_raw_varchar_cols_sql IS NOT NULL THEN
+            EXECUTE format('ALTER TABLE pg_temp.aqi_csv_import_staging_raw %s', v_alter_raw_varchar_cols_sql);
+        END IF;
+
     TRUNCATE TABLE public.aqi_csv_import_staging;
+        TRUNCATE TABLE pg_temp.aqi_csv_import_staging_raw;
+
+        SELECT string_agg(quote_ident(column_name), ', ' ORDER BY ordinal_position)
+            INTO v_column_list
+            FROM information_schema.columns
+         WHERE table_schema = 'public'
+             AND table_name = 'aqi_csv_import_staging';
+
+        SELECT string_agg(
+                             CASE
+                         WHEN data_type = 'character varying' AND character_maximum_length IS NOT NULL THEN
+                             format('left(%1$I, %2$s)::varchar(%2$s) AS %1$I', column_name, character_maximum_length)
+                                     ELSE
+                                             quote_ident(column_name)
+                             END,
+                             ', ' ORDER BY ordinal_position
+                     )
+            INTO v_select_list
+            FROM information_schema.columns
+         WHERE table_schema = 'public'
+             AND table_name = 'aqi_csv_import_staging';
+
+        v_insert_from_raw_sql := format(
+                'INSERT INTO public.aqi_csv_import_staging (%s) SELECT %s FROM pg_temp.aqi_csv_import_staging_raw',
+                v_column_list,
+                v_select_list
+        );
 
     RAISE NOTICE '[%] S3 load for % keys: %', p_process_name, array_length(p_object_keys, 1), array_to_string(p_object_keys, ', ');
 
@@ -61,7 +107,7 @@ BEGIN
             IF p_iam_role_arn IS NOT NULL THEN
                 RAISE NOTICE '[%] Importing with IAM role: %', p_process_name, p_iam_role_arn;
                 PERFORM aws_s3.table_import_from_s3(
-                    'public.aqi_csv_import_staging',
+                    'pg_temp.aqi_csv_import_staging_raw',
                     NULL, NULL,
                     v_s3_uri,
                     p_iam_role_arn
@@ -69,7 +115,7 @@ BEGIN
             ELSE
                 RAISE NOTICE '[%] Importing with access keys', p_process_name;
                 PERFORM aws_s3.table_import_from_s3(
-                    'public.aqi_csv_import_staging',
+                    'pg_temp.aqi_csv_import_staging_raw',
                     NULL, NULL,
                     v_s3_uri,
                     p_access_key, p_secret_key, p_session_token
@@ -93,7 +139,7 @@ BEGIN
             v_item_start_time := clock_timestamp();
             BEGIN
                 EXECUTE format(
-                    'COPY public.aqi_csv_import_staging FROM PROGRAM %L WITH CSV HEADER',
+                    'COPY pg_temp.aqi_csv_import_staging_raw FROM PROGRAM %L WITH CSV HEADER',
                     v_copy_cmd
                 );
                 RAISE NOTICE '[%] COPY succeeded for key: % at %', p_process_name, v_key, now();
@@ -104,6 +150,9 @@ BEGIN
                 RAISE;
             END;
         END IF;
+
+        EXECUTE v_insert_from_raw_sql;
+        TRUNCATE TABLE pg_temp.aqi_csv_import_staging_raw;
 
         v_item_end_time := clock_timestamp();
         v_rows_after := (SELECT count(*) FROM public.aqi_csv_import_staging);

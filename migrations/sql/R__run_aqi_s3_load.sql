@@ -28,6 +28,11 @@ DECLARE
     v_has_aws_ext boolean := false;
     v_s3_uri text;
     v_copy_cmd text;
+    v_header_copy_cmd text;
+    v_header_line text;
+    v_header_cols text[];
+    v_mlr_truncate_expr text;
+    v_mlr_truncate_stage text;
     v_key   text;
     v_item_start_time timestamp;
     v_item_end_time   timestamp;
@@ -46,6 +51,57 @@ BEGIN
     RETURNING id INTO v_log_id;
 
     TRUNCATE TABLE public.aqi_csv_import_staging;
+
+    IF NOT v_has_aws_ext THEN
+        -- Peek at the header line of the first file so we know the real CSV field names
+        -- (they don't always match the lower/underscored Postgres column names, e.g. CAS_Number, QC_Type).
+        CREATE TEMP TABLE IF NOT EXISTS aqi_csv_header_line (line text) ON COMMIT DROP;
+        TRUNCATE TABLE pg_temp.aqi_csv_header_line;
+
+        v_header_copy_cmd := format(
+            $cmd$AWS_ACCESS_KEY_ID=%L AWS_SECRET_ACCESS_KEY=%L %s aws s3 cp s3://%s/%s - | gunzip -c | head -1$cmd$,
+            p_access_key,
+            p_secret_key,
+            CASE WHEN p_session_token IS NOT NULL THEN
+                format('AWS_SESSION_TOKEN=%L ', p_session_token)
+            ELSE ''
+            END,
+            p_bucket,
+            p_object_keys[1]
+        );
+        EXECUTE format('COPY pg_temp.aqi_csv_header_line FROM PROGRAM %L', v_header_copy_cmd);
+
+        SELECT line INTO v_header_line FROM pg_temp.aqi_csv_header_line LIMIT 1;
+
+        SELECT array_agg(trim(both E' \r\n' from col))
+          INTO v_header_cols
+          FROM unnest(string_to_array(v_header_line, ',')) AS col;
+
+        -- Build "$Col = truncate(string($Col), N);" for every CSV field whose matching (by position)
+        -- Postgres column is a length-limited varchar, using the ACTUAL header spelling.
+        -- string(...) is required: Miller auto-infers numeric-looking fields (lat/long, result
+        -- values, etc.) as int/float, and truncate() on a non-string silently yields "(error)".
+        SELECT string_agg(
+                   format('$%s = truncate(string($%s), %s);', h.col_name, h.col_name, c.character_maximum_length),
+                   ' '
+               )
+          INTO v_mlr_truncate_expr
+          FROM unnest(v_header_cols) WITH ORDINALITY AS h(col_name, ord)
+          JOIN (
+                   SELECT column_name, character_maximum_length,
+                          row_number() OVER (ORDER BY ordinal_position) AS ord
+                     FROM information_schema.columns
+                    WHERE table_schema = 'public'
+                      AND table_name = 'aqi_csv_import_staging'
+               ) c ON c.ord = h.ord
+         WHERE c.character_maximum_length IS NOT NULL;
+
+        IF v_mlr_truncate_expr IS NOT NULL THEN
+            v_mlr_truncate_stage := format(' | mlr --csv put %L', v_mlr_truncate_expr);
+        ELSE
+            v_mlr_truncate_stage := '';
+        END IF;
+    END IF;
 
     RAISE NOTICE '[%] S3 load for % keys: %', p_process_name, array_length(p_object_keys, 1), array_to_string(p_object_keys, ', ');
 
@@ -78,7 +134,7 @@ BEGIN
 
         ELSE
            v_copy_cmd := format(
-                $cmd$AWS_ACCESS_KEY_ID=%L AWS_SECRET_ACCESS_KEY=%L %s aws s3 cp s3://%s/%s - | gunzip -c | tr -d '\r' | mlr --icsv --ocsv put -f /scripts/mlr_script.mlr$cmd$,
+                $cmd$AWS_ACCESS_KEY_ID=%L AWS_SECRET_ACCESS_KEY=%L %s aws s3 cp s3://%s/%s - | gunzip -c | tr -d '\r' | mlr --icsv --ocsv put -f /scripts/mlr_script.mlr%s$cmd$,
                 p_access_key,
                 p_secret_key,
                 CASE WHEN p_session_token IS NOT NULL THEN
@@ -86,7 +142,8 @@ BEGIN
                 ELSE ''
                 END,
                 p_bucket,
-                v_key
+                v_key,
+                v_mlr_truncate_stage
             );
             RAISE NOTICE '[%] COPY FROM PROGRAM command: %', p_process_name, v_copy_cmd;
 

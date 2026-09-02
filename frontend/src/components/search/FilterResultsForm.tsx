@@ -72,7 +72,7 @@ export default function FilterResultsForm(props: any) {
           <TitleText
             variant="body2"
             sx={{ fontSize: "9pt", p: 1 }}
-            text="Date Range Format: mm-dd-yyyy"
+            text="Date Range Format: mm-dd-yyyy. Note: If only 'From' or 'To' date is provided, only results from that single date will be returned."
           />
         </div>
         <div className="flex flex-col lg:flex-row justify-between px-4 pb-4 gap-4">

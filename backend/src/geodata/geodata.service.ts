@@ -1086,10 +1086,10 @@ export class GeodataService {
   async uploadFiles(gdbPath: string, csvPath: string, gpkgPath: string) {
     // Zip the GDB directory
     const gdbZipPath = `${gdbPath}.zip`;
-    await new Promise((resolve, reject) => {
+    await new Promise<void>((resolve, reject) => {
       const output = fs.createWriteStream(gdbZipPath);
       const archive = archiver("zip", { zlib: { level: 9 } });
-      output.on("close", resolve);
+      output.on("close", () => resolve());
       archive.on("error", reject);
       archive.pipe(output);
       archive.directory(gdbPath, false);

@@ -519,15 +519,31 @@ export class GeodataService {
     // if the established date is empty, return the creation time instead
     if (attributeId === this.EXTENDED_ATTRIBUTES.establishedDate) {
       if (!attribute || attribute === "") {
-        return creationTime.slice(0, 10);
+        return this.toFixedOffsetDateString(new Date(creationTime));
       } else {
-        return attribute.text.slice(0, 10);
+        return this.toFixedOffsetDateString(new Date(attribute.text));
       }
     }
     if (attribute && attribute.text === "NA") {
       return "";
     }
+    if (attributeId === this.EXTENDED_ATTRIBUTES.closedDate) {
+      return attribute
+        ? this.toFixedOffsetDateString(new Date(attribute.text))
+        : "";
+    }
     return attribute ? attribute.text : "";
+  }
+
+  /**
+   * Formats a Date as a YYYY-MM-DD string, using its calendar date in a
+   * fixed -07:00 offset (rather than the UTC calendar date)
+   */
+  toFixedOffsetDateString(date: Date): string {
+    const offsetMs = 7 * 60 * 60 * 1000;
+    const shifted = new Date(date.getTime() - offsetMs);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${shifted.getUTCFullYear()}-${pad(shifted.getUTCMonth() + 1)}-${pad(shifted.getUTCDate())}`;
   }
 
   getLon(longitude: string): number | null {
@@ -606,9 +622,11 @@ export class GeodataService {
               OBSERVATION_COUNT: summary.observationCount,
               FIELD_VISIT_COUNT: summary.fieldVisitCount,
               LATEST_FIELD_VISIT:
-                (summary.latestFieldVisit &&
-                  summary.latestFieldVisit.startTime) ||
-                "",
+                summary.latestFieldVisit && summary.latestFieldVisit.startTime
+                  ? this.toFixedOffsetDateString(
+                      new Date(summary.latestFieldVisit.startTime),
+                    )
+                  : "",
               GROUP_NAMES: location.samplingLocationGroups
                 ? location.samplingLocationGroups
                     .map((group) => group.name || "")

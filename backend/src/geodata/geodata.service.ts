@@ -918,35 +918,48 @@ export class GeodataService {
         this.logger.error(`Watershed join failed: ${error.message}`);
         throw error;
       }
-      // Copy the old GPKG to the output GPKG
-      try {
-        this.logger.debug(
-          `Creating combined GPKG using ${latestFilePath} as base`,
-        );
-        const { stdout, stderr } = await this.execAsync(
-          `ogr2ogr -f GPKG "${gpkgPath}" "${latestFilePath}" -nln ${intersectedLayerName}`,
-        );
-        if (stderr) {
-          this.logger.warn(`Base GPKG copy stderr: ${stderr}`);
-        }
-      } catch (error: any) {
-        this.logger.error(`Base GPKG copy failed: ${error.message}`);
-        throw error;
-      }
+      // Merge the new (watershed-intersected) data with the previous GPKG, keyed by ID.
+      // ogr2ogr's -upsert matches on FID rather than the ID attribute, so it would insert
+      // a duplicate row (new FID, same ID) for every location that already existed instead
+      // of replacing it. Union the two layers instead, dropping old rows whose ID
+      // reappears in the new data, and write straight into gpkgPath with -overwrite so
+      // each run fully replaces it rather than appending onto a leftover file.
+      const mergeVrtPath = path.join(this.tempDir, `merge_${timestamp}.vrt`);
+      const mergeVrtXml = `
+      <OGRVRTDataSource>
+        <OGRVRTLayer name="new_data">
+          <SrcDataSource>${gpkgOutputPath}</SrcDataSource>
+          <SrcLayer>${intersectedLayerName}</SrcLayer>
+          <GeometryType>wkbPoint</GeometryType>
+          <LayerSRS>EPSG:3005</LayerSRS>
+        </OGRVRTLayer>
+        <OGRVRTLayer name="old_data">
+          <SrcDataSource>${latestFilePath}</SrcDataSource>
+          <SrcLayer>${intersectedLayerName}</SrcLayer>
+          <GeometryType>wkbPoint</GeometryType>
+          <LayerSRS>EPSG:3005</LayerSRS>
+        </OGRVRTLayer>
+      </OGRVRTDataSource>`;
+      fs.writeFileSync(mergeVrtPath, mergeVrtXml.trim());
 
-      // Upsert the new intersected GPKG into the output GPKG
+      const mergeSql = `
+      SELECT * FROM new_data
+      UNION ALL
+      SELECT * FROM old_data WHERE ID NOT IN (SELECT ID FROM new_data)
+      `.replace(/\s+/g, " ");
+
       try {
         this.logger.debug(
-          `Upserting new data from ${gpkgOutputPath} into ${gpkgPath}`,
+          `Merging new data from ${gpkgOutputPath} into ${gpkgPath}, keyed by ID (new data takes precedence)`,
         );
         const { stdout, stderr } = await this.execAsync(
-          `ogr2ogr -f GPKG "${gpkgPath}" "${gpkgOutputPath}" -nln ${intersectedLayerName} -upsert`,
+          `ogr2ogr -f GPKG -overwrite "${gpkgPath}" "${mergeVrtPath}" -dialect sqlite -sql "${mergeSql}" -nln ${intersectedLayerName} -lco SPATIAL_INDEX=YES`,
         );
         if (stderr) {
-          this.logger.warn(`New data upsert stderr: ${stderr}`);
+          this.logger.warn(`GPKG merge stderr: ${stderr}`);
         }
       } catch (error: any) {
-        this.logger.error(`New data upsert failed: ${error.message}`);
+        this.logger.error(`GPKG merge failed: ${error.message}`);
         throw error;
       }
 
@@ -1016,7 +1029,7 @@ export class GeodataService {
       // New Intersected GPKG, copy directly into output GPKG
       try {
         const { stdout, stderr } = await this.execAsync(
-          `ogr2ogr -f GPKG "${gpkgPath}" "${vrtPath}" -dialect sqlite -sql "${sql}" -nln ${intersectedLayerName} -lco SPATIAL_INDEX=YES --config GDAL_CACHEMAX 500 --config OGR_SQLITE_CACHE 200000`,
+          `ogr2ogr -f GPKG -overwrite "${gpkgPath}" "${vrtPath}" -dialect sqlite -sql "${sql}" -nln ${intersectedLayerName} -lco SPATIAL_INDEX=YES --config GDAL_CACHEMAX 500 --config OGR_SQLITE_CACHE 200000`,
         );
         if (stderr) {
           this.logger.warn(`Watershed join stderr: ${stderr}`);
@@ -1032,7 +1045,7 @@ export class GeodataService {
       // Copy the old GPKG to the output GPKG
       try {
         const { stdout, stderr } = await this.execAsync(
-          `ogr2ogr -f GPKG "${gpkgPath}" "${latestFilePath}" -nln ${intersectedLayerName}`,
+          `ogr2ogr -f GPKG -overwrite "${gpkgPath}" "${latestFilePath}" -nln ${intersectedLayerName}`,
         );
         if (stderr) {
           this.logger.warn(`Base GPKG copy stderr: ${stderr}`);
@@ -1055,7 +1068,7 @@ export class GeodataService {
     this.logger.debug("Generating GDB");
     try {
       const { stdout, stderr } = await this.execAsync(
-        `ogr2ogr -f "OpenFileGDB" "${gdbPath}" "${gpkgPath}" ${intersectedLayerName}`,
+        `ogr2ogr -f "OpenFileGDB" -overwrite "${gdbPath}" "${gpkgPath}" ${intersectedLayerName}`,
       );
       if (stderr) {
         this.logger.warn(`GDB generate stderr: ${stderr}`);
@@ -1069,7 +1082,7 @@ export class GeodataService {
     this.logger.debug("Generating CSV");
     try {
       const { stdout, stderr } = await this.execAsync(
-        `ogr2ogr -f "CSV" "${csvPath}" "${gpkgPath}" ${intersectedLayerName}`,
+        `ogr2ogr -f "CSV" -overwrite "${csvPath}" "${gpkgPath}" ${intersectedLayerName}`,
       );
       if (stderr) {
         this.logger.warn(`Failed to convert to CSV warning: ${stderr}`);
@@ -1083,7 +1096,7 @@ export class GeodataService {
     // sampling location geojson used in generateSamplingLocationGroupGpkg
     try {
       const { stdout, stderr } = await this.execAsync(
-        `ogr2ogr -f "GeoJSON" "${geoJsonPath}" "${gpkgPath}" ${intersectedLayerName}`,
+        `ogr2ogr -f "GeoJSON" -overwrite "${geoJsonPath}" "${gpkgPath}" ${intersectedLayerName}`,
       );
       if (stderr) {
         this.logger.warn(`Failed to convert to GeoJSON warning: ${stderr}`);

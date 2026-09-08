@@ -530,7 +530,7 @@ export class GeodataService {
     if (attributeId === this.EXTENDED_ATTRIBUTES.closedDate) {
       return attribute
         ? this.toFixedOffsetDateString(new Date(attribute.text))
-        : "";
+        : null;
     }
     return attribute ? attribute.text : "";
   }
@@ -626,7 +626,7 @@ export class GeodataService {
                   ? this.toFixedOffsetDateString(
                       new Date(summary.latestFieldVisit.startTime),
                     )
-                  : "",
+                  : null,
               GROUP_NAMES: location.samplingLocationGroups
                 ? location.samplingLocationGroups
                     .map((group) => group.name || "")

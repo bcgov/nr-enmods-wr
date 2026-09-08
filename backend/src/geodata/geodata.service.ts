@@ -524,14 +524,15 @@ export class GeodataService {
         return this.toFixedOffsetDateString(new Date(attribute.text));
       }
     }
-    if (attribute && attribute.text === "NA") {
-      return "";
-    }
     if (attributeId === this.EXTENDED_ATTRIBUTES.closedDate) {
       return attribute
         ? this.toFixedOffsetDateString(new Date(attribute.text))
         : null;
     }
+    if (attribute && attribute.text === "NA") {
+      return "";
+    }
+    
     return attribute ? attribute.text : "";
   }
 
@@ -915,11 +916,11 @@ export class GeodataService {
         ELEVATION, 
         ELEVATION_UNITS, 
         WELL_IDENTIFICATION_TAG_NO,
-        ESTABLISHED_DATE, 
-        CLOSED_DATE, 
+        ESTABLISHED_DATE,
+        CAST(CLOSED_DATE AS date) AS CLOSED_DATE,
         OBSERVATION_COUNT,
-        FIELD_VISIT_COUNT, 
-        LATEST_FIELD_VISIT, 
+        FIELD_VISIT_COUNT,
+        CAST(LATEST_FIELD_VISIT AS date) AS LATEST_FIELD_VISIT,
         GROUP_NAMES,
         GEOREFERENCE_SOURCE, 
         geometry,
@@ -967,10 +968,27 @@ export class GeodataService {
       </OGRVRTDataSource>`;
       fs.writeFileSync(mergeVrtPath, mergeVrtXml.trim());
 
+      // Explicit column list (rather than SELECT *) so CLOSED_DATE and
+      // LATEST_FIELD_VISIT can be re-cast to date: GDAL's sqlite dialect only
+      // preserves a column's declared type when it traces straight back to a
+      // real table column, and UNION ALL breaks that trace, silently reverting
+      // both fields to String otherwise.
       const mergeSql = `
-      SELECT * FROM new_data
+      SELECT ID, NAME, DESCRIPTION, TYPE, LATITUDE, LONGITUDE, ELEVATION,
+      ELEVATION_UNITS, WELL_IDENTIFICATION_TAG_NO, ESTABLISHED_DATE,
+      CAST(CLOSED_DATE AS date) AS CLOSED_DATE, OBSERVATION_COUNT,
+      FIELD_VISIT_COUNT, CAST(LATEST_FIELD_VISIT AS date) AS LATEST_FIELD_VISIT,
+      GROUP_NAMES, GEOREFERENCE_SOURCE, geometry, WATERSHED_GROUP_CD,
+      WATERSHED_GROUP_NAME
+      FROM new_data
       UNION ALL
-      SELECT * FROM old_data WHERE ID NOT IN (SELECT ID FROM new_data)
+      SELECT ID, NAME, DESCRIPTION, TYPE, LATITUDE, LONGITUDE, ELEVATION,
+      ELEVATION_UNITS, WELL_IDENTIFICATION_TAG_NO, ESTABLISHED_DATE,
+      CAST(CLOSED_DATE AS date) AS CLOSED_DATE, OBSERVATION_COUNT,
+      FIELD_VISIT_COUNT, CAST(LATEST_FIELD_VISIT AS date) AS LATEST_FIELD_VISIT,
+      GROUP_NAMES, GEOREFERENCE_SOURCE, geometry, WATERSHED_GROUP_CD,
+      WATERSHED_GROUP_NAME
+      FROM old_data WHERE ID NOT IN (SELECT ID FROM new_data)
       `.replace(/\s+/g, " ");
 
       try {
@@ -1036,11 +1054,11 @@ export class GeodataService {
         ELEVATION, 
         ELEVATION_UNITS, 
         WELL_IDENTIFICATION_TAG_NO,
-        ESTABLISHED_DATE, 
-        CLOSED_DATE, 
+        ESTABLISHED_DATE,
+        CAST(CLOSED_DATE AS date) AS CLOSED_DATE,
         OBSERVATION_COUNT,
-        FIELD_VISIT_COUNT, 
-        LATEST_FIELD_VISIT, 
+        FIELD_VISIT_COUNT,
+        CAST(LATEST_FIELD_VISIT AS date) AS LATEST_FIELD_VISIT,
         GROUP_NAMES,
         GEOREFERENCE_SOURCE, 
         geometry,

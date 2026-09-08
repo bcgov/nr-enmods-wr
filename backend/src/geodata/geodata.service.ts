@@ -659,35 +659,10 @@ export class GeodataService {
           `ogr2ogr -f GPKG \"${gpkgPath}\" \"${geojsonPath}\" -nln ${intersectedLayerName} -s_srs EPSG:4326 -t_srs EPSG:3005 -lco SPATIAL_INDEX=YES`,
         );
         if (stderr) this.logger.warn(`GPKG conversion warning: ${stderr}`);
-
-        // Force CLOSED_DATE and LATEST_FIELD_VISIT to be typed as Date even when
-        // every location in this batch has an empty value for them. GDAL infers a
-        // GeoJSON field's type from its values, and an all-null column falls back
-        // to String, which then conflicts with the Date-typed columns already
-        // present in the historical data once the two are merged together.
-        const typedGpkgPath = path.join(
-          this.tempDir,
-          `input_${timestamp}_typed.gpkg`,
-        );
-        const castSql = `
-          SELECT ID, NAME, DESCRIPTION, TYPE, LATITUDE, LONGITUDE, ELEVATION,
-          ELEVATION_UNITS, WELL_IDENTIFICATION_TAG_NO, ESTABLISHED_DATE,
-          CAST(CLOSED_DATE AS date) AS CLOSED_DATE, OBSERVATION_COUNT,
-          FIELD_VISIT_COUNT, CAST(LATEST_FIELD_VISIT AS date) AS LATEST_FIELD_VISIT,
-          GROUP_NAMES, GEOREFERENCE_SOURCE
-          FROM ${intersectedLayerName}
-        `.replace(/\s+/g, " ");
-        const { stdout: castStdout, stderr: castStderr } =
-          await this.execAsync(
-            `ogr2ogr -f GPKG "${typedGpkgPath}" "${gpkgPath}" -nln ${intersectedLayerName} -sql "${castSql}"`,
-          );
-        if (castStderr)
-          this.logger.warn(`Date field type cast warning: ${castStderr}`);
-
         this.logger.log(
           "Successfully generated new data GPKG, returning the path",
         );
-        return typedGpkgPath;
+        return gpkgPath;
       }
     } catch (error) {
       console.error("Error during geojson generation:", error);
@@ -822,6 +797,34 @@ export class GeodataService {
   }
 
   /**
+   * Rewrites a column's declared type to DATE directly via raw SQLite ALTER
+   * TABLE, in place. SQLite has no ALTER COLUMN TYPE, so this renames the
+   * existing column aside, adds a new one declared as DATE, copies the values
+   * across, then drops the renamed original.
+   */
+  private async forceDateColumnType(
+    gpkgPath: string,
+    layerName: string,
+    columnName: string,
+  ): Promise<void> {
+    const tempColumn = `${columnName}_OLD_TMP`;
+    const statements = [
+      `ALTER TABLE ${layerName} RENAME COLUMN ${columnName} TO ${tempColumn}`,
+      `ALTER TABLE ${layerName} ADD COLUMN ${columnName} DATE`,
+      `UPDATE ${layerName} SET ${columnName} = ${tempColumn}`,
+      `ALTER TABLE ${layerName} DROP COLUMN ${tempColumn}`,
+    ];
+    for (const statement of statements) {
+      const { stderr } = await this.execAsync(
+        `ogr2ogr -f GPKG -update "${gpkgPath}" "${gpkgPath}" -dialect sqlite -sql "${statement}"`,
+      );
+      if (stderr) {
+        this.logger.warn(`${columnName} type fix warning: ${stderr}`);
+      }
+    }
+  }
+
+  /**
    * 1. Receives new entries from aqi that have been transformed into a geojson format
    * 2. Write the geojson to disk and convert it into a gpkg
    * 3. Performs intersection between watershed gdb & new sampling locations gpkg
@@ -917,10 +920,10 @@ export class GeodataService {
         ELEVATION_UNITS, 
         WELL_IDENTIFICATION_TAG_NO,
         ESTABLISHED_DATE,
-        CAST(CLOSED_DATE AS date) AS CLOSED_DATE,
+        CLOSED_DATE,
         OBSERVATION_COUNT,
         FIELD_VISIT_COUNT,
-        CAST(LATEST_FIELD_VISIT AS date) AS LATEST_FIELD_VISIT,
+        LATEST_FIELD_VISIT,
         GROUP_NAMES,
         GEOREFERENCE_SOURCE, 
         geometry,
@@ -968,27 +971,10 @@ export class GeodataService {
       </OGRVRTDataSource>`;
       fs.writeFileSync(mergeVrtPath, mergeVrtXml.trim());
 
-      // Explicit column list (rather than SELECT *) so CLOSED_DATE and
-      // LATEST_FIELD_VISIT can be re-cast to date: GDAL's sqlite dialect only
-      // preserves a column's declared type when it traces straight back to a
-      // real table column, and UNION ALL breaks that trace, silently reverting
-      // both fields to String otherwise.
       const mergeSql = `
-      SELECT ID, NAME, DESCRIPTION, TYPE, LATITUDE, LONGITUDE, ELEVATION,
-      ELEVATION_UNITS, WELL_IDENTIFICATION_TAG_NO, ESTABLISHED_DATE,
-      CAST(CLOSED_DATE AS date) AS CLOSED_DATE, OBSERVATION_COUNT,
-      FIELD_VISIT_COUNT, CAST(LATEST_FIELD_VISIT AS date) AS LATEST_FIELD_VISIT,
-      GROUP_NAMES, GEOREFERENCE_SOURCE, geometry, WATERSHED_GROUP_CD,
-      WATERSHED_GROUP_NAME
-      FROM new_data
+      SELECT * FROM new_data
       UNION ALL
-      SELECT ID, NAME, DESCRIPTION, TYPE, LATITUDE, LONGITUDE, ELEVATION,
-      ELEVATION_UNITS, WELL_IDENTIFICATION_TAG_NO, ESTABLISHED_DATE,
-      CAST(CLOSED_DATE AS date) AS CLOSED_DATE, OBSERVATION_COUNT,
-      FIELD_VISIT_COUNT, CAST(LATEST_FIELD_VISIT AS date) AS LATEST_FIELD_VISIT,
-      GROUP_NAMES, GEOREFERENCE_SOURCE, geometry, WATERSHED_GROUP_CD,
-      WATERSHED_GROUP_NAME
-      FROM old_data WHERE ID NOT IN (SELECT ID FROM new_data)
+      SELECT * FROM old_data WHERE ID NOT IN (SELECT ID FROM new_data)
       `.replace(/\s+/g, " ");
 
       try {
@@ -1055,10 +1041,10 @@ export class GeodataService {
         ELEVATION_UNITS, 
         WELL_IDENTIFICATION_TAG_NO,
         ESTABLISHED_DATE,
-        CAST(CLOSED_DATE AS date) AS CLOSED_DATE,
+        CLOSED_DATE,
         OBSERVATION_COUNT,
         FIELD_VISIT_COUNT,
-        CAST(LATEST_FIELD_VISIT AS date) AS LATEST_FIELD_VISIT,
+        LATEST_FIELD_VISIT,
         GROUP_NAMES,
         GEOREFERENCE_SOURCE, 
         geometry,
@@ -1106,6 +1092,18 @@ export class GeodataService {
       );
     }
     this.logger.debug("GPKG generation was successful");
+
+    // Force CLOSED_DATE and LATEST_FIELD_VISIT to be declared DATE columns in the
+    // final GPKG. CAST(... AS date) inside the SQL above doesn't reliably survive
+    // the ROW_NUMBER()/JOIN/UNION ALL steps used to build gpkgPath, so instead
+    // this rewrites each column's declared type directly via raw ALTER TABLE,
+    // which is what QGIS/ArcGIS actually read to show a field's type.
+    await this.forceDateColumnType(gpkgPath, intersectedLayerName, "CLOSED_DATE");
+    await this.forceDateColumnType(
+      gpkgPath,
+      intersectedLayerName,
+      "LATEST_FIELD_VISIT",
+    );
 
     // generate gdb from GPKG
     this.logger.debug("Generating GDB");

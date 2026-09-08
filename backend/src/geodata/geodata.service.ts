@@ -658,10 +658,35 @@ export class GeodataService {
           `ogr2ogr -f GPKG \"${gpkgPath}\" \"${geojsonPath}\" -nln ${intersectedLayerName} -s_srs EPSG:4326 -t_srs EPSG:3005 -lco SPATIAL_INDEX=YES`,
         );
         if (stderr) this.logger.warn(`GPKG conversion warning: ${stderr}`);
+
+        // Force CLOSED_DATE and LATEST_FIELD_VISIT to be typed as Date even when
+        // every location in this batch has an empty value for them. GDAL infers a
+        // GeoJSON field's type from its values, and an all-null column falls back
+        // to String, which then conflicts with the Date-typed columns already
+        // present in the historical data once the two are merged together.
+        const typedGpkgPath = path.join(
+          this.tempDir,
+          `input_${timestamp}_typed.gpkg`,
+        );
+        const castSql = `
+          SELECT ID, NAME, DESCRIPTION, TYPE, LATITUDE, LONGITUDE, ELEVATION,
+          ELEVATION_UNITS, WELL_IDENTIFICATION_TAG_NO, ESTABLISHED_DATE,
+          CAST(CLOSED_DATE AS date) AS CLOSED_DATE, OBSERVATION_COUNT,
+          FIELD_VISIT_COUNT, CAST(LATEST_FIELD_VISIT AS date) AS LATEST_FIELD_VISIT,
+          GROUP_NAMES, GEOREFERENCE_SOURCE
+          FROM ${intersectedLayerName}
+        `.replace(/\s+/g, " ");
+        const { stdout: castStdout, stderr: castStderr } =
+          await this.execAsync(
+            `ogr2ogr -f GPKG "${typedGpkgPath}" "${gpkgPath}" -nln ${intersectedLayerName} -sql "${castSql}"`,
+          );
+        if (castStderr)
+          this.logger.warn(`Date field type cast warning: ${castStderr}`);
+
         this.logger.log(
           "Successfully generated new data GPKG, returning the path",
         );
-        return gpkgPath;
+        return typedGpkgPath;
       }
     } catch (error) {
       console.error("Error during geojson generation:", error);

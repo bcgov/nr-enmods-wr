@@ -525,7 +525,7 @@ export class GeodataService {
       }
     }
     if (attributeId === this.EXTENDED_ATTRIBUTES.closedDate) {
-      return attribute
+      return attribute && attribute.text && attribute.text !== "NA"
         ? this.toFixedOffsetDateString(new Date(attribute.text))
         : null;
     }

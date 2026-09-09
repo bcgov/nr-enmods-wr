@@ -519,15 +519,32 @@ export class GeodataService {
     // if the established date is empty, return the creation time instead
     if (attributeId === this.EXTENDED_ATTRIBUTES.establishedDate) {
       if (!attribute || attribute === "") {
-        return creationTime.slice(0, 10);
+        return this.toFixedOffsetDateString(new Date(creationTime));
       } else {
-        return attribute.text.slice(0, 10);
+        return this.toFixedOffsetDateString(new Date(attribute.text));
       }
+    }
+    if (attributeId === this.EXTENDED_ATTRIBUTES.closedDate) {
+      return attribute && attribute.text && attribute.text !== "NA"
+        ? this.toFixedOffsetDateString(new Date(attribute.text))
+        : null;
     }
     if (attribute && attribute.text === "NA") {
       return "";
     }
+    
     return attribute ? attribute.text : "";
+  }
+
+  /**
+   * Formats a Date as a YYYY-MM-DD string, using its calendar date in a
+   * fixed -07:00 offset (rather than the UTC calendar date)
+   */
+  toFixedOffsetDateString(date: Date): string {
+    const offsetMs = 7 * 60 * 60 * 1000;
+    const shifted = new Date(date.getTime() - offsetMs);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${shifted.getUTCFullYear()}-${pad(shifted.getUTCMonth() + 1)}-${pad(shifted.getUTCDate())}`;
   }
 
   getLon(longitude: string): number | null {
@@ -606,9 +623,13 @@ export class GeodataService {
               OBSERVATION_COUNT: summary.observationCount,
               FIELD_VISIT_COUNT: summary.fieldVisitCount,
               LATEST_FIELD_VISIT:
-                (summary.latestFieldVisit &&
-                  summary.latestFieldVisit.startTime) ||
-                "",
+                summary.fieldVisitCount > 0 &&
+                summary.latestFieldVisit &&
+                summary.latestFieldVisit.startTime
+                  ? this.toFixedOffsetDateString(
+                      new Date(summary.latestFieldVisit.startTime),
+                    )
+                  : null,
               GROUP_NAMES: location.samplingLocationGroups
                 ? location.samplingLocationGroups
                     .map((group) => group.name || "")
@@ -778,6 +799,34 @@ export class GeodataService {
   }
 
   /**
+   * Rewrites a column's declared type to DATE directly via raw SQLite ALTER
+   * TABLE, in place. SQLite has no ALTER COLUMN TYPE, so this renames the
+   * existing column aside, adds a new one declared as DATE, copies the values
+   * across, then drops the renamed original.
+   */
+  private async forceDateColumnType(
+    gpkgPath: string,
+    layerName: string,
+    columnName: string,
+  ): Promise<void> {
+    const tempColumn = `${columnName}_OLD_TMP`;
+    const statements = [
+      `ALTER TABLE ${layerName} RENAME COLUMN ${columnName} TO ${tempColumn}`,
+      `ALTER TABLE ${layerName} ADD COLUMN ${columnName} DATE`,
+      `UPDATE ${layerName} SET ${columnName} = ${tempColumn}`,
+      `ALTER TABLE ${layerName} DROP COLUMN ${tempColumn}`,
+    ];
+    for (const statement of statements) {
+      const { stderr } = await this.execAsync(
+        `ogr2ogr -f GPKG -update "${gpkgPath}" "${gpkgPath}" -dialect sqlite -sql "${statement}"`,
+      );
+      if (stderr) {
+        this.logger.warn(`${columnName} type fix warning: ${stderr}`);
+      }
+    }
+  }
+
+  /**
    * 1. Receives new entries from aqi that have been transformed into a geojson format
    * 2. Write the geojson to disk and convert it into a gpkg
    * 3. Performs intersection between watershed gdb & new sampling locations gpkg
@@ -872,11 +921,11 @@ export class GeodataService {
         ELEVATION, 
         ELEVATION_UNITS, 
         WELL_IDENTIFICATION_TAG_NO,
-        ESTABLISHED_DATE, 
-        CLOSED_DATE, 
+        ESTABLISHED_DATE,
+        CLOSED_DATE,
         OBSERVATION_COUNT,
-        FIELD_VISIT_COUNT, 
-        LATEST_FIELD_VISIT, 
+        FIELD_VISIT_COUNT,
+        LATEST_FIELD_VISIT,
         GROUP_NAMES,
         GEOREFERENCE_SOURCE, 
         geometry,
@@ -900,35 +949,48 @@ export class GeodataService {
         this.logger.error(`Watershed join failed: ${error.message}`);
         throw error;
       }
-      // Copy the old GPKG to the output GPKG
-      try {
-        this.logger.debug(
-          `Creating combined GPKG using ${latestFilePath} as base`,
-        );
-        const { stdout, stderr } = await this.execAsync(
-          `ogr2ogr -f GPKG "${gpkgPath}" "${latestFilePath}" -nln ${intersectedLayerName}`,
-        );
-        if (stderr) {
-          this.logger.warn(`Base GPKG copy stderr: ${stderr}`);
-        }
-      } catch (error: any) {
-        this.logger.error(`Base GPKG copy failed: ${error.message}`);
-        throw error;
-      }
+      // Merge the new (watershed-intersected) data with the previous GPKG, keyed by ID.
+      // ogr2ogr's -upsert matches on FID rather than the ID attribute, so it would insert
+      // a duplicate row (new FID, same ID) for every location that already existed instead
+      // of replacing it. Union the two layers instead, dropping old rows whose ID
+      // reappears in the new data, and write straight into gpkgPath with -overwrite so
+      // each run fully replaces it rather than appending onto a leftover file.
+      const mergeVrtPath = path.join(this.tempDir, `merge_${timestamp}.vrt`);
+      const mergeVrtXml = `
+      <OGRVRTDataSource>
+        <OGRVRTLayer name="new_data">
+          <SrcDataSource>${gpkgOutputPath}</SrcDataSource>
+          <SrcLayer>${intersectedLayerName}</SrcLayer>
+          <GeometryType>wkbPoint</GeometryType>
+          <LayerSRS>EPSG:3005</LayerSRS>
+        </OGRVRTLayer>
+        <OGRVRTLayer name="old_data">
+          <SrcDataSource>${latestFilePath}</SrcDataSource>
+          <SrcLayer>${intersectedLayerName}</SrcLayer>
+          <GeometryType>wkbPoint</GeometryType>
+          <LayerSRS>EPSG:3005</LayerSRS>
+        </OGRVRTLayer>
+      </OGRVRTDataSource>`;
+      fs.writeFileSync(mergeVrtPath, mergeVrtXml.trim());
 
-      // Upsert the new intersected GPKG into the output GPKG
+      const mergeSql = `
+      SELECT * FROM new_data
+      UNION ALL
+      SELECT * FROM old_data WHERE ID NOT IN (SELECT ID FROM new_data)
+      `.replace(/\s+/g, " ");
+
       try {
         this.logger.debug(
-          `Upserting new data from ${gpkgOutputPath} into ${gpkgPath}`,
+          `Merging new data from ${gpkgOutputPath} into ${gpkgPath}, keyed by ID (new data takes precedence)`,
         );
         const { stdout, stderr } = await this.execAsync(
-          `ogr2ogr -f GPKG "${gpkgPath}" "${gpkgOutputPath}" -nln ${intersectedLayerName} -upsert`,
+          `ogr2ogr -f GPKG -overwrite "${gpkgPath}" "${mergeVrtPath}" -dialect sqlite -sql "${mergeSql}" -nln ${intersectedLayerName} -lco SPATIAL_INDEX=YES`,
         );
         if (stderr) {
-          this.logger.warn(`New data upsert stderr: ${stderr}`);
+          this.logger.warn(`GPKG merge stderr: ${stderr}`);
         }
       } catch (error: any) {
-        this.logger.error(`New data upsert failed: ${error.message}`);
+        this.logger.error(`GPKG merge failed: ${error.message}`);
         throw error;
       }
 
@@ -980,11 +1042,11 @@ export class GeodataService {
         ELEVATION, 
         ELEVATION_UNITS, 
         WELL_IDENTIFICATION_TAG_NO,
-        ESTABLISHED_DATE, 
-        CLOSED_DATE, 
+        ESTABLISHED_DATE,
+        CLOSED_DATE,
         OBSERVATION_COUNT,
-        FIELD_VISIT_COUNT, 
-        LATEST_FIELD_VISIT, 
+        FIELD_VISIT_COUNT,
+        LATEST_FIELD_VISIT,
         GROUP_NAMES,
         GEOREFERENCE_SOURCE, 
         geometry,
@@ -998,7 +1060,7 @@ export class GeodataService {
       // New Intersected GPKG, copy directly into output GPKG
       try {
         const { stdout, stderr } = await this.execAsync(
-          `ogr2ogr -f GPKG "${gpkgPath}" "${vrtPath}" -dialect sqlite -sql "${sql}" -nln ${intersectedLayerName} -lco SPATIAL_INDEX=YES --config GDAL_CACHEMAX 500 --config OGR_SQLITE_CACHE 200000`,
+          `ogr2ogr -f GPKG -overwrite "${gpkgPath}" "${vrtPath}" -dialect sqlite -sql "${sql}" -nln ${intersectedLayerName} -lco SPATIAL_INDEX=YES --config GDAL_CACHEMAX 500 --config OGR_SQLITE_CACHE 200000`,
         );
         if (stderr) {
           this.logger.warn(`Watershed join stderr: ${stderr}`);
@@ -1014,7 +1076,7 @@ export class GeodataService {
       // Copy the old GPKG to the output GPKG
       try {
         const { stdout, stderr } = await this.execAsync(
-          `ogr2ogr -f GPKG "${gpkgPath}" "${latestFilePath}" -nln ${intersectedLayerName}`,
+          `ogr2ogr -f GPKG -overwrite "${gpkgPath}" "${latestFilePath}" -nln ${intersectedLayerName}`,
         );
         if (stderr) {
           this.logger.warn(`Base GPKG copy stderr: ${stderr}`);
@@ -1033,11 +1095,33 @@ export class GeodataService {
     }
     this.logger.debug("GPKG generation was successful");
 
+    // Null out legacy '1970-01-01' sentinel dates written by earlier runs
+    // (before CLOSED_DATE/LATEST_FIELD_VISIT properly returned null for
+    // missing values). The merge above only recomputes locations present in
+    // this cycle's new fetch, so a location not re-fetched would otherwise
+    // carry a corrupted value forward indefinitely.
+    // for (const column of ["CLOSED_DATE", "LATEST_FIELD_VISIT"]) {
+    //   const { stderr } = await this.execAsync(
+    //     `ogr2ogr -f GPKG -update "${gpkgPath}" "${gpkgPath}" -dialect sqlite -sql "UPDATE ${intersectedLayerName} SET ${column} = NULL WHERE ${column} = '1970-01-01'"`,
+    //   );
+    //   if (stderr) {
+    //     this.logger.warn(`${column} sentinel cleanup warning: ${stderr}`);
+    //   }
+    // }
+
+    // Force CLOSED_DATE and LATEST_FIELD_VISIT to be declared DATE columns in the
+    // final GPKG. CAST(... AS date) inside the SQL above doesn't reliably survive
+    // the ROW_NUMBER()/JOIN/UNION ALL steps used to build gpkgPath, so instead
+    // this rewrites each column's declared type directly via raw ALTER TABLE,
+    // which is what QGIS/ArcGIS actually read to show a field's type.
+    //await this.forceDateColumnType(gpkgPath, intersectedLayerName, "CLOSED_DATE");
+    //await this.forceDateColumnType(gpkgPath, intersectedLayerName,   "LATEST_FIELD_VISIT",    );
+
     // generate gdb from GPKG
     this.logger.debug("Generating GDB");
     try {
       const { stdout, stderr } = await this.execAsync(
-        `ogr2ogr -f "OpenFileGDB" "${gdbPath}" "${gpkgPath}" ${intersectedLayerName}`,
+        `ogr2ogr -f "OpenFileGDB" -overwrite "${gdbPath}" "${gpkgPath}" ${intersectedLayerName}`,
       );
       if (stderr) {
         this.logger.warn(`GDB generate stderr: ${stderr}`);
@@ -1051,7 +1135,7 @@ export class GeodataService {
     this.logger.debug("Generating CSV");
     try {
       const { stdout, stderr } = await this.execAsync(
-        `ogr2ogr -f "CSV" "${csvPath}" "${gpkgPath}" ${intersectedLayerName}`,
+        `ogr2ogr -f "CSV" -overwrite "${csvPath}" "${gpkgPath}" ${intersectedLayerName}`,
       );
       if (stderr) {
         this.logger.warn(`Failed to convert to CSV warning: ${stderr}`);
@@ -1065,7 +1149,7 @@ export class GeodataService {
     // sampling location geojson used in generateSamplingLocationGroupGpkg
     try {
       const { stdout, stderr } = await this.execAsync(
-        `ogr2ogr -f "GeoJSON" "${geoJsonPath}" "${gpkgPath}" ${intersectedLayerName}`,
+        `ogr2ogr -f "GeoJSON" -overwrite "${geoJsonPath}" "${gpkgPath}" ${intersectedLayerName}`,
       );
       if (stderr) {
         this.logger.warn(`Failed to convert to GeoJSON warning: ${stderr}`);

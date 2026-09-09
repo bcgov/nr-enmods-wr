@@ -1095,6 +1095,20 @@ export class GeodataService {
     }
     this.logger.debug("GPKG generation was successful");
 
+    // Null out legacy '1970-01-01' sentinel dates written by earlier runs
+    // (before CLOSED_DATE/LATEST_FIELD_VISIT properly returned null for
+    // missing values). The merge above only recomputes locations present in
+    // this cycle's new fetch, so a location not re-fetched would otherwise
+    // carry a corrupted value forward indefinitely.
+    for (const column of ["CLOSED_DATE", "LATEST_FIELD_VISIT"]) {
+      const { stderr } = await this.execAsync(
+        `ogr2ogr -f GPKG -update "${gpkgPath}" "${gpkgPath}" -dialect sqlite -sql "UPDATE ${intersectedLayerName} SET ${column} = NULL WHERE ${column} = '1970-01-01'"`,
+      );
+      if (stderr) {
+        this.logger.warn(`${column} sentinel cleanup warning: ${stderr}`);
+      }
+    }
+
     // Force CLOSED_DATE and LATEST_FIELD_VISIT to be declared DATE columns in the
     // final GPKG. CAST(... AS date) inside the SQL above doesn't reliably survive
     // the ROW_NUMBER()/JOIN/UNION ALL steps used to build gpkgPath, so instead

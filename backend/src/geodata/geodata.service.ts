@@ -623,7 +623,9 @@ export class GeodataService {
               OBSERVATION_COUNT: summary.observationCount,
               FIELD_VISIT_COUNT: summary.fieldVisitCount,
               LATEST_FIELD_VISIT:
-                summary.latestFieldVisit && summary.latestFieldVisit.startTime
+                summary.fieldVisitCount > 0 &&
+                summary.latestFieldVisit &&
+                summary.latestFieldVisit.startTime
                   ? this.toFixedOffsetDateString(
                       new Date(summary.latestFieldVisit.startTime),
                     )

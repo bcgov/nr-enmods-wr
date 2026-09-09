@@ -803,7 +803,7 @@ export class GeodataService {
       params;
 
     // Watershed GPKG variables
-    const watershedGpkgPath = path.resolve(
+    const watershedGpkgPath = path.resolve( 
       __dirname,
       "../util/watersheds_3005.gpkg",
     );

@@ -40,6 +40,29 @@ export class GeodataService {
     establishedDate: null,
     wellTagNumber: null,
   };
+  // Canonical attribute column order for the sampling_locations layer. Used
+  // everywhere the layer's schema is written or unioned explicitly, so a
+  // SELECT list (or -select clause) always aligns fields by name rather than
+  // relying on positional order, which drifts across ogr2ogr operations
+  // (e.g. ALTER TABLE ADD COLUMN always appends at the end).
+  private readonly SAMPLING_LOCATION_FIELDS = [
+    "ID",
+    "NAME",
+    "DESCRIPTION",
+    "TYPE",
+    "LATITUDE",
+    "LONGITUDE",
+    "ELEVATION",
+    "ELEVATION_UNITS",
+    "WELL_IDENTIFICATION_TAG_NO",
+    "ESTABLISHED_DATE",
+    "CLOSED_DATE",
+    "OBSERVATION_COUNT",
+    "FIELD_VISIT_COUNT",
+    "LATEST_FIELD_VISIT",
+    "GROUP_NAMES",
+    "GEOREFERENCE_SOURCE",
+  ];
 
   // Note: This method is now invoked via OpenShift CronJob instead of scheduled from the backend.
   // See charts/app/templates/geodata-cronjob.yaml for the cronjob configuration.
@@ -657,8 +680,12 @@ export class GeodataService {
 
         this.logger.log("Generating new data GPKG");
         // Save GPKG
+        // -select pins the output field order explicitly; without it, ogr2ogr's
+        // GeoJSON schema detection appends fields that are null in earlier
+        // features (e.g. CLOSED_DATE, LATEST_FIELD_VISIT) to the end of the schema.
+        const fieldOrder = this.SAMPLING_LOCATION_FIELDS.join(",");
         const { stdout, stderr } = await this.execAsync(
-          `ogr2ogr -f GPKG \"${gpkgPath}\" \"${geojsonPath}\" -nln ${intersectedLayerName} -s_srs EPSG:4326 -t_srs EPSG:3005 -lco SPATIAL_INDEX=YES`,
+          `ogr2ogr -f GPKG \"${gpkgPath}\" \"${geojsonPath}\" -nln ${intersectedLayerName} -select "${fieldOrder}" -s_srs EPSG:4326 -t_srs EPSG:3005 -lco SPATIAL_INDEX=YES`,
         );
         if (stderr) this.logger.warn(`GPKG conversion warning: ${stderr}`);
         this.logger.log(
@@ -896,42 +923,29 @@ export class GeodataService {
       fs.writeFileSync(vrtPath, vrtXml.trim());
 
       this.logger.debug("Intesecting data...");
+      const rankedSelectColumns = [
+        ...this.SAMPLING_LOCATION_FIELDS,
+        "geometry",
+        "WATERSHED_GROUP_CODE AS WATERSHED_GROUP_CD",
+        "WATERSHED_GROUP_NAME",
+      ].join(", ");
       const sql = `
       WITH ranked AS (
-        SELECT 
+        SELECT
           p.*,
           w.WATERSHED_GROUP_CODE,
           w.WATERSHED_GROUP_NAME,
           w.OBJECTID_1,
           ROW_NUMBER() OVER (
-            PARTITION BY p.ID 
+            PARTITION BY p.ID
             ORDER BY ST_Distance(p.geometry, ST_Centroid(w.geometry)) ASC
           ) AS rn
         FROM sampling_locations p
         LEFT JOIN WHSE_BASEMAPPING_FWA_WATERSHED_GROUPS_POLY w
         ON ST_Intersects(p.geometry, w.geometry)
       )
-      SELECT 
-        ID, 
-        NAME, 
-        DESCRIPTION, 
-        TYPE, 
-        LATITUDE, 
-        LONGITUDE, 
-        ELEVATION, 
-        ELEVATION_UNITS, 
-        WELL_IDENTIFICATION_TAG_NO,
-        ESTABLISHED_DATE,
-        CLOSED_DATE,
-        OBSERVATION_COUNT,
-        FIELD_VISIT_COUNT,
-        LATEST_FIELD_VISIT,
-        GROUP_NAMES,
-        GEOREFERENCE_SOURCE, 
-        geometry,
-        WATERSHED_GROUP_CODE AS WATERSHED_GROUP_CD,
-        WATERSHED_GROUP_NAME
-      FROM ranked 
+      SELECT ${rankedSelectColumns}
+      FROM ranked
       WHERE rn = 1;
     `.replace(/\s+/g, " ");
 
@@ -973,10 +987,21 @@ export class GeodataService {
       </OGRVRTDataSource>`;
       fs.writeFileSync(mergeVrtPath, mergeVrtXml.trim());
 
+      // Named columns (not SELECT *) so the UNION ALL aligns fields by name
+      // rather than by position - new_data and old_data schemas can drift out
+      // of column order relative to each other (e.g. forceDateColumnType below
+      // appends columns at the end), which silently corrupted fields like
+      // OBSERVATION_COUNT for carried-over rows when matched positionally.
+      const mergedColumns = [
+        ...this.SAMPLING_LOCATION_FIELDS,
+        "geometry",
+        "WATERSHED_GROUP_CD",
+        "WATERSHED_GROUP_NAME",
+      ].join(", ");
       const mergeSql = `
-      SELECT * FROM new_data
+      SELECT ${mergedColumns} FROM new_data
       UNION ALL
-      SELECT * FROM old_data WHERE ID NOT IN (SELECT ID FROM new_data)
+      SELECT ${mergedColumns} FROM old_data WHERE ID NOT IN (SELECT ID FROM new_data)
       `.replace(/\s+/g, " ");
 
       try {
@@ -1018,41 +1043,28 @@ export class GeodataService {
       fs.writeFileSync(vrtPath, vrtXml.trim());
 
       this.logger.debug("Intesecting data...");
+      const rankedSelectColumns = [
+        ...this.SAMPLING_LOCATION_FIELDS,
+        "geometry",
+        "WATERSHED_GROUP_CODE AS WATERSHED_GROUP_CD",
+        "WATERSHED_GROUP_NAME",
+      ].join(", ");
       const sql = `WITH ranked AS (
-        SELECT 
+        SELECT
           p.*,
           w.WATERSHED_GROUP_CODE,
           w.WATERSHED_GROUP_NAME,
           w.OBJECTID_1,
           ROW_NUMBER() OVER (
-            PARTITION BY p.ID 
+            PARTITION BY p.ID
             ORDER BY ST_Distance(p.geometry, ST_Centroid(w.geometry)) ASC
           ) AS rn
         FROM sampling_locations p
         LEFT JOIN WHSE_BASEMAPPING_FWA_WATERSHED_GROUPS_POLY w
         ON ST_Intersects(p.geometry, w.geometry)
       )
-      SELECT 
-        ID, 
-        NAME, 
-        DESCRIPTION, 
-        TYPE, 
-        LATITUDE, 
-        LONGITUDE, 
-        ELEVATION, 
-        ELEVATION_UNITS, 
-        WELL_IDENTIFICATION_TAG_NO,
-        ESTABLISHED_DATE,
-        CLOSED_DATE,
-        OBSERVATION_COUNT,
-        FIELD_VISIT_COUNT,
-        LATEST_FIELD_VISIT,
-        GROUP_NAMES,
-        GEOREFERENCE_SOURCE, 
-        geometry,
-        WATERSHED_GROUP_CODE AS WATERSHED_GROUP_CD,
-        WATERSHED_GROUP_NAME
-      FROM ranked 
+      SELECT ${rankedSelectColumns}
+      FROM ranked
       WHERE rn = 1;`.replace(/\s+/g, " ");
 
       this.logger.debug("Generating Watershed Intersected GPKG");
@@ -1102,6 +1114,32 @@ export class GeodataService {
     // which is what QGIS/ArcGIS actually read to show a field's type.
     await this.forceDateColumnType(gpkgPath, intersectedLayerName, "CLOSED_DATE");
     await this.forceDateColumnType(gpkgPath, intersectedLayerName,   "LATEST_FIELD_VISIT");
+
+    // forceDateColumnType's ADD COLUMN re-adds each column at the end of the
+    // table, so CLOSED_DATE and LATEST_FIELD_VISIT are now trailing again.
+    // Re-select the canonical column order into a fresh file and swap it in,
+    // so the persisted gpkgPath (and next run's old_data schema) stays stable.
+    const reorderedGpkgPath = path.join(
+      this.tempDir,
+      `sampling_locations_reordered_${timestamp}.gpkg`,
+    );
+    try {
+      const attributeOrder = [
+        ...this.SAMPLING_LOCATION_FIELDS,
+        "WATERSHED_GROUP_CD",
+        "WATERSHED_GROUP_NAME",
+      ].join(",");
+      const { stderr } = await this.execAsync(
+        `ogr2ogr -f GPKG "${reorderedGpkgPath}" "${gpkgPath}" -nln ${intersectedLayerName} -select "${attributeOrder}" -lco SPATIAL_INDEX=YES`,
+      );
+      if (stderr) {
+        this.logger.warn(`Column reorder warning: ${stderr}`);
+      }
+      fs.renameSync(reorderedGpkgPath, gpkgPath);
+    } catch (error: any) {
+      this.logger.error(`Column reorder failed: ${error.message}`);
+      throw error;
+    }
 
     // generate gdb from GPKG
     this.logger.debug("Generating GDB");

@@ -4,7 +4,7 @@ metadata:
   name: aqi-weekly-sync
   namespace: "{{ .Release.Namespace }}"
 spec:
-  schedule: "0 12 * * 1" #DEBUG: run at noon on Monday. # Runs every Saturday at midnight; currently takes about 65 mins so WR should update around 1am each Saturday
+  schedule: "0 12 * * 0" # Runs at noon every Sunday (starting Sept 27 2026)
   timeZone: "America/Vancouver"
   successfulJobsHistoryLimit: 2
   failedJobsHistoryLimit: 2

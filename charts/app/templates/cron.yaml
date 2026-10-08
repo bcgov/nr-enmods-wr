@@ -4,7 +4,8 @@ metadata:
   name: aqi-weekly-sync
   namespace: "{{ .Release.Namespace }}"
 spec:
-  schedule: "0 12 * * 0" # Runs at noon every Sunday (starting Sept 27 2026)
+  #schedule: "0 12 * * 0" # Runs at noon every Sunday (starting Sept 27 2026)
+  schedule: "0 11 * * 4" # Extra run at 11am on Thursday Oct 8 to force a sync
   timeZone: "America/Vancouver"
   successfulJobsHistoryLimit: 2
   failedJobsHistoryLimit: 2

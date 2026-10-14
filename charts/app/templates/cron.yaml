@@ -4,7 +4,7 @@ metadata:
   name: aqi-weekly-sync
   namespace: "{{ .Release.Namespace }}"
 spec:
-  schedule: "0 12 * * 0" # Runs at noon every Sunday (starting Sept 27 2026)
+  schedule: "0 23 * * 0,1,3" # Runs at 11pm every Sunday, Monday and Wednesday. The AQI file export starts at 8pm on Fridays and is guaranteed to finish by 8pm on Monday.
   #schedule: "0 11 * * 4" # Extra run at 11am on Thursday Oct 8 to force a sync
   timeZone: "America/Vancouver"
   successfulJobsHistoryLimit: 2

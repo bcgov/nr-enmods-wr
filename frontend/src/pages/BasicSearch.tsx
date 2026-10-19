@@ -378,7 +378,7 @@ const BasicSearch = () => {
         {/* Last sync time display - shows data freshness */}
         <div className="ml-auto text-sm italic text-gray-600 self-center">
           <SyncIcon sx={{ mr: 1, fontSize: "1rem" }} />
-          Last Synced: {formattedSyncTime} (PST)
+          Last Synced: {formattedSyncTime} (Pacific Time)
         </div>
       </div>
 

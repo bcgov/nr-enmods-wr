@@ -70,7 +70,7 @@ export default function App() {
           <div className="w-screen h-screen mt-[3em]">
             <Sidebar
               handleClickNavMenu={handleClickNavMenu}
-              sidebarMessage={`Last Synced: ${formattedSyncTime} (PST)`}
+              sidebarMessage={`Last Synced: ${formattedSyncTime} (Pacific Time)`}
             />
           </div>
         )}
@@ -79,7 +79,7 @@ export default function App() {
           <div className="w-[20%] mt-[4em] min-h-screen hidden md:block ">
             <Sidebar
               handleClickNavMenu={handleClickNavMenu}
-              sidebarMessage={`Last Synced: ${formattedSyncTime} (PST)`}
+              sidebarMessage={`Last Synced: ${formattedSyncTime} (Pacific Time)`}
             />
           </div>
 

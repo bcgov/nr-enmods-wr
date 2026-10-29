@@ -54,7 +54,7 @@ export default function App() {
   // Format sync time for Pacific Time
   const formattedSyncTime = lastSyncTime
     ? new Date(lastSyncTime).toLocaleString("en-US", {
-        timeZone: "America/Los_Angeles",
+        timeZone: "America/Vancouver",
       })
     : ""
 

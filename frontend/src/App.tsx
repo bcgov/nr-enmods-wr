@@ -54,7 +54,7 @@ export default function App() {
   // Format sync time for Pacific Time
   const formattedSyncTime = lastSyncTime
     ? new Date(lastSyncTime).toLocaleString("en-US", {
-        timeZone: "America/Los_Angeles",
+        timeZone: "America/Vancouver",
       })
     : ""
 
@@ -70,7 +70,7 @@ export default function App() {
           <div className="w-screen h-screen mt-[3em]">
             <Sidebar
               handleClickNavMenu={handleClickNavMenu}
-              sidebarMessage={`Last Synced: ${formattedSyncTime} (PST)`}
+              sidebarMessage={`Last Synced: ${formattedSyncTime} (Pacific Time)`}
             />
           </div>
         )}
@@ -79,7 +79,7 @@ export default function App() {
           <div className="w-[20%] mt-[4em] min-h-screen hidden md:block ">
             <Sidebar
               handleClickNavMenu={handleClickNavMenu}
-              sidebarMessage={`Last Synced: ${formattedSyncTime} (PST)`}
+              sidebarMessage={`Last Synced: ${formattedSyncTime} (Pacific Time)`}
             />
           </div>
 
